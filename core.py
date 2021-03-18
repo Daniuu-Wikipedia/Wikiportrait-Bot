@@ -224,7 +224,7 @@ class Image:
                             'url':url})
         return z['shortenurl']['shorturl']
     
-    #This handy function will assure that all actions can be done at once
+     #This handy function will assure that all actions can be done at once
     def __call__(self):
         "This function can be used to do handle an entire request at once"
         print('Initializing the Wikidata interface')
@@ -233,4 +233,11 @@ class Image:
         self.interwiki()
         print('Now continuing with the P18 property')
         self.set_image()
-        print('The image has been set.')
+        print('The image has been set. Now starting to process the category on Commons')
+        self.commons_cat()
+        print('The category has been set. I will now switch to purge the cache on Commons')
+        self.purge()
+        print('Cache has been purged, now generating the short url')
+        k = self.short_url()
+        print(f'The generated short url is {k}')
+        print('Done processing the request')

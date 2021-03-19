@@ -31,7 +31,7 @@ class Bot:
     
     def __str__(self):
         return self.api.copy()
-       
+    
     def verify_OAuth(self, file="Tokens_Wikiportraitbot.txt"):
         'This function will verify whether the OAuth-auth has been configured. If not, it will do the configuration.'
         if self._auth is None:
@@ -81,12 +81,13 @@ class Bot:
         params['format'] = 'json'
         params['maxlag'] = 5 #Using the standard that's implemented in PyWikiBot
         self.ti.append(float(time.time()))
-        k = requests.post(self.api, data=params, auth=self._auth).json()
-        
+        k = requests.post(self.api, data=params).json()
+
         if 'error' in k:
             print('An error occured somewhere') #We found an error
             if 'code' in k['error'] and 'maxlag' in k['error']['code']:
                 print('Maxlag occured, please try to file the request at a later point in space and time.')
+        return k
         
 class WikidataBot(Bot):
     def __init__(self):
@@ -99,6 +100,11 @@ class CommonsBot(Bot):
 class MetaBot(Bot):
     def __init__(self):
         super().__init__('https://meta.wikimedia.org/w/api.php')
+        
+    def short(self, params):
+        "This function can be used to create a short url (without generating a token first)"
+        params['format'] = 'json'
+        return requests.post(self.api, data=params, auth=self._auth).json()
 
 class NlBot(Bot):
     def __init__(self):
@@ -178,6 +184,7 @@ class Image:
         if self.claims is None or self.qid is None:
             self.ini_wikidata()
         for i in self.claims.get('P18', ()):
+            print('Watch out, there are already images present! Please check this!')
             j = i['mainsnak']['datavalue']['value']
             if j == self.file:
                 return j #It is already in there, stop the frunction
@@ -220,13 +227,15 @@ class Image:
     def short_url(self):
         'This function will generate a shortened url for the image'
         url = 'https://' + urllib.parse.quote(f'commons.wikimedia.org/wiki/File:{self.file}') #https:// added in front of the parser
-        z = self._meta.post({'action':'shortenurl',
+        z = self._meta.short({'action':'shortenurl',
                             'url':url})
         return z['shortenurl']['shorturl']
     
-     #This handy function will assure that all actions can be done at once
+    #This handy function will assure that all actions can be done at once
     def __call__(self):
         "This function can be used to do handle an entire request at once"
+        print('Making the category on Commons')
+        self.make_cat()
         print('Initializing the Wikidata interface')
         self.ini_wikidata()
         print('Initialization done, proceeding with the interwikilink to Commons')

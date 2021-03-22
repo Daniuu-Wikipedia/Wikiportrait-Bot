@@ -251,7 +251,7 @@ class Image:
                  'value':'{' + val + '}',
                  'snaktype':'value',
                  'property':'P585'}
-            print(self._wikidata.post(n))
+            self._wikidata.post(n)
     
     #This handy function will assure that all actions can be done at once
     def __call__(self):

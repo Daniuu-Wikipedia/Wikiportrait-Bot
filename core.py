@@ -9,12 +9,12 @@ This is a script that should make it easier to process requests done through Wik
 The bot will do a couple of tasks:
     1) It will create a new category for the name of the person on the image
     2) It will post the image and category created in 1 to a Wikidata-item
-
 """
 
 import requests
 import urllib
 import time
+import datetime as dt
 from requests_oauthlib import OAuth1
 
 class Bot:
@@ -43,7 +43,7 @@ class Bot:
             self.get_token()
         elif float(time.time()) - self._token[1] > 8:
             self.get_token() #Tokens expire after approximately 8 seconds, so generate a new one
-        return self._token
+        return self._token[0]
     
     def get(self, payload):
         "This function will provide functionality that does all the get requests"
@@ -77,12 +77,11 @@ class Bot:
             time.sleep(20) #Fuck, we need to stop
             return self.post(params) #run the function again - but: with a delay of some 60 seconds
         if 'token' not in params: #Place this generation of the key here, to avoid having to request too many tokens
-            params['token'] = self.verify_token()[0] #Generate a new token
+            params['token'] = self.verify_token() #Generate a new token
         params['format'] = 'json'
         params['maxlag'] = 5 #Using the standard that's implemented in PyWikiBot
         self.ti.append(float(time.time()))
-        k = requests.post(self.api, data=params).json()
-
+        k = requests.post(self.api, data=params, auth=self._auth).json()
         if 'error' in k:
             print('An error occured somewhere') #We found an error
             if 'code' in k['error'] and 'maxlag' in k['error']['code']:
@@ -149,8 +148,7 @@ class Image:
                 'summary':self.sum,
                 'createonly':True,
                 'bot':True}
-        pars['token'] = self.commons_token()
-        return self.post(Image.commons, pars)
+        return self._commons.post(pars)
     
     #Second task - go to Wikidata and modify somethings there
     #First get the number of the item on Wikidata and the associated claims
@@ -231,6 +229,30 @@ class Image:
                             'url':url})
         return z['shortenurl']['shorturl']
     
+    def date_meta(self):
+        "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
+        z = self._commons.get({'action':'query',
+                               'titles':f'File:{self.file}',
+                               'prop':'imageinfo',
+                               'iiprop':'commonmetadata'})
+        q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
+        u = sorted((i['value'] for i in q if 'datetime' in i['name'].lower().strip()))
+        d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S") #Remove the precise timestamp
+        cl = self.claims.get('P18')
+        assert cl is not None, 'Watch out, we found an error'
+        for i in cl:
+            if i['mainsnak']['datavalue']['value'] == self.file:
+                idc = i['id']
+                break #Stop the iterations
+        if 'P585' not in i.get('qualifiers', ()): #Code should only be executed if this hasn't been specified yet
+            val = f'"time": "+{d.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
+            n = {'action':'wbsetqualifier',
+                 'claim':idc,
+                 'value':'{' + val + '}',
+                 'snaktype':'value',
+                 'property':'P585'}
+            self._wikidata.post(n)
+    
     #This handy function will assure that all actions can be done at once
     def __call__(self):
         "This function can be used to do handle an entire request at once"
@@ -248,5 +270,8 @@ class Image:
         self.purge()
         print('Cache has been purged, now generating the short url')
         k = self.short_url()
-        print(f'The generated short url is {k}')
+        print(f'The generated short url for Commons is {k}')
+        print('Now setting the date')
+        self.date_meta()
+        print('Date has been set.')
         print('Done processing the request')

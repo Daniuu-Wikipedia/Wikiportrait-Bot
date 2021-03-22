@@ -237,7 +237,7 @@ class Image:
                                'iiprop':'commonmetadata'})
         q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
         u = sorted((i['value'] for i in q if 'datetime' in i['name'].lower().strip()))
-        d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S") #Remove the precise timestamp
+        d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0, second=0) #Remove the precise timestamp
         cl = self.claims.get('P18')
         assert cl is not None, 'Watch out, we found an error'
         for i in cl:
@@ -251,7 +251,7 @@ class Image:
                  'value':'{' + val + '}',
                  'snaktype':'value',
                  'property':'P585'}
-            self._wikidata.post(n)
+            print(self._wikidata.post(n))
     
     #This handy function will assure that all actions can be done at once
     def __call__(self):

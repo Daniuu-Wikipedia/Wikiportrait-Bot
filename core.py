@@ -214,12 +214,16 @@ class Image:
         return self._wikidata.post(p18d)
       
     def purge(self):
-        "This function will purge the cache of the corresponding page on Commons"
+        "This function will purge the cache of the corresponding page on Commons and the Wikidata-item"
         purgedic = {'action':'purge',
                     'titles':f'Category:{self.name}',
                     'forcelinkupdate':True,
                     'forcerecursivelinkupdate':True}
         self._commons.post(purgedic)
+        p2d = purgedic.copy()
+        print('doing Wikidata')
+        p2d['titles'] = self.qid
+        self._wikidata.post(p2d)
     
     #Generate a shortened URL to the image
     def short_url(self):
@@ -236,7 +240,8 @@ class Image:
                                'prop':'imageinfo',
                                'iiprop':'commonmetadata'})
         q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
-        u = sorted((i['value'] for i in q if 'datetime' in i['name'].lower().strip()))
+        t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
+        u = sorted((i for i in t if i.count(':') == 4)) #Filter the correct format
         d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0, second=0) #Remove the precise timestamp
         cl = self.claims.get('P18')
         assert cl is not None, 'Watch out, we found an error'
@@ -250,10 +255,11 @@ class Image:
                  'claim':idc,
                  'value':'{' + val + '}',
                  'snaktype':'value',
-                 'property':'P585'}
+                 'property':'P585',
+                 'summary':self.sum,
+                 'bot':True}
             self._wikidata.post(n)
     
-    #This handy function will assure that all actions can be done at once
     def __call__(self):
         "This function can be used to do handle an entire request at once"
         print('Making the category on Commons')
@@ -266,12 +272,13 @@ class Image:
         self.set_image()
         print('The image has been set. Now starting to process the category on Commons')
         self.commons_cat()
-        print('The category has been set. I will now switch to purge the cache on Commons')
+        print('The category has been set. I will now switch to purge the cache on Commons and Wikidata')
         self.purge()
         print('Cache has been purged, now generating the short url')
         k = self.short_url()
         print(f'The generated short url for Commons is {k}')
-        print('Now setting the date')
+        print('I will now reset the claims that are stored in this class')
+        self.ini_wikidata()
+        print('Done resetting the claims, I proceed with setting the date')
         self.date_meta()
-        print('Date has been set.')
         print('Done processing the request')

@@ -124,7 +124,7 @@ class Image:
         name : string
             This parameter contains the name of the corresponding person on nl-wiki.
         """
-        self.file, self.name = file, name #Just assign the values
+        self.file, self.name = file.strip(), name.strip() #Just assign the values
         self.sum = f'Processing image of {self.name}'
         
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
@@ -194,7 +194,9 @@ class Image:
                     'summary':self.sum,
                     'entity':self.qid,
                     'value':f'"{self.file}"'}    
-        return self._wikidata.post(p18d)
+        k = self._wikidata.post(p18d)
+        self.claims['P18'] = self.claims.get('P18', []) + [k['claim']]
+        return k
     
     def commons_cat(self):
         "This function will set the Commons category of the subject (P373)"
@@ -243,7 +245,7 @@ class Image:
         t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
         u = sorted((i for i in t if i.count(':') == 4)) #Filter the correct format
         d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0, second=0) #Remove the precise timestamp
-        cl = self.claims.get('P18')
+        cl = self.claims.get('P18') #We can get this one
         assert cl is not None, 'Watch out, we found an error'
         for i in cl:
             if i['mainsnak']['datavalue']['value'] == self.file:
@@ -272,13 +274,46 @@ class Image:
         self.set_image()
         print('The image has been set. Now starting to process the category on Commons')
         self.commons_cat()
-        print('The category has been set. I will now switch to purge the cache on Commons and Wikidata')
-        self.purge()
-        print('Cache has been purged, now generating the short url')
+        print('The category has been set.')
+        print('Now generating the short url')
         k = self.short_url()
         print(f'The generated short url for Commons is {k}')
         print('I will now reset the claims that are stored in this class')
-        self.ini_wikidata()
+        #self.ini_wikidata()
         print('Done resetting the claims, I proceed with setting the date')
         self.date_meta()
+        print('Date set, now switching to purging the cache')
+        self.purge()
         print('Done processing the request')
+
+class Multi:
+    "This class can be used to read multiple files from a csv file"
+    def __init__(self, file, delimiter=";"):
+        self.file, self.deli = file, delimiter
+        self.images = None
+    
+    def __str__(self):
+        return self.file
+    
+    def __repr__(self):
+        return f'Multi({self.file}, {self.deli})'
+    
+    def __call__(self):
+        'Just a short notation to make life easier'
+        self.read_file()
+        self.process()
+    
+    def read_file(self):
+        "This function will effectively read the file"
+        with open(self.file, 'r') as datafile:
+            data = datafile.readlines() #Read all lines at once
+        if '.' not in data[0]: #This indicates that no proper filename is present there
+            del data[0] #Just remove it from the list
+        self.images = [Image(*i.split(self.deli)) for i in data]
+    
+    def process(self):
+        "This function will run the script for different images"
+        if self.images is None:
+            self.read_file()
+        for i in self.images():
+            i() #Call the different Images that were found in the file

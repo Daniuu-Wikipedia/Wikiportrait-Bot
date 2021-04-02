@@ -10,11 +10,11 @@ The bot will do a couple of tasks:
     1) It will create a new category for the name of the person on the image
     2) It will post the image and category created in 1 to a Wikidata-item
 """
-
 import requests
 import urllib
 import time
 import datetime as dt
+import re #Regex to filter the ticket number
 from requests_oauthlib import OAuth1
 
 class Bot:
@@ -124,7 +124,7 @@ class Image:
         name : string
             This parameter contains the name of the corresponding person on nl-wiki.
         """
-        self.file, self.name = file.strip(), name.strip() #Just assign the values
+        self.file, self.name = file.replace('File:', '').strip(), name.strip() #Just assign the values
         self.sum = f'Processing image of {self.name}'
         
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
@@ -134,7 +134,8 @@ class Image:
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
         self.claims = None #temporary storage
-        
+        self.mid = None #id of the file on Wikimedia commons   
+        self.mc = None #A dictionary to store the claims for the Commons item in
     def __str__(self):
         return f'Processing {self.file}, an image of {self.name}.'
                 
@@ -244,23 +245,79 @@ class Image:
         q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
         t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
         u = sorted((i for i in t if i.count(':') == 4)) #Filter the correct format
-        d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0, second=0) #Remove the precise timestamp
-        cl = self.claims.get('P18') #We can get this one
-        assert cl is not None, 'Watch out, we found an error'
-        for i in cl:
-            if i['mainsnak']['datavalue']['value'] == self.file:
-                idc = i['id']
-                break #Stop the iterations
-        if 'P585' not in i.get('qualifiers', ()): #Code should only be executed if this hasn't been specified yet
-            val = f'"time": "+{d.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
-            n = {'action':'wbsetqualifier',
-                 'claim':idc,
-                 'value':'{' + val + '}',
-                 'snaktype':'value',
-                 'property':'P585',
-                 'summary':self.sum,
-                 'bot':True}
-            self._wikidata.post(n)
+        if u:
+            d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0, second=0) #Remove the precise timestamp
+            cl = self.claims.get('P18') #We can get this one
+            assert cl is not None, 'Watch out, we found an error'
+            for i in cl:
+                if i['mainsnak']['datavalue']['value'] == self.file:
+                    idc = i['id']
+                    break #Stop the iterations
+            if 'P585' not in i.get('qualifiers', ()): #Code should only be executed if this hasn't been specified yet
+                val = f'"time": "+{d.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
+                n = {'action':'wbsetqualifier',
+                     'claim':idc,
+                     'value':'{' + val + '}',
+                     'snaktype':'value',
+                     'property':'P585',
+                     'summary':self.sum,
+                     'bot':True}
+                self._wikidata.post(n)
+        else:
+            print('Could not find a useful date')
+    
+    def get_commons_claims(self):
+        "This function will get the claims on Commons (and content of the page)"
+        temp = self._commons.get({'action':'wbgetentities',
+                                  'props':'claims',
+                                  'sites':'commonswiki',
+                                  'titles':f'File:{self.file}'})['entities']
+        self.mid = next(iter(temp))
+        self.mc = next(iter(temp.values())).get('statements', [])
+    
+    def ticket(self):
+        "This function will add the ticket number (from the Wikiportrait template) as P6305 on Commons"
+        #First, check whether the number has already been set or not
+        if self.mc is None:
+            self.get_commons_claims()
+        if 'P6305' not in self.mc: #the property still has to be set
+            text = self._commons.get({'action':'parse',
+                       'page':f'File:{self.file}',
+                       'prop':'wikitext'})['parse']['wikitext']['*']
+            tick = re.findall(r'(\{\{wikiportrait2\|\d{16}\}\})', text)[0]
+            if tick is None:
+                return None #No match found, just emptying this one
+            num = tick.replace('{', '').replace('}', '').replace('wikiportrait2|', '')
+            td = {'action':'wbcreateclaim',
+                  'snaktype':'value',
+                  'entity':self.mid,
+                  'property':'P6305',
+                  'value':f'"{num}"',
+                  'summary':self.sum,
+                  'bot':True}
+            self._commons.post(td)
+        else:
+            print('We already have that one')
+    
+    def depicts(self):
+        "This function adds a P180-statement to the file on Commons"
+        if self.mc is None:
+            self.get_commons_claims()
+        if self.qid is None:
+            self.ini_wikidata()
+        if 'P180' not in self.mc:
+            val = f'"entity-type": "item", "numeric-id": {self.qid[1:]},"id": "{self.qid}"'
+            dic = {'action':'wbcreateclaim',
+                   'summary':self.sum,
+                   'property':'P180',
+                   'bot':True,
+                   'entity':self.mid,
+                   'snaktype':'value',
+                   'value':'{' + val + '}'}
+            self._commons.post(dic)
+        else:
+            print('Property P180 already present')
+
     
     def __call__(self):
         "This function can be used to do handle an entire request at once"
@@ -278,9 +335,13 @@ class Image:
         print('Now generating the short url')
         k = self.short_url()
         print(f'The generated short url for Commons is {k}')
-        print('I will now reset the claims that are stored in this class')
-        #self.ini_wikidata()
-        print('Done resetting the claims, I proceed with setting the date')
+        print("I'll initialize the properties for Commons")
+        self.get_commons_claims()
+        print('I will now add the P6305 property to the file on Commons')
+        self.ticket()
+        print('Property set, now adding who is depicted (P180)')
+        self.depicts()
+        print('I proceed with setting the date')
         self.date_meta()
         print('Date set, now switching to purging the cache')
         self.purge()

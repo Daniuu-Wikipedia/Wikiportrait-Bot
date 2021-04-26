@@ -9,7 +9,12 @@ This is a script that should make it easier to process requests done through Wik
 The bot will do a couple of tasks:
     1) It will create a new category for the name of the person on the image
     2) It will post the image and category created in 1 to a Wikidata-item
+    3) It will attempt to place the image in the Infobox on Wikipedia
+    4) Generate a standard e-mail (to be implemented)
+    
+Information can be found in Wikiportret ticket 2021021010009189 (OTRS access required)
 """
+
 import requests
 import urllib
 import time
@@ -228,13 +233,23 @@ class Image:
         p2d['titles'] = self.qid
         self._wikidata.post(p2d)
     
-    #Generate a shortened URL to the image
-    def short_url(self):
+    #Generate a shortened URL to the image on Commons
+    def short_url_commons(self):
         'This function will generate a shortened url for the image'
         url = 'https://' + urllib.parse.quote(f'commons.wikimedia.org/wiki/File:{self.file}') #https:// added in front of the parser
         z = self._meta.short({'action':'shortenurl',
                             'url':url})
         return z['shortenurl']['shorturl']
+    
+    def short_url_nlwiki(self):
+        "This function will generate a shortened url for the article on nlwiki"
+        url = 'https://' + urllib.parse.quote(f'nl.wikipedia.org/wiki/{self.name}') #https:// added in front of the parser
+        z = self._meta.short({'action':'shortenurl',
+                            'url':url})
+        return z['shortenurl']['shorturl']
+    
+    def short_url(self):
+        return self.short_url_commons(), self.short_url_nlwiki()
     
     def date_meta(self):
         "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
@@ -332,9 +347,6 @@ class Image:
         print('The image has been set. Now starting to process the category on Commons')
         self.commons_cat()
         print('The category has been set.')
-        print('Now generating the short url')
-        k = self.short_url()
-        print(f'The generated short url for Commons is {k}')
         print("I'll initialize the properties for Commons")
         self.get_commons_claims()
         print('I will now add the P6305 property to the file on Commons')
@@ -346,12 +358,18 @@ class Image:
         print('Date set, now switching to purging the cache')
         self.purge()
         print('Done processing the request')
+        print('Now generating the short url')
+        k = self.short_url()
+        print(f'The short url for the Commons file is {k[0]}')
+        print(f'The short url for the article on nlwiki is {k[1]}')
+        return self.name, k
 
 class Multi:
     "This class can be used to read multiple files from a csv file"
     def __init__(self, file, delimiter=";"):
         self.file, self.deli = file, delimiter
         self.images = None
+        self.url = []
     
     def __str__(self):
         return self.file
@@ -363,11 +381,12 @@ class Multi:
         'Just a short notation to make life easier'
         self.read_file()
         self.process()
+        print(self.url)
     
     def read_file(self):
         "This function will effectively read the file"
         with open(self.file, 'r') as datafile:
-            data = datafile.readlines() #Read all lines at once
+            data = datafile.readlines()[1:] #Read all lines at once
         if '.' not in data[0]: #This indicates that no proper filename is present there
             del data[0] #Just remove it from the list
         self.images = [Image(*i.split(self.deli)) for i in data]
@@ -377,4 +396,8 @@ class Multi:
         if self.images is None:
             self.read_file()
         for i in self.images():
-            i() #Call the different Images that were found in the file
+            self.url.append(i()) #Call the different Images that were found in the file
+        
+#Use this code to run the bot   
+a = Image("Jef hertoghs-1619295715.jpeg", "Jef Hertoghs")
+a()

@@ -299,7 +299,7 @@ class Image:
             text = self._commons.get({'action':'parse',
                        'page':f'File:{self.file}',
                        'prop':'wikitext'})['parse']['wikitext']['*']
-            tick = re.findall(r'(\{\{wikiportrait2\|\d{16}\}\})', text)[0]
+            tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', text)[0]
             if tick is None:
                 return None #No match found, just emptying this one
             num = tick.replace('{', '').replace('}', '').replace('wikiportrait2|', '')
@@ -397,7 +397,19 @@ class Multi:
             self.read_file()
         for i in self.images():
             self.url.append(i()) #Call the different Images that were found in the file
+
+class Inteface:
+    "This class will contain all code for the cmd I/O"        
+    def __init__(self):
+        self._the_ones = [] #The ones
         
+    def __str__(self):
+        return str(self._the_ones)
+    
+    
+
+    
+    
 #Use this code to run the bot   
-a = Image("Jef hertoghs-1619295715.jpeg", "Jef Hertoghs")
+a = Image("Pierre Nicolas Croquison.jpg", "Pierre Nicolas Croquison")
 a()

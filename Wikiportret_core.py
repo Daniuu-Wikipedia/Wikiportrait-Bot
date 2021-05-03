@@ -332,9 +332,9 @@ class Image:
             self._commons.post(dic)
         else:
             print('Property P180 already present')
-
     
     def __call__(self):
+        #'''
         "This function can be used to do handle an entire request at once"
         print('Making the category on Commons')
         self.make_cat()
@@ -358,47 +358,14 @@ class Image:
         print('Date set, now switching to purging the cache')
         self.purge()
         print('Done processing the request')
+        #'''
         print('Now generating the short url')
         k = self.short_url()
         print(f'The short url for the Commons file is {k[0]}')
         print(f'The short url for the article on nlwiki is {k[1]}')
         return self.name, k
 
-class Multi:
-    "This class can be used to read multiple files from a csv file"
-    def __init__(self, file, delimiter=";"):
-        self.file, self.deli = file, delimiter
-        self.images = None
-        self.url = []
-    
-    def __str__(self):
-        return self.file
-    
-    def __repr__(self):
-        return f'Multi({self.file}, {self.deli})'
-    
-    def __call__(self):
-        'Just a short notation to make life easier'
-        self.read_file()
-        self.process()
-        print(self.url)
-    
-    def read_file(self):
-        "This function will effectively read the file"
-        with open(self.file, 'r') as datafile:
-            data = datafile.readlines()[1:] #Read all lines at once
-        if '.' not in data[0]: #This indicates that no proper filename is present there
-            del data[0] #Just remove it from the list
-        self.images = [Image(*i.split(self.deli)) for i in data]
-    
-    def process(self):
-        "This function will run the script for different images"
-        if self.images is None:
-            self.read_file()
-        for i in self.images():
-            self.url.append(i()) #Call the different Images that were found in the file
-
-class Inteface:
+class Interface:
     "This class will contain all code for the cmd I/O"        
     def __init__(self):
         self._the_ones = [] #The ones
@@ -406,9 +373,63 @@ class Inteface:
     def __str__(self):
         return str(self._the_ones)
     
+    def prompt_input(self):
+        "This function will call for the amount of images that should be processed"
+        print("Do you want to use the bot using the menu, or would you like to read from a file?")
+        print('Watch out! Inputs are case sensitive!')
+        print("Type exit to quit.")
+        print('Type y to continue with the menu, n to read from a file.')
+        jos = input('y/n? ').lower().strip()
+        if jos not in {'y', 'n', 'exit'}:
+            print('I did not recognise that input\n')
+            return self.prompt_input()
+        if jos == 'y':
+            return self.ask_n()
+        elif jos == 'exit':
+            return None
+        return self.ask_file()
+        
+    def ask_n(self):
+        "This function will ask a given amount of images"
+        print('\n')
+        print("We will now go through the processing together")
+        file = input("Please enter the name of the file that should be processed. ").strip()
+        name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
+        jezeken = Image(file, name)
+        self._the_ones.append(jezeken()) #Call the processing function and store the url
+        print('\n')
+        print('Would you like to continue processing another image (y/n)?')
+        print('Entering n will terminate the program')
+        a = input('Would you like to continue processing? [y/n]').lower().strip()
+        if a not in {'y', 'n', 'exit'}:
+            print('I did not recognise that input')
+            a = input('Would you like to continue processing? [y/n]').lower().strip()
+            if not a in {'y', 'n', 'exit'}:
+                print("Terminating program due to corrupt input")
+                return self.print_final()
+        #Continue
+        if a == 'y':
+            return self.ask_n() #Restart
+        print("Stopping")
+        return self.print_final()
     
-
+    def read_from_file(self, file, delimiter=';'):
+        with open(file, 'r') as datafile:
+            lines = [i.strip().lower() for i in datafile]
+        for i in lines:
+            #Process the lines in the original file
+            separated = [j.strip() for j in i.strip(delimiter)]
+            im = Image(*separated)
+            self._the_ones.append(im())
+        print('Done reading from the file. I stop here. Thanks for using WikiportraitBot!')
+        return self.print_final()
     
+    def print_final(self):
+        "This function will print the final output"
+        order = ["Target", "Url to Commons", "Url to nlwiki"]
+        for i in order + self._the_ones:
+            print('\t'.join(i))
+  
     
 #Use this code to run the bot   
 a = Image("Pierre Nicolas Croquison.jpg", "Pierre Nicolas Croquison")

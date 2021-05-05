@@ -1,3 +1,9 @@
 
 *.txt
 *.spec
+*.toc
+*.zip
+*.pyz
+build/Wikiportret_Core/xref-Wikiportret_Core.html
+*.manifest
+*.pkg

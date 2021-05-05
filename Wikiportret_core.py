@@ -395,8 +395,9 @@ class Interface:
         print("We will now go through the processing together")
         file = input("Please enter the name of the file that should be processed. ").strip()
         name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
-        jezeken = Image(file, name)
-        self._the_ones.append(jezeken()) #Call the processing function and store the url
+        jezeken = Image(file, name)()
+        self._the_ones.append((jezeken[0],) + jezeken[-1]) #Call the processing function and store the url
+        print(self._the_ones)
         print('\n')
         print('Would you like to continue processing another image (y/n)?')
         print('Entering n will terminate the program')
@@ -426,11 +427,18 @@ class Interface:
     
     def print_final(self):
         "This function will print the final output"
-        order = ["Target", "Url to Commons", "Url to nlwiki"]
+        order = [["Target", "Url to Commons", "Url to nlwiki"]]
         for i in order + self._the_ones:
-            print('\t'.join(i))
+            print('\t\t\t'.join(i))
+            
+    def __call__(self):
+        return self.prompt_input()
   
     
 #Use this code to run the bot   
-a = Image("Pierre Nicolas Croquison.jpg", "Pierre Nicolas Croquison")
-a()
+#a = Image("Paul Couter 2011.jpg", "Paul Couter")
+#a()
+
+#Testing the cmd interface I designed
+z = Interface()
+z()

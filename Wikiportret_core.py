@@ -397,11 +397,10 @@ class Interface:
         name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
         jezeken = Image(file, name)()
         self._the_ones.append((jezeken[0],) + jezeken[-1]) #Call the processing function and store the url
-        print(self._the_ones)
         print('\n')
-        print('Would you like to continue processing another image (y/n)?')
+        print('Would you like to continue processing another image (y/n)? ')
         print('Entering n will terminate the program')
-        a = input('Would you like to continue processing? [y/n]').lower().strip()
+        a = input('Would you like to continue processing? [y/n] ').lower().strip()
         if a not in {'y', 'n', 'exit'}:
             print('I did not recognise that input')
             a = input('Would you like to continue processing? [y/n]').lower().strip()
@@ -414,14 +413,36 @@ class Interface:
         print("Stopping")
         return self.print_final()
     
+    def ask_file(self):
+        "Provides support for I/O to a file"
+        print('The file should only contain rules in the format (file, title), and should be a .csv-like file.')
+        try:
+            file = input('Please provide the name of the csv-file that I should read. ').strip() #Strip immediately
+            assert file.lower().endswith('.csv'), 'Please provide a .csv-file'
+            print(f'Reading {file}')
+            self.read_from_file(file)
+        except AssertionError:
+            print('Something went wrong, you did most likely not specify a .csv-file')
+            return self.ask_file()
+        except FileNotFoundError:
+            print('That file does not exist! I will now ask you politely to provide a new file.')
+            return self.ask_file()
+        
+        #Ask whether anything else is scheduled
+        roger = input('Thanks for using WikiportraitBot. Do you want to process another file? [y/n] ')
+        if roger.lower().strip() != 'y':
+            return self.print_final()
+        return self.ask_file()
+        
+    
     def read_from_file(self, file, delimiter=';'):
         with open(file, 'r') as datafile:
             lines = [i.strip().lower() for i in datafile]
         for i in lines:
             #Process the lines in the original file
             separated = [j.strip() for j in i.strip(delimiter)]
-            im = Image(*separated)
-            self._the_ones.append(im())
+            im = Image(*separated)()
+            self._the_ones.append((im[0],) + im[-1])
         print('Done reading from the file. I stop here. Thanks for using WikiportraitBot!')
         return self.print_final()
     
@@ -430,11 +451,14 @@ class Interface:
         order = [["Target", "Url to Commons", "Url to nlwiki"]]
         for i in order + self._the_ones:
             print('\t\t\t'.join(i))
+        
+        print('\n')
+        print('Thanks for using WikiportraitBot!')
+        input('Press any key to close the program (after you copied the links). ')
             
     def __call__(self):
         return self.prompt_input()
-  
-    
+   
 #Use this code to run the bot   
 #a = Image("Paul Couter 2011.jpg", "Paul Couter")
 #a()

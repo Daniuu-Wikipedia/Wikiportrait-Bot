@@ -299,10 +299,11 @@ class Image:
             text = self._commons.get({'action':'parse',
                        'page':f'File:{self.file}',
                        'prop':'wikitext'})['parse']['wikitext']['*']
-            tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', text)[0]
-            if tick is None:
+            tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', text)
+            if not tick:
+                print("I could not find a valid ticket number, will skip this for now.")
                 return None #No match found, just emptying this one
-            num = tick.replace('{', '').replace('}', '').replace('wikiportrait2|', '')
+            num = tick[0].replace('{', '').replace('}', '').replace('wikiportrait2|', '')
             td = {'action':'wbcreateclaim',
                   'snaktype':'value',
                   'entity':self.mid,
@@ -460,9 +461,10 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-#a = Image("Paul Couter 2011.jpg", "Paul Couter")
-#a()
+a = Image("SvMarion.jpg", "Sander van Marion")
+#a.ticket()
+a()
 
 #Testing the cmd interface I designed
-z = Interface()
-z()
+#z = Interface()
+#z()

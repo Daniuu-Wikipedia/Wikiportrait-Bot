@@ -175,6 +175,7 @@ class Image:
                 'props':'claims'}
         q = self._wikidata.get(pars)['entities']
         self.qid = next(iter(q.keys()))
+        assert self.qid != '-1', 'I could not find a valid Wikidata item!'
         self.claims = q[self.qid]['claims']
         return self.qid, self.claims
         
@@ -397,7 +398,7 @@ class Image:
         dic = {'action':'edit',
                'bot':True,
                'title':f'File:{self.file}',
-               'summary':self.sum,
+               'summary':f'{self.sum}: adding correct category',
                'minor':True,
                'nocreate':True,
                'appendtext':'\n'*(not self.comtext.endswith('\n')) + cat + '\n'}
@@ -430,17 +431,6 @@ class Image:
         print('Making the category on Commons')
         self.make_cat()
         
-        #Setting the properties on Wikidata
-        print('Initializing the Wikidata interface')
-        self.ini_wikidata()
-        print('Initialization done, proceeding with the interwikilink to Commons')
-        self.interwiki()
-        print('Now continuing with the P18 property')
-        self.set_image()
-        print('The image has been set. Now starting to process the category on Commons')
-        self.commons_cat()
-        print('The category has been set.')
-        
         #Properties that should be set on Commons
         print("I'll initialize the interface for Commons")
         self.get_commons_claims()
@@ -453,6 +443,19 @@ class Image:
         self.depicts()
         print('The eleventh commandment of the Lord states that we should also check the category, so doing that now')
         self.add_category()
+
+        
+        #Setting the properties on Wikidata
+        print('Initializing the Wikidata interface')
+        self.ini_wikidata()
+        print('Initialization done, proceeding with the interwikilink to Commons')
+        self.interwiki()
+        print('Now continuing with the P18 property')
+        self.set_image()
+        print('The image has been set. Now starting to process the category on Commons')
+        self.commons_cat()
+        print('The category has been set.')
+        
         
         #Doing one more Wikidata related thing, cause this needs the claims on Commons
         print('I proceed with setting the date')
@@ -566,8 +569,7 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-a = Image("Ludo Kools 2021.jpg", "Ludo Kools")
-#a.add_category()
+a = Image("Abel van gijlswijk kaj bos ben kraak nout kooij-1620684086.png", "Hang Youth")
 a()
 
 #Testing the cmd interface I designed

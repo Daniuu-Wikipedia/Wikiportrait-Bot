@@ -24,7 +24,7 @@ from requests_oauthlib import OAuth1
 
 class Bot:
     'This class is designed to facilitate all interactions with Wikipedia (and to get the processing functions out of other calsses)'
-    max_edit = 5 #The maximum number of edits that a single bot can do per minute
+    max_edit = 12 #The maximum number of edits that a single bot can do per minute
     
     def __init__(self, api, m=None):
         'Constructs a bot, designed to interact with one Wikipedia'
@@ -413,7 +413,7 @@ class Image:
         if 'P180' not in self.mc:
             val = f'"entity-type": "item", "numeric-id": {self.qid[1:]},"id": "{self.qid}"'
             dic = {'action':'wbcreateclaim',
-                   'summary':self.sum,
+                   'summary':f'{self.sum}, upload via #Wikiportret',
                    'property':'P180',
                    'bot':True,
                    'entity':self.mid,
@@ -566,10 +566,10 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-#a = Image("Ineke Riem 2021.jpg", "Ineke Riem")
+a = Image("Ludo Kools 2021.jpg", "Ludo Kools")
 #a.add_category()
-#a()
+a()
 
 #Testing the cmd interface I designed
-z = Interface()
-z()
+#z = Interface()
+#z()

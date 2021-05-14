@@ -119,6 +119,12 @@ class Image:
     #Program some endpoints as static variables (they will be common for all objects)
     commons = "https://commons.wikimedia.org/w/api.php"
     wikidata = "https://www.wikidata.org/w/api.php"
+    nlwiki = "https://nl.wikipedia.org/w/api.php"
+    
+    licenses = {'CC-BY-SA 4.0':18199165,
+                'CC-BY-SA-3.0':14946043,
+                'CC-BY-SA-2.0':19068220,
+                'CC-BY-4.0':20007257} #This dictionary links the relevant images to their structured data on Wikidata
     
     def __init__(self, file, name):
         """
@@ -141,6 +147,8 @@ class Image:
         self.claims = None #temporary storage
         self.mid = None #id of the file on Wikimedia commons   
         self.mc = None #A dictionary to store the claims for the Commons item in
+        self.comtext = None #Text associated with the image on Commons (save for a couple of purposes)
+        
     def __str__(self):
         return f'Processing {self.file}, an image of {self.name}.'
                 
@@ -229,9 +237,13 @@ class Image:
                     'forcerecursivelinkupdate':True}
         self._commons.post(purgedic)
         p2d = purgedic.copy()
-        print('doing Wikidata')
+        print('doing Wikidata') #Preparing to go to Wikidata
         p2d['titles'] = self.qid
         self._wikidata.post(p2d)
+        print('Preparing to empty the cache on the Dutch Wikipedia')
+        p3d = purgedic.copy() #Also do the Dutch Wikipedia
+        p3d['titles'] = self.name
+        self._nl.post(p3d)
     
     #Generate a shortened URL to the image on Commons
     def short_url_commons(self):
@@ -289,6 +301,13 @@ class Image:
                                   'titles':f'File:{self.file}'})['entities']
         self.mid = next(iter(temp))
         self.mc = next(iter(temp.values())).get('statements', [])
+        
+    def get_commons_text(self):
+        "This function will get the content of the file page on Commons"
+        self.comtext = self._commons.get({'action':'parse',
+                       'page':f'File:{self.file}',
+                       'prop':'wikitext'})['parse']['wikitext']['*']
+        return self.comtext #Store this one as a variable of the class, will be more pratical
     
     def ticket(self):
         "This function will add the ticket number (from the Wikiportrait template) as P6305 on Commons"
@@ -296,10 +315,9 @@ class Image:
         if self.mc is None:
             self.get_commons_claims()
         if 'P6305' not in self.mc: #the property still has to be set
-            text = self._commons.get({'action':'parse',
-                       'page':f'File:{self.file}',
-                       'prop':'wikitext'})['parse']['wikitext']['*']
-            tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', text)
+            if self.comtext is None:
+                self.get_commons_text()
+            tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', self.comtext)
             if not tick:
                 print("I could not find a valid ticket number, will skip this for now.")
                 return None #No match found, just emptying this one
@@ -313,7 +331,78 @@ class Image:
                   'bot':True}
             self._commons.post(td)
         else:
-            print('We already have that one')
+            print('The ticket number is already added as a claim.')
+            
+    def set_licence_properties(self):
+        "This function will set the copyright related structured data (P275 and P6216)"
+        if self.mc is None:
+            self.get_commons_claims() #Set the claims using the previously defined function
+        
+        #First, do the P275 thingy
+        if 'P275' not in self.mc:
+            if self.comtext is None:
+                self.get_commons_text()
+            k = re.findall('PERMISSION=\s?\S+ [\d.]+', self.comtext.upper()) #Filter the permission rule (using regex)
+            lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=', '').strip()
+            licq = Image.licenses.get(lic)
+            if licq is not None: #We found an item for Wikidata that can be connected to this one
+                val = f'"entity-type": "item", "numeric-id": {licq},"id": "Q{licq}"'
+                dic = {'action':'wbcreateclaim',
+                   'summary':self.sum,
+                   'property':'P275',
+                   'bot':True,
+                   'entity':self.mid,
+                   'snaktype':'value',
+                   'value':'{' + val + '}'}
+                self._commons.post(dic)
+                print('Copyright license has been set.')
+                del dic #Removing to avoid all kind of conflicts
+            else:
+                print('Could not find a license')
+                return None #No licence found
+        else:
+            print('The P275 was already set')
+        
+        #Now set the second claim
+        if 'P6216' not in self.mc:
+            if self.comtext is None:
+                self.get_commons_text()
+            if any((i in self.comtext.lower() for i in ('pd', 'public domain'))):
+                print('I found a potential indication that the file could be in the public domain!')
+                a = input('Is this an incorrect indication? [y/n] ').lower().strip()
+                if a == 'n':
+                    print('Terminating the process of P6216 setting')
+                    return None
+            val = '"entity-type": "item", "numeric-id": 50423863,"id": "Q50423863"'
+            dic = {'action':'wbcreateclaim',
+                   'summary':self.sum,
+                   'property':'P6216',
+                   'bot':True,
+                   'entity':self.mid,
+                   'snaktype':'value',
+                   'value':'{' + val + '}'}
+            self._commons.post(dic)
+            print("Copyright status is set.")
+        else:
+            print('The copyright status was already present')
+            
+    def add_category(self):
+        "This function will append the category generated before if it is not yet in the Commons datasheet"
+        if self.comtext is None:
+            self.get_commons_text()
+        cat = f'[[Category:{self.name}]]'
+        if cat in self.comtext:
+            print('The category was already in the text')
+            return None
+        dic = {'action':'edit',
+               'bot':True,
+               'title':f'File:{self.file}',
+               'summary':self.sum,
+               'minor':True,
+               'nocreate':True,
+               'appendtext':'\n'*(not self.comtext.endswith('\n')) + cat + '\n'}
+        self._commons.post(dic)
+        print('Category has been added.')
     
     def depicts(self):
         "This function adds a P180-statement to the file on Commons"
@@ -337,8 +426,11 @@ class Image:
     def __call__(self):
         #'''
         "This function can be used to do handle an entire request at once"
+        #Category on Wikimedia Commons
         print('Making the category on Commons')
         self.make_cat()
+        
+        #Setting the properties on Wikidata
         print('Initializing the Wikidata interface')
         self.ini_wikidata()
         print('Initialization done, proceeding with the interwikilink to Commons')
@@ -348,16 +440,29 @@ class Image:
         print('The image has been set. Now starting to process the category on Commons')
         self.commons_cat()
         print('The category has been set.')
-        print("I'll initialize the properties for Commons")
+        
+        #Properties that should be set on Commons
+        print("I'll initialize the interface for Commons")
         self.get_commons_claims()
+        self.get_commons_text()
         print('I will now add the P6305 property to the file on Commons')
         self.ticket()
+        print('Now adding other information on copyright (P275/P6216)')
+        self.set_licence_properties()
         print('Property set, now adding who is depicted (P180)')
         self.depicts()
+        print('The eleventh commandment of the Lord states that we should also check the category, so doing that now')
+        self.add_category()
+        
+        #Doing one more Wikidata related thing, cause this needs the claims on Commons
         print('I proceed with setting the date')
         self.date_meta()
+        
+        #Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('Date set, now switching to purging the cache')
         self.purge()
+        
+        #And now, the short url as final touch
         print('Done processing the request')
         #'''
         print('Now generating the short url')
@@ -449,7 +554,7 @@ class Interface:
     
     def print_final(self):
         "This function will print the final output"
-        order = [["Target", "Url to Commons", "Url to nlwiki"]]
+        order = [["\tTarget", "Url to Commons", "Url to nlwiki"]] #Adding an additional tab here, for better allignment
         for i in order + self._the_ones:
             print('\t\t\t'.join(i))
         
@@ -461,10 +566,10 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-a = Image("SvMarion.jpg", "Sander van Marion")
-#a.ticket()
-a()
+#a = Image("Ineke Riem 2021.jpg", "Ineke Riem")
+#a.add_category()
+#a()
 
 #Testing the cmd interface I designed
-#z = Interface()
-#z()
+z = Interface()
+z()

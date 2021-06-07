@@ -569,7 +569,7 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-a = Image("Abel van gijlswijk kaj bos ben kraak nout kooij-1620684086.png", "Hang Youth")
+a = Image("Chris Elffers.jpg", "Chris Elffers")
 a()
 
 #Testing the cmd interface I designed

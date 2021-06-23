@@ -294,6 +294,10 @@ class Image:
         else:
             print('Could not find a useful date')
     
+    def check_deceased(self):
+        "This function will verify whether the provided date is past the date at which the person died"
+        pass
+    
     def get_commons_claims(self):
         "This function will get the claims on Commons (and content of the page)"
         temp = self._commons.get({'action':'wbgetentities',
@@ -569,7 +573,7 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-a = Image("Chris Elffers.jpg", "Chris Elffers")
+a = Image("Natascha Hoiting25.jpeg", "Natascha Hoiting")
 a()
 
 #Testing the cmd interface I designed

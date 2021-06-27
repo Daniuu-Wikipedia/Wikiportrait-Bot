@@ -266,7 +266,15 @@ class Image:
     
     def check_deceased(self):
         "This function checks whether the subject is deceased, and when this happened."
-        pass
+        if not self.claims:
+            self.ini_wikidata()
+        claim = self.claims.get('P570') #Returns none if no such claim is present
+        if claim is None:
+            return None #Just abort the function here
+        for i in claim:
+            if 'mainsnak' in i:
+                main = i['mainsnak']['datavalue']['value']['time']
+                return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
     
     def date_meta(self):
         "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
@@ -580,7 +588,7 @@ class Interface:
 a = Image("Natascha Hoiting25.jpeg", "Hugo Claus")
 #a()
 a.ini_wikidata()
-print(a.claims['P570'])
+a.check_deceased()
 
 #Testing the cmd interface I designed
 #z = Interface()

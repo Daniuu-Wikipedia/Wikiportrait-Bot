@@ -450,17 +450,20 @@ class Image:
         
         #Properties that should be set on Commons
         print("I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
-        self.get_commons_claims()
-        self.get_commons_text()
-        print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
-        self.ticket()
-        print('Now adding other information on copyright (P275/P6216)')
-        self.set_licence_properties()
-        print('Property set, now adding who is depicted (P180)')
-        self.depicts()
-        print('The eleventh commandment of the Lord states that we should also check the category, so doing that now')
-        self.add_category()
-        print('I have done all operations that should be done on Commons.')
+        try:
+            self.get_commons_claims()
+            self.get_commons_text()
+            print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
+            self.ticket()
+            print('Now adding other information on copyright (P275/P6216)')
+            self.set_licence_properties()
+            print('Property set, now adding who is depicted (P180)')
+            self.depicts()
+            print('The eleventh commandment of the Lord states that we should also check the category, so doing that now')
+            self.add_category()
+            print('I have done all operations that should be done on Commons.')
+        except:
+            print('Something went wrong while processing the stuff for Commons.')
 
         
         #Setting the properties on Wikidata

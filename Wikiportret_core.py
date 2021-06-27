@@ -495,9 +495,6 @@ class Image:
         return self.name, k
    
 #Use this code to run the bot   
-a = Image("Natascha Hoiting25.jpeg", "Hugo Claus")
-#a()
-
-#Testing the cmd interface I designed
-#z = Interface()
-#z()
+if __name__ == '__main__': #Do not run this code when we are using the interface
+    a = Image("Natascha Hoiting25.jpeg", "Hugo Claus")
+    #a()

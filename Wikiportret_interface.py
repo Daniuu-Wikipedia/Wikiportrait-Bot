@@ -37,7 +37,7 @@ class Interface:
         "This function will ask a given amount of images"
         print('\n')
         print("We will now go through the processing together")
-        file = input("Please enter the name of the file that should be processed. ").strip()
+        file = input("Please enter the name (NOT THE URL) of the file that should be processed. ").strip()
         name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
         jezeken = Image(file, name)()
         self._the_ones.append((jezeken[0],) + jezeken[-1]) #Call the processing function and store the url
@@ -98,7 +98,7 @@ class Interface:
         
         print('\n')
         print('Thanks for using WikiportraitBot!')
-        input('Press any key to close the program (after you copied the links). ')
+        input('Press ENTER to close the program (after you copied the links). ')
             
     def __call__(self):
         return self.prompt_input()

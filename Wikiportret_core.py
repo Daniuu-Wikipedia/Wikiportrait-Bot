@@ -264,6 +264,10 @@ class Image:
     def short_url(self):
         return self.short_url_commons(), self.short_url_nlwiki()
     
+    def check_deceased(self):
+        "This function checks whether the subject is deceased, and when this happened."
+        pass
+    
     def date_meta(self):
         "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
         z = self._commons.get({'action':'query',
@@ -293,11 +297,6 @@ class Image:
                 self._wikidata.post(n)
         else:
             print('Could not find a useful date')
-    
-    def check_deceased(self):
-        "This function will verify whether the provided date is past the date at which the person died"
-        if 'P570' in self.claims:
-            return None
     
     def get_commons_claims(self):
         "This function will get the claims on Commons (and content of the page)"
@@ -578,9 +577,10 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-a = Image("Natascha Hoiting25.jpeg", "Test1515684163105616316151210548530584603218941665181321064861")
+a = Image("Natascha Hoiting25.jpeg", "Hugo Claus")
 #a()
 a.ini_wikidata()
+print(a.claims['P570'])
 
 #Testing the cmd interface I designed
 #z = Interface()

@@ -294,6 +294,10 @@ class Image:
                     idc = i['id']
                     break #Stop the iterations
             if 'P585' not in i.get('qualifiers', ()): #Code should only be executed if this hasn't been specified yet
+                deceased = self.check_deceased()
+                if deceased is not None and d > deceased:
+                    print('The metadata are likely corrupt, so I will not add a date past the date at which the subject died.')
+                    return None #Return None to abort this function
                 val = f'"time": "+{d.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
                 n = {'action':'wbsetqualifier',
                      'claim':idc,

@@ -296,7 +296,8 @@ class Image:
     
     def check_deceased(self):
         "This function will verify whether the provided date is past the date at which the person died"
-        pass
+        if 'P570' in self.claims:
+            return None
     
     def get_commons_claims(self):
         "This function will get the claims on Commons (and content of the page)"
@@ -432,14 +433,15 @@ class Image:
         #'''
         "This function can be used to do handle an entire request at once"
         #Category on Wikimedia Commons
-        print('Making the category on Commons')
+        print('I will now process the image on Commons')
+        print("I'm now making the category. If an error occurs, it likely means that the category already existed.")
         self.make_cat()
         
         #Properties that should be set on Commons
-        print("I'll initialize the interface for Commons")
+        print("I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
         self.get_commons_claims()
         self.get_commons_text()
-        print('I will now add the P6305 property to the file on Commons')
+        print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
         self.ticket()
         print('Now adding other information on copyright (P275/P6216)')
         self.set_licence_properties()
@@ -447,32 +449,35 @@ class Image:
         self.depicts()
         print('The eleventh commandment of the Lord states that we should also check the category, so doing that now')
         self.add_category()
+        print('I have done all operations that should be done on Commons.')
 
         
         #Setting the properties on Wikidata
-        print('Initializing the Wikidata interface')
-        self.ini_wikidata()
-        print('Initialization done, proceeding with the interwikilink to Commons')
-        self.interwiki()
-        print('Now continuing with the P18 property')
-        self.set_image()
-        print('The image has been set. Now starting to process the category on Commons')
-        self.commons_cat()
-        print('The category has been set.')
-        
-        
-        #Doing one more Wikidata related thing, cause this needs the claims on Commons
-        print('I proceed with setting the date')
-        self.date_meta()
-        
+        try:
+            print('I will now start doing stuff on Wikidata. First, getting claims and data item on Wikidata.')
+            self.ini_wikidata()
+            print('Initialization done, proceeding with the interwikilink to Commons.')
+            self.interwiki()
+            print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
+            self.set_image()
+            print('The image has been set. Setting the category on Commons as a separate claim.')
+            self.commons_cat()
+            print('The category has been set.')
+            
+            #Doing one more Wikidata related thing, cause this needs the claims on Commons
+            print('\nI proceed with setting the date as a qualifyer for the image.\n')
+            self.date_meta()
+
+        except AssertionError:
+            print("I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
+
         #Purge the cache on Wikidata, Commons and Wikipedia-nl
-        print('Date set, now switching to purging the cache')
+        print('OKay, I will not start to purge the cache of the various items.')
         self.purge()
         
         #And now, the short url as final touch
         print('Done processing the request')
-        #'''
-        print('Now generating the short url')
+        print('I will now just generate two short url-links, which look nicer in the ticket of the customer.')
         k = self.short_url()
         print(f'The short url for the Commons file is {k[0]}')
         print(f'The short url for the article on nlwiki is {k[1]}')
@@ -573,8 +578,9 @@ class Interface:
         return self.prompt_input()
    
 #Use this code to run the bot   
-a = Image("Natascha Hoiting25.jpeg", "Natascha Hoiting")
-a()
+a = Image("Natascha Hoiting25.jpeg", "Test1515684163105616316151210548530584603218941665181321064861")
+#a()
+a.ini_wikidata()
 
 #Testing the cmd interface I designed
 #z = Interface()

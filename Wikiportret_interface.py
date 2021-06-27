@@ -102,3 +102,7 @@ class Interface:
             
     def __call__(self):
         return self.prompt_input()
+
+#Code used to run the bot
+z = Interface()
+z()

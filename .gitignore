@@ -9,3 +9,4 @@ build/Wikiportret_Core/xref-Wikiportret_Core.html
 *.pkg
 *.exe
 *.pyc
+*.html

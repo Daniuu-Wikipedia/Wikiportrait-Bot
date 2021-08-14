@@ -12,7 +12,7 @@ The bot will do a couple of tasks:
     3) It will attempt to place the image in the Infobox on Wikipedia
     4) Generate a standard e-mail (to be implemented)
     
-Information can be found in Wikiportret ticket 2021021010009189 (OTRS access required)
+Information can be found in Wikiportret ticket 2021021010009189 (VRT access required)
 """
 
 import requests
@@ -21,6 +21,14 @@ import time
 import datetime as dt
 import re #Regex to filter the ticket number
 from requests_oauthlib import OAuth1
+
+class MaxlagError(Exception):
+    "This is a special error, specially made for when Maxlag occurs - it warns the operator of the bot"
+    def __str__(self):
+        print('\n')
+        print('Watch out! a maxlag error was spotted. This means that the Wikimedia API is slow. The bot run will be terminated, please try again in a few minutes!')
+        time.sleep(2)
+        return "Maxlag error occured, bot run aborted."
 
 class Bot:
     'This class is designed to facilitate all interactions with Wikipedia (and to get the processing functions out of other calsses)'
@@ -91,6 +99,7 @@ class Bot:
             print('An error occured somewhere') #We found an error
             if 'code' in k['error'] and 'maxlag' in k['error']['code']:
                 print('Maxlag occured, please try to file the request at a later point in space and time.')
+                raise MaxlagError
         return k
         
 class WikidataBot(Bot):
@@ -499,5 +508,5 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Natascha Hoiting25.jpeg", "Hugo Claus")
-    #a()
+    a = Image("Tedvanlieshout-jun19web.jpg", "Manouk van der Meulen ")
+    a()

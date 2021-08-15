@@ -100,6 +100,7 @@ class Bot:
             if 'code' in k['error'] and 'maxlag' in k['error']['code']:
                 print('Maxlag occured, please try to file the request at a later point in space and time.')
                 raise MaxlagError
+                time.sleep(10)
         return k
         
 class WikidataBot(Bot):
@@ -495,7 +496,7 @@ class Image:
             print("I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
 
         #Purge the cache on Wikidata, Commons and Wikipedia-nl
-        print('OKay, I will not start to purge the cache of the various items.')
+        print('OKay, I will now start to purge the cache of the various items.')
         self.purge()
         
         #And now, the short url as final touch
@@ -508,5 +509,5 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Tedvanlieshout-jun19web.jpg", "Manouk van der Meulen ")
+    a = Image("Arthur Ebeling.jpg", "Arthur Ebeling")
     a()

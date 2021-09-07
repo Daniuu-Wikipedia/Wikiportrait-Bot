@@ -26,11 +26,23 @@ class Interface:
         if file.strip() == 'exit':
             return None
         name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
-        Image(file, name)() #The required text will be printed
+        _, _, confmes = Image(file, name)() #Discard filename and short urls, the confirmation message will be printed
+        self.print_confirmation_message(confmes)
         print('\n')
         del name, file #Remove these variables from memory, we don't need them any longer
         print('I will now restart the cyle, simply close this window to stop. No computers will be harmed in due course.')
         return self.ask_n()
+    
+    def print_confirmation_message(self, message):
+        "Prints the confirmation message in an accentuated way"
+        assert isinstance(message, str), "Though shall provide a string as confirmation message!"
+        print('\n') #Just start on a new line to make things clearer
+        print('-'*10) #Print a line to do some further accentuation
+        print('\n')
+        print(message)
+        print('\n') #Leave a further blank
+        print('-'*10)
+        #A final newline is not required and inserted by the ask_n method
             
     def __call__(self):
         "This function is used to start the bot"

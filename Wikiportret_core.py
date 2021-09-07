@@ -248,7 +248,7 @@ class Image:
                     'forcerecursivelinkupdate':True}
         self._commons.post(purgedic)
         p2d = purgedic.copy()
-        print('doing Wikidata') #Preparing to go to Wikidata
+        print('Clearing the cache on Wikidata now.') #Preparing to go to Wikidata
         p2d['titles'] = self.qid
         self._wikidata.post(p2d)
         print('Preparing to empty the cache on the Dutch Wikipedia')

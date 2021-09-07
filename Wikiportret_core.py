@@ -450,6 +450,15 @@ class Image:
         else:
             print('Property P180 already present')
     
+    def generate_confirmation(self, shorts=None):
+        "This function can be used to generate a standard response for the uploader"
+        commonslink, nllink = shorts if shorts is not None else self.short_urls()
+        lines = (f"Hartelijk dank voor het vrijgeven van uw afbeelding. Ik heb de afbeelding in de centrale mediadatabase van Wikimedia (Wikimedia Commons) geplaatst. U kunt de afbeelding hier bekijken: {commonslink} .",
+                 f"Daarnaast heb ik de afbeelding in dit artikel geplaatst op de Nederlandstalige Wikipedia: {nllink} .",
+                 "Dank voor de donatie van deze afbeelding!")
+        #The lines are prepared, now clearly print it
+        return '\n\n'.join(lines) #Returns the string itself. The final printing stuff is done in the interface
+        
     
     def __call__(self):
         #'''
@@ -506,7 +515,9 @@ class Image:
         k = self.short_urls()
         print(f'The short url for the Commons file is {k[0]}')
         print(f'The short url for the article on nlwiki is {k[1]}')
-        return self.name, k
+        confirmation = self.generate_confirmation(k) #pass the short urls as arguments, reduce the amount of API calls
+        print('I generated the confirmation')
+        return self.name, k, confirmation
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface

@@ -271,7 +271,7 @@ class Image:
                             'url':url})
         return z['shortenurl']['shorturl']
     
-    def short_url(self):
+    def short_urls(self):
         return self.short_url_commons(), self.short_url_nlwiki()
     
     def check_deceased(self):
@@ -450,6 +450,7 @@ class Image:
         else:
             print('Property P180 already present')
     
+    
     def __call__(self):
         #'''
         "This function can be used to do handle an entire request at once"
@@ -502,7 +503,7 @@ class Image:
         #And now, the short url as final touch
         print('Done processing the request')
         print('I will now just generate two short url-links, which look nicer in the ticket of the customer.')
-        k = self.short_url()
+        k = self.short_urls()
         print(f'The short url for the Commons file is {k[0]}')
         print(f'The short url for the article on nlwiki is {k[1]}')
         return self.name, k

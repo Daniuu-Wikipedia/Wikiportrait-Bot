@@ -382,7 +382,7 @@ class Image:
                    'snaktype':'value',
                    'value':'{' + val + '}'}
                 self._commons.post(dic)
-                print('Copyright license has been set.')
+                print('Copyright license (P275) has been set.')
                 del dic #Removing to avoid all kind of conflicts
             else:
                 print('Could not find a license')
@@ -409,7 +409,7 @@ class Image:
                    'snaktype':'value',
                    'value':'{' + val + '}'}
             self._commons.post(dic)
-            print("Copyright status is set.")
+            print("Copyright status (P6216) is set.")
         else:
             print('The copyright status was already present')
             

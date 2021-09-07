@@ -19,7 +19,6 @@ class Interface:
         
     def ask_n(self):
         "This function will ask a given amount of images"
-        print('\n')
         print("I am now preparing to process the file. Please pass the file name on Commons and the nlwiki article below.")
         print('For devs or people who accidentally (re)started me: just type exit to stop the bot.')
         file = input("Please enter the name (NOT THE URL) of the file that should be processed. ").strip()
@@ -28,7 +27,6 @@ class Interface:
         name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
         _, _, confmes = Image(file, name)() #Discard filename and short urls, the confirmation message will be printed
         self.print_confirmation_message(confmes)
-        print('\n')
         del name, file #Remove these variables from memory, we don't need them any longer
         print('I will now restart the cyle, simply close this window to stop. No computers will be harmed in due course.')
         return self.ask_n()
@@ -36,7 +34,6 @@ class Interface:
     def print_confirmation_message(self, message):
         "Prints the confirmation message in an accentuated way"
         assert isinstance(message, str), "Though shall provide a string as confirmation message!"
-        print('\n') #Just start on a new line to make things clearer
         print('-'*10) #Print a line to do some further accentuation
         print('\n')
         print(message)

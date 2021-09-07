@@ -499,7 +499,7 @@ class Image:
             print('The category has been set.')
             
             #Doing one more Wikidata related thing, cause this needs the claims on Commons
-            print('\nI proceed with setting the date as a qualifyer for the image.\n')
+            print('I proceed with setting the date as a qualifyer for the image.')
             self.date_meta()
 
         except AssertionError:

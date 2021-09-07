@@ -242,6 +242,7 @@ class Image:
       
     def purge(self):
         "This function will purge the cache of the corresponding page on Commons and the Wikidata-item"
+        print('I am starting with purging the cache of the file on Commons.')
         purgedic = {'action':'purge',
                     'titles':f'Category:{self.name}',
                     'forcelinkupdate':True,

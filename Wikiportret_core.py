@@ -426,7 +426,6 @@ class Image:
                'bot':True,
                'title':f'File:{self.file}',
                'summary':f'{self.sum}: adding correct category',
-               'minor':True,
                'nocreate':True,
                'appendtext':'\n'*(not self.comtext.endswith('\n')) + cat + '\n'}
         self._commons.post(dic)

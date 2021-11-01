@@ -164,8 +164,8 @@ class Image:
                 
     #Do a first task - make the category on commons
     def make_cat(self):
-        'This function will, when triggered, generate an empty category on Wikimedia Commons'
-        content = r'{{Wikidata Infobox}}'
+        'This function will, when triggered, generate an empty category on Wikimedia Commons.'
+        content = r'{{Wikidata Infobox}}' #Only call this method if there is a valid Wikidata item!
         pars = {'action':'edit',
                 'title':f'Category:{self.name}',
                 'text':content,
@@ -465,8 +465,6 @@ class Image:
         "This function can be used to do handle an entire request at once"
         #Category on Wikimedia Commons
         print('I will now process the image on Commons')
-        print("I'm now making the category. If an error occurs, it likely means that the category already existed.")
-        self.make_cat()
         
         #Properties that should be set on Commons
         print("I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
@@ -479,18 +477,22 @@ class Image:
             self.set_licence_properties()
             print('Property set, now adding who is depicted (P180)')
             self.depicts()
-            print('The eleventh commandment of the Lord states that we should also check the category, so doing that now')
-            self.add_category()
-            print('I have done all operations that should be done on Commons.')
+            print('I added the Wikidata item of the depicted person, now switching to creating the category.')
         except:
             print('Something went wrong while processing the stuff for Commons.')
 
         
         #Setting the properties on Wikidata
         try:
-            print('I will now start doing stuff on Wikidata. First, getting claims and data item on Wikidata.')
+            print('Getting claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
             self.ini_wikidata()
-            print('Initialization done, proceeding with the interwikilink to Commons.')
+            print('Initialization done, I can now safely generate the category and link to Wikidata on Commons.')
+            print("I'm now making the category on Commons. If an error occurs, it likely means that the category already existed.")
+            self.make_cat()
+            print('The eleventh commandment of the Lord states that we should also check whether the category is attached to the file, so doing that now')
+            self.add_category()
+            print('I have done all operations that should be done on Commons.')
+            print('I will now initiate the operations on Wikidata itself.')
             self.interwiki()
             print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
             self.set_image()
@@ -521,5 +523,5 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Arthur Ebeling.jpg", "Arthur Ebeling")
+    a = Image("Bart Uytterhaegen.JPG", "Bart Uytterhaegen")
     a()

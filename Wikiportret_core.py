@@ -475,9 +475,7 @@ class Image:
             self.ticket()
             print('Now adding other information on copyright (P275/P6216)')
             self.set_licence_properties()
-            print('Property set, now adding who is depicted (P180)')
-            self.depicts()
-            print('I added the Wikidata item of the depicted person, now switching to creating the category.')
+            print('Property set, I will need support from Wikidata for the next steps.')
         except:
             print('Something went wrong while processing the stuff for Commons.')
 
@@ -486,7 +484,9 @@ class Image:
         try:
             print('Getting claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
             self.ini_wikidata()
-            print('Initialization done, I can now safely generate the category and link to Wikidata on Commons.')
+            print('Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell Commons who is depicted.')
+            self.depicts()
+            print('I added the Wikidata item of the depicted person as P180, now switching to creating the category.')
             print("I'm now making the category on Commons. If an error occurs, it likely means that the category already existed.")
             self.make_cat()
             print('The eleventh commandment of the Lord states that we should also check whether the category is attached to the file, so doing that now')
@@ -523,5 +523,5 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Bart Uytterhaegen.JPG", "Bart Uytterhaegen")
+    a = Image("Max Verstappen with puppet.jpg", "Max Verstappen (poppenspeler)")
     a()

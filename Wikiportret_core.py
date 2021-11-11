@@ -372,6 +372,7 @@ class Image:
                 self.get_commons_text()
             k = re.findall('PERMISSION=\s?\S+ [\d.]+', self.comtext.upper()) #Filter the permission rule (using regex)
             lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=', '').strip()
+            #lic = 'CC-BY-SA 4.0'
             licq = Image.licenses.get(lic)
             if licq is not None: #We found an item for Wikidata that can be connected to this one
                 val = f'"entity-type": "item", "numeric-id": {licq},"id": "Q{licq}"'
@@ -523,5 +524,6 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Max Verstappen with puppet.jpg", "Max Verstappen (poppenspeler)")
-    a()
+    a = Image("Max Verstappen Puppetry.jpg", "Max Verstappen (poppenspeler)")
+    #a()
+    a.set_licence_properties()

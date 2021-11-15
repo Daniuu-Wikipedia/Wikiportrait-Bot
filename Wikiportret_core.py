@@ -347,9 +347,14 @@ class Image:
                 self.get_commons_text()
             tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', self.comtext)
             if not tick:
+                tick = re.findall(r'(\{\{PermissionTicket\|id=\d{16})', self.comtext)
+            if not tick:
                 print("I could not find a valid ticket number, will skip this for now.")
                 return None #No match found, just emptying this one
-            num = tick[0].replace('{', '').replace('}', '').replace('wikiportrait2|', '')
+            num = tick[0].replace('{', '').replace('}', '').replace('wikiportrait2|', '').replace('PermissionTicket|id=', '')
+            if not num.strip().isdigit():
+                print('Something went wrong, the obtained Ticket number is not an integer, so skipping.')
+                return None
             td = {'action':'wbcreateclaim',
                   'snaktype':'value',
                   'entity':self.mid,
@@ -524,6 +529,7 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Max Verstappen Puppetry.jpg", "Max Verstappen (poppenspeler)")
-    #a()
-    a.set_licence_properties()
+    a = Image("Mark Harbers 2020.jpg", "Mark Harbers")
+    a()
+    #a.ticket()
+    #a.set_licence_properties()

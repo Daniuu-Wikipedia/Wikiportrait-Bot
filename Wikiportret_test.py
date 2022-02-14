@@ -155,7 +155,7 @@ class Image:
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
         self._commons = CommonsBot()
         self._wikidata = WikidataBot()
-        self._nl = TestBot() #Another change made for TESTING PURPOSES!!!
+        self._nl = NlBot() #Another change made for TESTING PURPOSES!!!
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
         self.claims = None #temporary storage
@@ -471,7 +471,7 @@ class Image:
     
     def add_image_to_article(self):
         "This function is designed to add the image to the article in an automated fashion"
-        self.name = 'Wikiportrait' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
+        #self.name = 'Wikiportrait' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
         #Get the current Wikitext
         parsedic = {'action':'parse',
                     'page':self.name,
@@ -481,6 +481,7 @@ class Image:
         #Check whether or not an infobox is present on the article (and get the rule with the image)
         if self.file in content: 
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
+            time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
             return None #File is already on the page, abort the run
         if '{{infobox' in content.lower():
             #An infobox has been detected, initiate process of finding the place where the infobox 
@@ -495,6 +496,7 @@ class Image:
             line = content[image_match.start():image_match.end()]
             if len(line.strip().replace(' ', '')) > 12: #length of the line > len(|afbeelding=), there is already an image there
                 print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
+                time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
                 return None #Abort the run
             
             #Continue with the completion
@@ -503,6 +505,7 @@ class Image:
         #Third part: no infobox is present
         elif image_match is None:
             content = f'[[File:{self.file}|thumb|{self.name}]]\n' + content
+        
         
         #Fourth part: post new content on the wiki (bot edit)
         editdic = {'action':'edit',
@@ -579,12 +582,8 @@ class Image:
         confirmation = self.generate_confirmation(k) #pass the short urls as arguments, reduce the amount of API calls
         print('I generated the confirmation')
         return self.name, k, confirmation
-    
-    
-                                     
-        
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Mark Harbers 2020.jpg", "Mark Harbers")
-    a.add_image_to_article()
+    a = Image("Sculptuur de literatuurbespeler-1644764277.jpg", "De Literatuurbespeler")
+    a()

@@ -161,6 +161,7 @@ class Image:
         self.claims = None #temporary storage
         self.mid = None #id of the file on Wikimedia commons   
         self.mc = None #A dictionary to store the claims for the Commons item in
+        self.date = None #Variable for the date at which a file was generated
         self.comtext = None #Text associated with the image on Commons (save for a couple of purposes)
         
     def __str__(self):
@@ -322,6 +323,7 @@ class Image:
                      'summary':self.sum,
                      'bot':True}
                 self._wikidata.post(n)
+                self.date = d
         else:
             print('Could not find a useful date')
     
@@ -478,15 +480,17 @@ class Image:
                     'prop':'wikitext'}
         content = self._nl.get(parsedic)['parse']['wikitext']['*'] #The wikitext of the page (split into the various lines)
         
+        low = content.lower() #Store once to reduce computation time
+        
         #Check whether or not an infobox is present on the article (and get the rule with the image)
         if self.file in content: 
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
             time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
             return None #File is already on the page, abort the run
-        if '{{infobox' in content.lower():
+        if '{{infobox' in low:
             #An infobox has been detected, initiate process of finding the place where the infobox 
             pattern1 = r'\|\s*afbeelding\s*=\s*[^\|]+' #Regex pattern to find out where the image is located
-            image_match = re.search(pattern1, content.lower())
+            image_match = re.search(pattern1, low)
         else:
             image_match = None
             
@@ -507,9 +511,10 @@ class Image:
             content = f'[[File:{self.file}|thumb|{self.name}]]\n' + content
         
         #Remove template asking for a photo
-        fotogewenst = re.search(r'{{fotogewenst}}', content.lower())
-        if fotogewenst is not None:
-            content = content.replace(content[fotogewenst.start():fotogewenst.end() + 1], '').strip()
+        for i in ('fotogewenst', 'verzoek om afbeelding', 'afbeelding gewenst'):
+            loc = re.search('{{%s}}'%(i.lower()), low)
+            if loc is not None:
+                content = content.replace(content[loc.start():loc.end() + 1], '').strip()
         
         #Fourth part: post new content on the wiki (bot edit)
         editdic = {'action':'edit',

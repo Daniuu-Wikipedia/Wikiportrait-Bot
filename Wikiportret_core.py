@@ -157,6 +157,7 @@ class Image:
         self.claims = None #temporary storage
         self.mid = None #id of the file on Wikimedia commons   
         self.mc = None #A dictionary to store the claims for the Commons item in
+        self.date = None #Variable to store the data at which image was taken.
         self.comtext = None #Text associated with the image on Commons (save for a couple of purposes)
         
     def __str__(self):
@@ -318,6 +319,7 @@ class Image:
                      'summary':self.sum,
                      'bot':True}
                 self._wikidata.post(n)
+                self.date = d #Store the obtained date centrally
         else:
             print('Could not find a useful date')
     

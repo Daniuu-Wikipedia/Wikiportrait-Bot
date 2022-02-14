@@ -506,6 +506,10 @@ class Image:
         elif image_match is None:
             content = f'[[File:{self.file}|thumb|{self.name}]]\n' + content
         
+        #Remove template asking for a photo
+        fotogewenst = re.search(r'{{fotogewenst}}', content.lower())
+        if fotogewenst is not None:
+            content = content.replace(content[fotogewenst.start():fotogewenst.end() + 1], '').strip()
         
         #Fourth part: post new content on the wiki (bot edit)
         editdic = {'action':'edit',

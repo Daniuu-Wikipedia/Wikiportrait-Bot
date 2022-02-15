@@ -155,7 +155,7 @@ class Image:
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
         self._commons = CommonsBot()
         self._wikidata = WikidataBot()
-        self._nl = NlBot() #Another change made for TESTING PURPOSES!!!
+        self._nl = TestBot() #Another change made for TESTING PURPOSES!!!
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
         self.claims = None #temporary storage
@@ -471,9 +471,16 @@ class Image:
         #The lines are prepared, now clearly print it
         return '\n\n'.join(lines) #Returns the string itself. The final printing stuff is done in the interface
     
+    def generate_caption(self):
+        "Generates a caption to be added to the article with the image"
+        #Important case: date was filed
+        if self.date:
+            return f'{self.name} in {self.date.year}'
+        return self.name
+    
     def add_image_to_article(self):
         "This function is designed to add the image to the article in an automated fashion"
-        #self.name = 'Wikiportrait' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
+        self.name = 'Wikiportrait' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
         #Get the current Wikitext
         parsedic = {'action':'parse',
                     'page':self.name,
@@ -489,7 +496,7 @@ class Image:
             return None #File is already on the page, abort the run
         if '{{infobox' in low:
             #An infobox has been detected, initiate process of finding the place where the infobox 
-            pattern1 = r'\|\s*afbeelding\s*=\s*[^\|]+' #Regex pattern to find out where the image is located
+            pattern1 = r'\|\s*afbeelding\s*=[^\|]+' #Regex pattern to find out where the image is located
             image_match = re.search(pattern1, low)
         else:
             image_match = None
@@ -505,10 +512,16 @@ class Image:
             
             #Continue with the completion
             content = content.replace(line, line.rstrip() + f' {self.file}\n')
+            
+            #Next step: add caption to the infobox
+            caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
+            if caploc is not None:
+                capline = content[caploc.start():caploc.end()]
+                content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
         
         #Third part: no infobox is present
         elif image_match is None:
-            content = f'[[File:{self.file}|thumb|{self.name}]]\n' + content
+            content = f'[[File:{self.file}|thumb|{self.name}|{self.generate_caption()}]]\n' + content
         
         #Remove template asking for a photo
         for i in ('fotogewenst', 'verzoek om afbeelding', 'afbeelding gewenst'):
@@ -595,4 +608,4 @@ class Image:
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
     a = Image("Sculptuur de literatuurbespeler-1644764277.jpg", "De Literatuurbespeler")
-    a()
+    a.add_image_to_article()

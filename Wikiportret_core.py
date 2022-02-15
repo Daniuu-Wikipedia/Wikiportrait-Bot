@@ -534,11 +534,6 @@ class Image:
                    'summary':'+Upload via #Wikiportret'}
         self._nl.post(editdic)
 
-    
-    
-    
-            
-    
     def __call__(self):
         #'''
         "This function can be used to do handle an entire request at once"
@@ -557,7 +552,6 @@ class Image:
             print('Property set, I will need support from Wikidata for the next steps.')
         except:
             print('Something went wrong while processing the stuff for Commons.')
-
         
         #Setting the properties on Wikidata
         try:
@@ -585,13 +579,17 @@ class Image:
 
         except AssertionError:
             print("I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
-
+        
+        #Last bit: add image to the Dutch Wikipedia (manually, to trigger watchlists)
+        print('Thanks for flying WikiportraitBot! I will now add the image to the Dutch Wikipedia.')
+        self.add_image_to_article()
+        print('I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
+        
         #Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('OKay, I will now start to purge the cache of the various items.')
         self.purge()
         
         #And now, the short url as final touch
-        print('Done processing the request')
         print('I will now just generate two short url-links, which look nicer in the ticket of the customer.')
         k = self.short_urls()
         print(f'The short url for the Commons file is {k[0]}')

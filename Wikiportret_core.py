@@ -467,6 +467,13 @@ class Image:
         #The lines are prepared, now clearly print it
         return '\n\n'.join(lines) #Returns the string itself. The final printing stuff is done in the interface
     
+    def generate_caption(self):
+        "Generates a caption to be added to the article with the image"
+        #Important case: date was filed
+        if self.date:
+            return f'{self.name} in {self.date.year}'
+        return self.name
+    
     def add_image_to_article(self):
         "This function is designed to add the image to the article in an automated fashion"
         #Get the current Wikitext
@@ -528,14 +535,9 @@ class Image:
         self._nl.post(editdic)
 
     
-    def generate_caption(self):
-        "Generates a caption to be added to the article with the image"
-        #Important case: date was filed
-        if self.date:
-            return f'{self.name} in {self.date.year}'
-        return self.name
-
-        
+    
+    
+            
     
     def __call__(self):
         #'''

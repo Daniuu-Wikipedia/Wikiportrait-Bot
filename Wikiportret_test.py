@@ -287,7 +287,7 @@ class Image:
         "This function checks whether the subject is deceased, and when this happened."
         if not self.claims:
             self.ini_wikidata()
-        claim = self.claims.get('P570') #Returns none if no such claim is present
+        claim = self.claims.get('P570') #Returns None if no such claim is present
         if claim is None:
             return None #Just abort the function here
         for i in claim:

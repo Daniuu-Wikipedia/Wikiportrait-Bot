@@ -161,7 +161,7 @@ class Image:
         self._nl = TestBot() #Another change made for TESTING PURPOSES!!!
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
-        self.claims = None #temporary storage
+        self.claims = None #temporary storage of the claims @Wikidata
         self.mid = None #id of the file on Wikimedia commons   
         self.mc = None #A dictionary to store the claims for the Commons item in
         self.date = None #Variable for the date at which a file was generated

@@ -516,7 +516,7 @@ class Image:
         
         #Third part: no infobox is present
         elif image_match is None:
-            content = f'[[File:{self.file}|thumb|{self.name}|{self.generate_caption()}]]\n' + content
+            content = f'[[Bestand:{self.file}|thumb|{self.generate_caption()}]]\n' + content
         
         #Remove template asking for a photo
         for i in ('fotogewenst', 'verzoek om afbeelding', 'afbeelding gewenst'):

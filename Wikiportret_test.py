@@ -483,7 +483,7 @@ class Image:
     
     def add_image_to_article(self):
         "This function is designed to add the image to the article in an automated fashion"
-        self.name = 'Wikiportrait' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
+        self.name = 'De Literatuurbespeler' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
         #Get the current Wikitext
         parsedic = {'action':'parse',
                     'page':self.name,
@@ -497,33 +497,39 @@ class Image:
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
             time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
             return None #File is already on the page, abort the run
-        if '{{infobox' in low:
+        if '{{infobox' in low: #If possible, we would like to place the image in an infobox
             #An infobox has been detected, initiate process of finding the place where the infobox 
             pattern1 = r'\|\s*afbeelding\s*=[^\|]+' #Regex pattern to find out where the image is located
             image_match = re.search(pattern1, low)
-        else:
-            image_match = None
             
-        #Second part: add the image to the text of the article (step only needed if an infobox is present, other case can be handled straight away)
-        if image_match is not None:
-            #Case in which an infobox is present (so, some post-processing steps needed)
-            line = content[image_match.start():image_match.end()]
-            if len(line.strip().replace(' ', '')) > 12: #length of the line > len(|afbeelding=), there is already an image there
-                print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
-                time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
-                return None #Abort the run
-            
-            #Continue with the completion
-            content = content.replace(line, line.rstrip() + f' {self.file}\n')
-            
-            #Next step: add caption to the infobox
-            caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
-            if caploc is not None:
-                capline = content[caploc.start():caploc.end()]
-                content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+            #Second part: add the image to the text of the article (step only needed if an infobox is present, other case can be handled straight away)
+            if image_match is not None:
+                #Case in which an infobox is present (so, some post-processing steps needed)
+                line = content[image_match.start():image_match.end()]
+                if len(line.strip().replace(' ', '')) > 12: #length of the line > len(|afbeelding=), there is already an image there
+                    print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
+                    time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
+                    return None #Abort the run
+                
+                #Continue with the completion
+                content = content.replace(line, line.rstrip() + f' {self.file}\n')
+                
+                #Next step: add caption to the infobox
+                caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
+                if caploc is not None:
+                    capline = content[caploc.start():caploc.end()]
+                    content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+            else:
+                #Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
+                #Determine the precise location of the infobox (and where we need to insert the image)
+                append_location = re.search(r'\{\{infobox[^\|]*', low).end()
+                #Determine the number of spaces that must be inserted to get a nice lay-out of the infobox
+                #Determine what text we should add
+                add_text = f'| afbeelding={self.file}' + '\n'*(low[append_location - 1] == '\n')
+                content = content[:append_location] + add_text + content[append_location:]
         
-        #Third part: no infobox is present
-        elif image_match is None:
+        #Third part: no infobox is present - just prepend the new image
+        else:
             content = f'[[File:{self.file}|thumb|{self.generate_caption()}]]\n' + content
         
         #Remove template asking for a photo

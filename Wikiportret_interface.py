@@ -6,7 +6,7 @@ This is the interface that allows Wikiportret to operate through the command lin
 
 @author: Daniuu
 """
-
+from time import sleep
 from Wikiportret_core import * #Import all modules from the Wikiportret core in this interface
 
 class Interface:
@@ -22,9 +22,14 @@ class Interface:
         print("I am now preparing to process the file. Please pass the file name on Commons and the nlwiki article below.")
         print('For devs or people who accidentally (re)started me: just type exit to stop the bot.')
         file = input("Please enter the name (NOT THE URL) of the file that should be processed. ").strip()
-        if file.strip() == 'exit':
+        if file.strip().lower() in {'exit', 'stop', 'quit'}:
             return None
         name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
+        if name.lower().startswith('file'):
+            #This is a safeguard against possible errors
+            print('\nWARNING: You asked me to edit the page "FILE" - THIS SEEMS WEIRD TO ME - Please re-enter what you wished to enter\n')
+            sleep(5) #Give the user a 5 second time period to rethink their input
+            name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
         _, _, confmes = Image(file, name)() #Discard filename and short urls, the confirmation message will be printed
         self.print_confirmation_message(confmes)
         del name, file #Remove these variables from memory, we don't need them any longer

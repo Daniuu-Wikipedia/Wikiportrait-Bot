@@ -524,9 +524,13 @@ class Image:
                 #Determine the precise location of the infobox (and where we need to insert the image)
                 append_location = re.search(r'\{\{infobox[^\|]*', low).end()
                 #Determine the number of spaces that must be inserted to get a nice lay-out of the infobox
+                next_par = re.match(r'\|[^=]+', low[append_location:])
+                spaces = next_par.end() - next_par.start() - 12 #The number of additional spaces that we must insert
                 #Determine what text we should add
-                add_text = f'| afbeelding={self.file}' + '\n'*(low[append_location - 1] == '\n')
+                add_text = f'| afbeelding{" "*spaces}= {self.file}' + '\n'*(low[append_location - 1] == '\n')
                 content = content[:append_location] + add_text + content[append_location:]
+                print("\nEr ontbraken enkele parameters in de infobox, CHECK DE EDITS VAN DE BOT!")
+                time.sleep(3) #Give the operator the time to read the warning
         
         #Third part: no infobox is present - just prepend the new image
         else:

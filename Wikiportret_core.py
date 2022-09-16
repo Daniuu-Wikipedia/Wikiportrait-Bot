@@ -484,39 +484,54 @@ class Image:
         
         low = content.lower() #Store once to reduce computation time
         
+        if '#redirect' or '#doorverwijzing' in low:
+            print('\nYOU REQUESTED TO A REDIRECT PAGE - ABORTING - PLEASE REVIEW THIS MANUALLY')
+            time.sleep(3)
+            return None #Do not continue with this function
+        
         #Check whether or not an infobox is present on the article (and get the rule with the image)
         if self.file in content: 
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
             time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
             return None #File is already on the page, abort the run
-        if '{{infobox' in low:
+        if '{{infobox' in low: #If possible, we would like to place the image in an infobox
             #An infobox has been detected, initiate process of finding the place where the infobox 
             pattern1 = r'\|\s*afbeelding\s*=[^\|]+' #Regex pattern to find out where the image is located
             image_match = re.search(pattern1, low)
-        else:
-            image_match = None
             
-        #Second part: add the image to the text of the article (step only needed if an infobox is present, other case can be handled straight away)
-        if image_match is not None:
-            #Case in which an infobox is present (so, some post-processing steps needed)
-            line = content[image_match.start():image_match.end()]
-            if len(line.strip().replace(' ', '')) > 12: #length of the line > len(|afbeelding=), there is already an image there
-                print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
-                time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
-                return None #Abort the run
-            
-            #Continue with the completion
-            content = content.replace(line, line.rstrip() + f' {self.file}\n')
-            
-            #Next step: add caption to the infobox
-            caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
-            if caploc is not None:
-                capline = content[caploc.start():caploc.end()]
-                content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+            #Second part: add the image to the text of the article (step only needed if an infobox is present, other case can be handled straight away)
+            if image_match is not None:
+                #Case in which an infobox is present (so, some post-processing steps needed)
+                line = content[image_match.start():image_match.end()]
+                if len(line.strip().replace(' ', '')) > 12: #length of the line > len(|afbeelding=), there is already an image there
+                    print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
+                    time.sleep(3) #Sleep two seconds before continuing, accentuate the error to the operator
+                    return None #Abort the run
+                
+                #Continue with the completion
+                content = content.replace(line, line.rstrip() + f' {self.file}\n')
+                
+                #Next step: add caption to the infobox
+                caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
+                if caploc is not None:
+                    capline = content[caploc.start():caploc.end()]
+                    content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+            else:
+                #Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
+                #Determine the precise location of the infobox (and where we need to insert the image)
+                append_location = re.search(r'\{\{infobox[^\|]*', low).end()
+                #Determine the number of spaces that must be inserted to get a nice lay-out of the infobox
+                next_par = re.match(r'\|[^=]+', low[append_location:])
+                spaces = next_par.end() - next_par.start() - 12 #The number of additional spaces that we must insert
+                #Determine what text we should add
+                add_text = f'| afbeelding{" "*spaces}= {self.file}' + '\n'*(low[append_location - 1] == '\n')
+                content = content[:append_location] + add_text + content[append_location:]
+                print("\nEr ontbraken enkele parameters in de infobox, CHECK DE EDITS VAN DE BOT!")
+                time.sleep(3) #Give the operator the time to read the warning
         
-        #Third part: no infobox is present
-        elif image_match is None:
-            content = f'[[Bestand:{self.file}|thumb|{self.generate_caption()}]]\n' + content
+        #Third part: no infobox is present - just prepend the new image
+        else:
+            content = f'[[File:{self.file}|thumb|{self.generate_caption()}]]\n' + content
         
         #Remove template asking for a photo
         for i in ('fotogewenst', 'verzoek om afbeelding', 'afbeelding gewenst'):
@@ -567,12 +582,13 @@ class Image:
             print('I have done all operations that should be done on Commons.')
             print('I will now initiate the operations on Wikidata itself.')
             self.interwiki()
-            print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
-            self.set_image()
-            print('The image has been set. Setting the category on Commons as a separate claim.')
+            print('Now setting the Commons category to Wikidata.')
             self.commons_cat()
             print('The category has been set.')
-            
+
+            print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
+            self.set_image()
+            print('The image has been set.')
             #Doing one more Wikidata related thing, cause this needs the claims on Commons
             print('I proceed with setting the date as a qualifyer for the image.')
             self.date_meta()
@@ -600,7 +616,7 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Mark Harbers 2020.jpg", "Mark Harbers")
+    a = Image("", "")
     a()
     #a.ticket()
     #a.set_licence_properties()

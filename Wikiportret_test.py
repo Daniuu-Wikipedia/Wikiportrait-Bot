@@ -644,5 +644,5 @@ class Image:
 if __name__ == '__main__': #Do not run this code when we are using the interface
     a = Image("Jan Kuijpers.jpg", "Jan Kuijpers")
     #a.add_image_to_article()
-    a(False, False, False, True, False)
+    a(False, False, False, False, True)
     

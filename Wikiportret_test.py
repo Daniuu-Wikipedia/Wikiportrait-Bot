@@ -158,7 +158,7 @@ class Image:
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
         self._commons = CommonsBot()
         self._wikidata = WikidataBot()
-        self._nl = TestBot() #Another change made for TESTING PURPOSES!!!
+        self._nl = NlBot() #TestBot() #Another change made for TESTING PURPOSES!!!
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
         self.claims = None #temporary storage of the claims @Wikidata
@@ -483,7 +483,7 @@ class Image:
     
     def add_image_to_article(self):
         "This function is designed to add the image to the article in an automated fashion"
-        self.name = 'De Literatuurbespeler' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
+        #self.name = 'De Literatuurbespeler' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
         #Get the current Wikitext
         parsedic = {'action':'parse',
                     'page':self.name,
@@ -492,7 +492,7 @@ class Image:
         
         low = content.lower() #Store once to reduce computation time
         
-        if '#redirect' or '#doorverwijzing' in low:
+        if '#redirect' in low or '#doorverwijzing' in low:
             print('\nYOU REQUESTED TO A REDIRECT PAGE - ABORTING - PLEASE REVIEW THIS MANUALLY')
             time.sleep(3)
             return None #Do not continue with this function
@@ -563,7 +563,7 @@ class Image:
         Arguments (and their function):
             * Commons_perm: if set to True, the bot will set all permission-related properties of the file @Commons
             * Category: if set to True, the bot will create and set the category on Commons AND connect it to the Wikidata item.
-            * Data_connect: if set to True, the image will be connected to the given Wikidata item.
+            * Data_connect: if set to True, the image will be connected to the given person's Wikidata item.
             * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
             * Conf: is set to True, the confirmation for VRT will be printed explicitly.
         """
@@ -642,5 +642,7 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Sculptuur de literatuurbespeler-1644764277.jpg", "De Literatuurbespeler")
-    a.add_image_to_article()
+    a = Image("Jan Kuijpers.jpg", "Jan Kuijpers")
+    #a.add_image_to_article()
+    a(False, False, False, True, False)
+    

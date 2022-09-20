@@ -484,7 +484,7 @@ class Image:
         
         low = content.lower() #Store once to reduce computation time
         
-        if '#redirect' or '#doorverwijzing' in low:
+        if '#redirect' in low or '#doorverwijzing' in low:
             print('\nYOU REQUESTED TO A REDIRECT PAGE - ABORTING - PLEASE REVIEW THIS MANUALLY')
             time.sleep(3)
             return None #Do not continue with this function

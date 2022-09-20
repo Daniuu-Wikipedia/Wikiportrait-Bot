@@ -549,57 +549,72 @@ class Image:
                    'summary':'+Upload via #Wikiportret'}
         self._nl.post(editdic)
 
-    def __call__(self):
-        #'''
-        "This function can be used to do handle an entire request at once"
+    def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False):
+        """This function can be used to do handle an entire request at once.
+        Arguments (and their function):
+            * Commons_perm: if set to True, the bot will set all permission-related properties of the file @Commons
+            * Category: if set to True, the bot will create and set the category on Commons AND connect it to the Wikidata item.
+            * Data_connect: if set to True, the image will be connected to the given person's Wikidata item.
+            * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
+            * Conf: is set to True, the confirmation for VRT will be printed explicitly.
+        """
+        
         #Category on Wikimedia Commons
         print('I will now process the image on Commons')
         
         #Properties that should be set on Commons
         print("I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
         try:
+            #Perform these tasks at all time
             self.get_commons_claims()
             self.get_commons_text()
-            print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
-            self.ticket()
-            print('Now adding other information on copyright (P275/P6216)')
-            self.set_licence_properties()
-            print('Property set, I will need support from Wikidata for the next steps.')
+            if commons_perm is True: #Only perform this task when requested
+                print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
+                self.ticket()
+                print('Now adding other information on copyright (P275/P6216)')
+                self.set_licence_properties()
+                print('Property set, I will need support from Wikidata for the next steps.')
         except:
             print('Something went wrong while processing the stuff for Commons.')
+
         
         #Setting the properties on Wikidata
         try:
+            #Always perform this task
             print('Getting claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
             self.ini_wikidata()
-            print('Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell Commons who is depicted.')
-            self.depicts()
-            print('I added the Wikidata item of the depicted person as P180, now switching to creating the category.')
-            print("I'm now making the category on Commons. If an error occurs, it likely means that the category already existed.")
-            self.make_cat()
-            print('The eleventh commandment of the Lord states that we should also check whether the category is attached to the file, so doing that now')
-            self.add_category()
+            print('Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell Commons who is depicted (if you allow me to).')
+            if category is True: #Only perform these edits when the user commands them
+                print("I'm now making the category on Commons. If an error occurs, it likely means that the category already existed.")
+                self.make_cat()
+                print('The eleventh commandment of the Lord states that we should also check whether the category is attached to the file, so doing that now')
+                self.add_category()
+                print('I will add the category on Commons to Wikidata.')
+                self.interwiki()
+                self.commons_cat()
+                print('The category was placed on Commons and connected to Wikidata.')
             print('I have done all operations that should be done on Commons.')
-            print('I will now initiate the operations on Wikidata itself.')
-            self.interwiki()
-            print('Now setting the Commons category to Wikidata.')
-            self.commons_cat()
-            print('The category has been set.')
-
-            print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
-            self.set_image()
-            print('The image has been set.')
-            #Doing one more Wikidata related thing, cause this needs the claims on Commons
-            print('I proceed with setting the date as a qualifyer for the image.')
-            self.date_meta()
+            if data_connect is True: #Only connect the image if ordered to do so
+                print('I will now identify the person in the image, as requested.')
+                print('Adding a P180-claim to Commons to list the identity of the depicted person.')
+                self.depicts()
+                print('I added the Wikidata item of the depicted person as P180 to the image.')
+                print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
+                self.set_image()
+                print('The image has been set. I will now look for a date.')
+                #Doing one more Wikidata related thing, cause this needs the claims on Commons
+                print('I proceed with setting the date as a qualifyer for the image.')
+                self.date_meta()
+                print('The identity of the depicted is now properly listed on Wikidata and Commons.')
 
         except AssertionError:
             print("I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
         
         #Last bit: add image to the Dutch Wikipedia (manually, to trigger watchlists)
-        print('Thanks for flying WikiportraitBot! I will now add the image to the Dutch Wikipedia.')
-        self.add_image_to_article()
-        print('I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
+        if nlwiki is True:
+            print('I will now add the image to the Dutch Wikipedia.')
+            self.add_image_to_article()
+            print('I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
         
         #Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('OKay, I will now start to purge the cache of the various items.')
@@ -612,11 +627,13 @@ class Image:
         print(f'The short url for the article on nlwiki is {k[1]}')
         confirmation = self.generate_confirmation(k) #pass the short urls as arguments, reduce the amount of API calls
         print('I generated the confirmation')
+        if conf is True: #Default is False (for interaction with the other parts of the interface)
+            print(confirmation)
         return self.name, k, confirmation
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("", "")
-    a()
+    a = Image("Jan Kuijpers.jpg", "Jan Kuijpers")
+    a() #Still keep the standard confirmation
     #a.ticket()
     #a.set_licence_properties()

@@ -334,9 +334,10 @@ class Image:
         
     def get_commons_text(self):
         "This function will get the content of the file page on Commons"
-        self.comtext = self._commons.get({'action':'parse',
-                       'page':f'File:{self.file}',
-                       'prop':'wikitext'})['parse']['wikitext']['*']
+        if self.comtext is None:
+            self.comtext = self._commons.get({'action':'parse',
+                           'page':f'File:{self.file}',
+                           'prop':'wikitext'})['parse']['wikitext']['*']
         return self.comtext #Store this one as a variable of the class, will be more pratical
     
     def ticket(self):

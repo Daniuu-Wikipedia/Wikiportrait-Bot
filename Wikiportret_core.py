@@ -405,7 +405,7 @@ class Image:
                 self.get_commons_text()
             if any((i in self.comtext.lower() for i in ('pd', 'public domain'))):
                 print('I found a potential indication that the file could be in the public domain!')
-                a = input('Is this an incorrect indication? [y/n] ').lower().strip()
+                a = input('\nIs this an incorrect indication? [y/n] ').lower().strip()
                 if a == 'n':
                     print('Terminating the process of P6216 setting')
                     return None
@@ -514,8 +514,14 @@ class Image:
                 #Next step: add caption to the infobox
                 caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
                 if caploc is not None:
-                    capline = content[caploc.start():caploc.end()]
-                    content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+                    check_caption = content[caploc.start():caploc.end()].rstrip().split('=')
+                    if len(check_caption) == 1 or not check_caption[1]:
+                        capline = content[caploc.start():caploc.end()]
+                        content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+                    else:
+                        #There is already a caption present, there's no need to add something new
+                        print('\nWARNING: there was already a caption present!\n')
+                        time.sleep(1)
             else:
                 #Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
                 #Determine the precise location of the infobox (and where we need to insert the image)
@@ -633,7 +639,7 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Jan Kuijpers.jpg", "Jan Kuijpers")
-    a() #Still keep the standard confirmation
+    a = Image('Watersnoodmonument Stevenisse.JPG', "Watersnoodmonument Stavenisse")
+    a(True, True, True, True, False) #Still keep the standard confirmation
     #a.ticket()
     #a.set_licence_properties()

@@ -661,7 +661,7 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image('Tonie ehlen-1668888766.jpeg', "Tonie Ehlen")
+    a = Image('Kees middelhoff-1669545939.jpeg', "Tonie Ehlen")
     #a.add_image_to_article()
     a(False, False, False, True, False)
     

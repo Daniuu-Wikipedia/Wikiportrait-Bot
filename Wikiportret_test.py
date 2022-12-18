@@ -136,7 +136,7 @@ class Image:
     #Program some endpoints as static variables (they will be common for all objects)
     commons = "https://commons.wikimedia.org/w/api.php"
     wikidata = "https://www.wikidata.org/w/api.php"
-    nlwiki = "https://nl.wikipedia.org/w/api.php"
+    nlwiki = "https://test.wikipedia.org/w/api.php"
     
     licenses = {'CC-BY-SA 4.0':18199165,
                 'CC-BY-SA-3.0':14946043,
@@ -158,13 +158,13 @@ class Image:
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
         self._commons = CommonsBot()
         self._wikidata = WikidataBot()
-        self._nl = NlBot() #TestBot() #Another change made for TESTING PURPOSES!!!
+        self._nl = TestBot()  # IMPORTANT: don't put the true operational bot in here!
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
         self.claims = None #temporary storage of the claims @Wikidata
         self.mid = None #id of the file on Wikimedia commons   
         self.mc = None #A dictionary to store the claims for the Commons item in
-        self.date = None #Variable for the date at which a file was generated
+        self.date = None #Variable to store the data at which image was taken.
         self.comtext = None #Text associated with the image on Commons (save for a couple of purposes)
         
     def __str__(self):
@@ -287,13 +287,25 @@ class Image:
         "This function checks whether the subject is deceased, and when this happened."
         if not self.claims:
             self.ini_wikidata()
-        claim = self.claims.get('P570') #Returns None if no such claim is present
+        claim = self.claims.get('P570') #Returns none if no such claim is present
         if claim is None:
             return None #Just abort the function here
         for i in claim:
             if 'mainsnak' in i:
                 main = i['mainsnak']['datavalue']['value']['time']
                 return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
+    
+    def get_date_from_commons_text(self):
+        "Scans the source code of the file page on Commons to determine the date at which the image was made"
+        if self.comtext is None:
+            self.get_commons_text()
+        date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]' #Regex to search where the match occurs
+        date_match = re.search(date_regex, self.comtext)
+        if date_match is None:
+            return None #No usefull date in the Commons source text
+        date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
+        date_found = date_found.replace(' ', '').replace('|date=', '')
+        print(date_found)
     
     def date_meta(self):
         "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
@@ -326,7 +338,7 @@ class Image:
                      'summary':self.sum,
                      'bot':True}
                 self._wikidata.post(n)
-                self.date = d
+                self.date = d #Store the obtained date centrally
         else:
             print('Could not find a useful date')
     
@@ -341,9 +353,10 @@ class Image:
         
     def get_commons_text(self):
         "This function will get the content of the file page on Commons"
-        self.comtext = self._commons.get({'action':'parse',
-                       'page':f'File:{self.file}',
-                       'prop':'wikitext'})['parse']['wikitext']['*']
+        if self.comtext is None:
+            self.comtext = self._commons.get({'action':'parse',
+                           'page':f'File:{self.file}',
+                           'prop':'wikitext'})['parse']['wikitext']['*']
         return self.comtext #Store this one as a variable of the class, will be more pratical
     
     def ticket(self):
@@ -412,7 +425,7 @@ class Image:
                 self.get_commons_text()
             if any((i in self.comtext.lower() for i in ('pd', 'public domain'))):
                 print('I found a potential indication that the file could be in the public domain!')
-                a = input('Is this an incorrect indication? [y/n] ').lower().strip()
+                a = input('\nIs this an incorrect indication? [y/n] ').lower().strip()
                 if a == 'n':
                     print('Terminating the process of P6216 setting')
                     return None
@@ -483,7 +496,6 @@ class Image:
     
     def add_image_to_article(self):
         "This function is designed to add the image to the article in an automated fashion"
-        #self.name = 'De Literatuurbespeler' #Manual override for testwiki - REMOVE THIS LINE BEFORE PUTTING BOT INTO OPERATIONAL USE
         #Get the current Wikitext
         parsedic = {'action':'parse',
                     'page':self.name,
@@ -522,8 +534,14 @@ class Image:
                 #Next step: add caption to the infobox
                 caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+', content.lower()) #find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
                 if caploc is not None:
-                    capline = content[caploc.start():caploc.end()]
-                    content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+                    check_caption = content[caploc.start():caploc.end()].rstrip().split('=')
+                    if len(check_caption) == 1 or not check_caption[1]:
+                        capline = content[caploc.start():caploc.end()]
+                        content = content.replace(capline, capline.rstrip() + f' {self.generate_caption()}\n')
+                    else:
+                        #There is already a caption present, there's no need to add something new
+                        print('\nWARNING: there was already a caption present!\n')
+                        time.sleep(1)
             else:
                 #Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
                 #Determine the precise location of the infobox (and where we need to insert the image)
@@ -543,7 +561,7 @@ class Image:
         
         #Remove template asking for a photo
         for i in ('fotogewenst', 'verzoek om afbeelding', 'afbeelding gewenst'):
-            loc = re.search('{{%s}}'%(i.lower()), low)
+            loc = re.search('{{%s}}'%(i.lower()), content.lower())
             if loc is not None:
                 content = content.replace(content[loc.start():loc.end() + 1], '').strip()
         
@@ -556,8 +574,8 @@ class Image:
                    'nocreate':True,
                    'summary':'+Upload via #Wikiportret'}
         self._nl.post(editdic)
-        #print('Done')        
-    
+        del content, low
+
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False):
         """This function can be used to do handle an entire request at once.
         Arguments (and their function):
@@ -640,9 +658,10 @@ class Image:
             print(confirmation)
         return self.name, k, confirmation
    
+   
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image("Jan Kuijpers.jpg", "Jan Kuijpers")
+    a = Image('Tonie ehlen-1668888766.jpeg', "Tonie Ehlen")
     #a.add_image_to_article()
-    a(False, False, False, False, True)
+    a(False, False, False, True, False)
     

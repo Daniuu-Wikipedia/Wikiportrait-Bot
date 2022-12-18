@@ -288,6 +288,18 @@ class Image:
                 main = i['mainsnak']['datavalue']['value']['time']
                 return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
     
+    def get_date_from_commons_text(self):
+        "Scans the source code of the file page on Commons to determine the date at which the image was made"
+        if self.comtext is None:
+            self.get_commons_text()
+        date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]' #Regex to search where the match occurs
+        date_match = re.search(date_regex, self.comtext)
+        if date_match is None:
+            return None #No usefull date in the Commons source text
+        date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
+        date_found = date_found.replace(' ', '').replace('|date=', '')
+        print(date_found)
+    
     def date_meta(self):
         "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
         z = self._commons.get({'action':'query',
@@ -542,7 +554,7 @@ class Image:
         
         #Remove template asking for a photo
         for i in ('fotogewenst', 'verzoek om afbeelding', 'afbeelding gewenst'):
-            loc = re.search('{{%s}}'%(i.lower()), low)
+            loc = re.search('{{%s}}'%(i.lower()), content.lower())
             if loc is not None:
                 content = content.replace(content[loc.start():loc.end() + 1], '').strip()
         
@@ -555,6 +567,9 @@ class Image:
                    'nocreate':True,
                    'summary':'+Upload via #Wikiportret'}
         self._nl.post(editdic)
+        
+        # Some cleaning, save the garbage collector some work
+        del content, low
 
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False):
         """This function can be used to do handle an entire request at once.
@@ -640,7 +655,7 @@ class Image:
    
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image('Watersnoodmonument Stevenisse.JPG', "Watersnoodmonument Stavenisse")
-    a(True, True, True, True, False) #Still keep the standard confirmation
+    a = Image('Tonie ehlen-1668888766.jpeg.jpeg', "Tonie Ehlen")
+    a(False, False, False, True, False) #Still keep the standard confirmation
     #a.ticket()
     #a.set_licence_properties()

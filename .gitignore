@@ -10,3 +10,5 @@ build/Wikiportret_Core/xref-Wikiportret_Core.html
 *.exe
 *.pyc
 *.html
+dist/
+dist

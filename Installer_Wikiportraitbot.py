@@ -9,7 +9,7 @@ This script will convert the Python code into an executable
 import PyInstaller.__main__
 
 PyInstaller.__main__.run([
-    'Wikiportret_interface.py',
+    'Wikiportret_CMD_interface.py',
     '--onefile',
     '--console',
     '--clean'

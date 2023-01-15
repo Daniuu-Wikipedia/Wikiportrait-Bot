@@ -12,3 +12,4 @@ build/Wikiportret_Core/xref-Wikiportret_Core.html
 dist/
 dist
 .idea
+__pycache__

@@ -6,22 +6,39 @@ This is the interface that allows Wikiportret to operate through a graphical int
 @author: Daniuu
 """
 import tkinter
-import Wikiportret_core as core
-import Wikiportret_GUI_aux_functions as aux
-import Wikiportret_GUI_text_NL as nlt
+import Wikiportret_core as Core
+import Wikiportret_GUI_aux_functions as Aux
+import Wikiportret_GUI_text_NL as Nlt
 
 root = tkinter.Tk()
 root.title('Wikiportret GUI')
 root.state('zoomed')  # Open the application in full-screen
 
-root.columnconfigure(0, weight=1)
-root.rowconfigure(0, weight=1)
+ncol, nrow = 14, 16
+for i in range(ncol):
+    root.columnconfigure(i, weight=1)
+for i in range(nrow):
+    root.rowconfigure(i, weight=1)
 
-window_width, window_height = root.winfo_screenwidth(), root.winfo_screenheight()
+# Set variables for window_width & window_height (use 10 px padding)
+window_width, window_height = root.winfo_screenwidth() - 10, root.winfo_screenheight() - 10
+col_width, col_height = int(window_width//ncol), int(window_height//nrow)
 
-#Define some properties of the font
-font = (aux.default_font, 14)
-input_font = (aux.default_font, 16)
+# Define some properties of the font
+font = (Aux.default_font, 14)
+# Write the widgets that read the input
+# Text widgets
+image_text = tkinter.Label(root, text='Afbeelding:', font=font)
+image_text.grid(row=0, column=0, columnspan=2, sticky=tkinter.W + tkinter.N)
+article_text = tkinter.Label(root, text='Artikel:', font=font)
+article_text.grid(row=0, column=7, columnspan=1, sticky=tkinter.E + tkinter.N)
+# Widgets that effectively read the input
+image = tkinter.StringVar()  # The variable that contains the name of the processed image
+image_input = tkinter.Entry(root, font=font, textvariable=image)
+article = tkinter.StringVar()  # Variable to store the name of the target article
+article_input = tkinter.Entry(root, font=font, textvariable=article)
+image_input.grid(row=0, column=1, columnspan=6, sticky="NEW", padx=5)
+article_input.grid(row=0, column=8, columnspan=6, sticky="NEW", padx=5)
 
-
+# Write the labels to divide the workspace into three
 root.mainloop()

@@ -19,5 +19,9 @@ root.rowconfigure(0, weight=1)
 
 window_width, window_height = root.winfo_screenwidth(), root.winfo_screenheight()
 
+#Define some properties of the font
+font = (aux.default_font, 14)
+input_font = (aux.default_font, 16)
+
 
 root.mainloop()

@@ -111,3 +111,5 @@ cv = tkinter.N + tkinter.S
 ch = tkinter.E + tkinter.W
 
 center = cv + ch
+
+default_font = 'Arial'

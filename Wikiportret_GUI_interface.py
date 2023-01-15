@@ -40,5 +40,6 @@ article_input = tkinter.Entry(root, font=font, textvariable=article)
 image_input.grid(row=0, column=1, columnspan=6, sticky="NEW", padx=2)
 article_input.grid(row=0, column=8, columnspan=6, sticky="NEW", padx=2)
 
+
 # Write the labels to divide the workspace into three
 root.mainloop()

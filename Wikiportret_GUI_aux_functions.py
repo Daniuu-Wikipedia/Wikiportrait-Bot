@@ -94,14 +94,13 @@ def make_frame(root: tkinter.Tk,
                col_weight: dict = None) -> tkinter.Frame:
     assert 0 < rel_width <= 1, 'The passed relative width of the frame must be a number between 0 and 1!'
     assert 0 < rel_height <= 1, 'The passed relative height of the frame must be a number between 0 and 1!'
-    frame = tkinter.Frame(root,
-                          width=rel_width * root.winfo_screenwidth(),
-                          height=rel_height * root.winfo_screenheight())
+    frame = tkinter.Frame(root)
+    # frame.grid_propagate(False)
     if row_weight is not None:
-        for i in range(rows):
+        for i in range(rows + 1):
             frame.rowconfigure(i, weight=row_weight.get(i, 1))
     if col_weight is not None:
-        for i in range(cols):
+        for i in range(cols + 1):
             frame.columnconfigure(i, weight=col_weight.get(i, 1))
     return frame
 

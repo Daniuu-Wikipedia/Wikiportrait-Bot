@@ -1,0 +1,16 @@
+<!-- Main template for all pages (master for all other pages) -->
+<!-- All changes to the page require the Jinja2 templating language -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width-device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+   {% block head %}{% endblock %}
+</head>
+<body>
+{% block body %}
+{% endblock %}
+</body>
+</html>

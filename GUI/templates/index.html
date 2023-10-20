@@ -2,9 +2,22 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<h1>Template tester</h1>
+<div class="wikiportret">
+    Wikiportret
+</div>
 {% endblock %}
 
 {% block body %}
+<!-- Generate the input section -->
+<div class="inputlayer">
+    <!-- Explanatory Text for First Input -->
+    <div class="horizontal">
+        <p>Enter Text 1:</p>
+        <input type="text" id="input1" name="text1" placeholder="Enter text for field 1">
 
+        <!-- Explanatory Text for Second Input -->
+        <p>Enter Text 2:</p>
+        <input type="text" id="input2" name="text2" placeholder="Enter text for field 2">
+    </div>
+</div>
 {% endblock %}

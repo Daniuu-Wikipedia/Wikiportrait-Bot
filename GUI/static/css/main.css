@@ -4,8 +4,8 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    font-family: sans-serif;
-    max-width: 96%;
+    font-family:"Helvetica Neue", Helvetica, Arial, sans-serif;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -18,9 +18,22 @@ body {
     border: 1px solid #000;
 }
 
-.content {
+.wikiportret {
+    background-color: rgb(0, 102, 153);
+    color: white;
     text-align: center;
+    font-size: 30pt;
+    font-weight: bold;
+    max-width: 100%;
+}
+
+.content {
     font-size: 24px;
+    background-color: red;
+}
+
+.inputlayer {
+    background-color: rgb(185, 233, 255);
 }
 
 .layer1 {
@@ -37,4 +50,15 @@ body {
 
 .layer4 {
     background-color: #cc3366;
+}
+
+.grayfield {
+    width: 200px;
+    height: 100px;
+    background-color: rgb(221, 221, 221);
+    border-radius: 15px; /* Adjust the radius to your preference */
+}
+
+.horizontal {
+    display: flex;
 }

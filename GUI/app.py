@@ -6,24 +6,30 @@ from flask import Flask, render_template, request
 
 # Import Toolforge to update the user agent of the app
 import toolforge
+toolforge.set_user_agent('Wikiportret', email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
 
 # Import all utilities for working with a database
 # Not required in this project
 # from flask_sqlalchemy import SQLAlchemy
 
+# Import some auxiliary classes
+from objects import SiteSettings
+
+data = SiteSettings()
+
 # Define the application (this will be the object representing the web page we're interested in)
 app = Flask(__name__)
-
 
 # Setup up the starting screen
 @app.route('/', methods=['POST', 'GET'])
 def index():
+    global data
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument
     # Perform these actions if a POST request is sent (submitted via the form)
     if request.method == 'POST':
         pass  # Perform actions to initialize the form
-    return render_template('index.html')
+    return render_template('index.html', data=data)
 
 
 if __name__ == '__main__':

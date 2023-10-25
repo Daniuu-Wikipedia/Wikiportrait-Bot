@@ -7,22 +7,31 @@
 
 {% block body %}
 <!-- Generate the input section -->
-<div class="inputlayer">
-    <!-- Explanatory Text for First Input -->
-    <p>Naam v/d afbeelding op Commons </p>
-    <input type="text"
-           id="File"
-           name="File"
-           style="background-color: {{ data.image_input_bg }};"
-           oninput="changeBackgroundColorFile(this.value)"
-           placeholder="Naam van het bestand">
+ <div class="inputlayer">
+    <!-- First Input: name of the file on Commons -->
+    <form action="review"
+          style="display: flex;"
+          method="POST">
 
-    <!-- Explanatory Text for Second Input -->
-    <p>Naam v/h artikel</p>
-    <input type="text"
-           id="Article"
-           name="Article"
-           style="background-color: rgb(185, 233, 255);"
-           placeholder="Naam van het artikel">
+        <p>Naam v/d afbeelding op Commons </p>
+        <input type="text"
+               id="File"
+               name="File"
+               style="background-color: rgb(185, 233, 255);"
+               oninput="changeBackgroundColorFile(this.value)"
+               placeholder="Naam van het bestand">
+
+        <!-- Second Input: name of the Article on the Dutch Wikipedia -->
+        <p>Naam v/h artikel</p>
+        <input type="text"
+               id="Article"
+               name="Article"
+               style="background-color: rgb(185, 233, 255);"
+               placeholder="Naam van het artikel">
+
+        <!-- Button to submit this file to the server -->
+        <input type="submit"
+               value="VERWERK">
+    </form>
 </div>
 {% endblock %}

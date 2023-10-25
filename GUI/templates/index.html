@@ -11,13 +11,20 @@
 <!-- Generate the input section -->
 <div class="inputlayer">
     <!-- Explanatory Text for First Input -->
-    <div class="horizontal">
-        <p>Enter Text 1:</p>
-        <input type="text" id="input1" name="text1" placeholder="Enter text for field 1">
+    <p>Naam v/d afbeelding op Commons </p>
+    <input type="text"
+           id="File"
+           name="File"
+           style="background-color: {{ data.image_input_bg }};"
+           oninput="changeBackgroundColorFile(this.value)"
+           placeholder="Naam van het bestand">
 
-        <!-- Explanatory Text for Second Input -->
-        <p>Enter Text 2:</p>
-        <input type="text" id="input2" name="text2" placeholder="Enter text for field 2">
-    </div>
+    <!-- Explanatory Text for Second Input -->
+    <p>Naam v/h artikel</p>
+    <input type="text"
+           id="Article"
+           name="Article"
+           style="background-color: rgb(185, 233, 255);"
+           placeholder="Naam van het artikel">
 </div>
 {% endblock %}

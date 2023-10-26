@@ -9,3 +9,29 @@ input[type="text"]{
     border-color: #000;
 }
 
+/* CSS for the rounded submit button */
+input[type="submit"] {
+    padding: 10px 20px; /* Adjust padding as needed */
+    background-color: #3498db; /* Button background color */
+    color: #ffffff; /* Text color */
+    border: none; /* Remove button border */
+    border-radius: 10px; /* Adjust the value to control the roundness */
+    cursor: pointer; /* Show a pointer cursor on hover */
+    transition: background-color 0.3s ease; /* Smooth background color transition */
+}
+
+/* Hover effect for the submit button */
+input[type="submit"]:hover {
+    background-color: green; /* Adjust the color for the hover effect */
+}
+
+/* CSS for the form container with a fixed width */
+.form-container {
+    width: 100%; /* Adjust the width as needed */
+}
+
+form{
+    width: 100%;
+    margin-left: 0.2%;
+    margin-right: 0.2%;
+}

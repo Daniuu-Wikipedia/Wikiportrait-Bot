@@ -21,7 +21,7 @@ data = SiteSettings()
 app = Flask(__name__)
 
 # Setup up the starting screen
-@app.route('/', methods=['POST', 'GET'])
+@app.route('/')
 def index():
     global data
     # Landing page
@@ -30,6 +30,12 @@ def index():
     if request.method == 'POST':
         pass  # Perform actions to initialize the form
     return render_template('index.html', data=data)
+
+# Define the routing towards the review section
+@app.route('/review', methods=['POST', 'GET'])
+def review():
+    global data
+    return 'Hello World!'
 
 
 if __name__ == '__main__':

@@ -58,3 +58,16 @@ body {
     display: flex;
     line-height: 1.1;
 }
+
+/* CSS for the user info box (bottom of the page, shows who is currently logged in) */
+/* This CSS code was generously provided by ChatGPT */
+.user-info-box {
+    position: fixed;
+    bottom: 0.1vh; /* Adjust the distance from the bottom as needed */
+    right: 0.1%; /* Adjust the distance from the right as needed */
+    /* background-color: #3498db; */
+    color: #808080;
+    padding: 5px;
+    border-radius: 3px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}

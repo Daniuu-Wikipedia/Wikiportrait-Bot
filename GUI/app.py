@@ -29,7 +29,9 @@ def index():
     # Perform these actions if a POST request is sent (submitted via the form)
     if request.method == 'POST':
         pass  # Perform actions to initialize the form
-    return render_template('index.html', data=data)
+    return render_template('index.html',
+                           data=data,
+                           user_name='Test')
 
 # Define the routing towards the review section
 @app.route('/review', methods=['POST', 'GET'])

@@ -23,6 +23,7 @@ body {
     font-size: 30pt;
     font-weight: bold;
     max-width: 100%;
+    margin-bottom: 0.075vh;
 }
 
 .content {

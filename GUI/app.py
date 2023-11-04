@@ -124,4 +124,5 @@ En begeer nooit iemands goed.''')
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON
+    app.run(debug=False)

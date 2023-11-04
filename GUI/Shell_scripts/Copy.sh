@@ -8,13 +8,13 @@ cp *.py ~/www/python/src
 rm ~/www/python/src/*.pyc
 
 # Copy templates into new file
-cp templates ~/www/python/src/
+cp -r templates ~/www/python/src/
 
 # Copy all static stuff to their proper Toolforge destination
-cp static ~/www/python/src/
+cp -r static ~/www/python/src/
 
 # Copy the novel versions of the shell scripts to our home folder
-cp Shell_scripts ~/Shell
+cp -r Shell_scripts ~/Shell
 
 # Restart the webservice
 # webservice --backend=kubernetes python3.11 restart

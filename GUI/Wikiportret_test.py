@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-
-TESTER
-
 Created on Wed Feb 10 19:38:55 2021
 
 @author: Daniuu
@@ -114,10 +111,6 @@ class CommonsBot(Bot):
     def __init__(self):
         super().__init__('https://commons.wikimedia.org/w/api.php')
 
-class TestBot(Bot):
-    def __init__(self):
-        super().__init__('https://test.wikipedia.org/w/api.php')
-
 class MetaBot(Bot):
     def __init__(self):
         super().__init__('https://meta.wikimedia.org/w/api.php')
@@ -136,7 +129,7 @@ class Image:
     #Program some endpoints as static variables (they will be common for all objects)
     commons = "https://commons.wikimedia.org/w/api.php"
     wikidata = "https://www.wikidata.org/w/api.php"
-    nlwiki = "https://test.wikipedia.org/w/api.php"
+    nlwiki = "https://nl.wikipedia.org/w/api.php"
     
     licenses = {'CC-BY-SA 4.0':18199165,
                 'CC-BY-SA-3.0':14946043,
@@ -158,7 +151,7 @@ class Image:
         #Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
         self._commons = CommonsBot()
         self._wikidata = WikidataBot()
-        self._nl = TestBot()  # IMPORTANT: don't put the true operational bot in here!
+        self._nl = NlBot()
         self._meta = MetaBot()
         self.qid = None #this is the Wikidata item that we want to use
         self.claims = None #temporary storage of the claims @Wikidata
@@ -574,6 +567,8 @@ class Image:
                    'nocreate':True,
                    'summary':'+Upload via #Wikiportret'}
         self._nl.post(editdic)
+        
+        # Some cleaning, save the garbage collector some work
         del content, low
 
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False):
@@ -658,10 +653,9 @@ class Image:
             print(confirmation)
         return self.name, k, confirmation
    
-   
 #Use this code to run the bot   
 if __name__ == '__main__': #Do not run this code when we are using the interface
-    a = Image('Kees middelhoff-1669545939.jpeg', "Tonie Ehlen")
-    #a.add_image_to_article()
-    a(False, False, False, True, False)
-    
+    a = Image('Tonie ehlen-1668888766.jpeg.jpeg', "Tonie Ehlen")
+    a(False, False, False, True, False) #Still keep the standard confirmation
+    #a.ticket()
+    #a.set_licence_properties()

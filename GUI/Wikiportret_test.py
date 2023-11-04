@@ -14,7 +14,7 @@ The bot will do a couple of tasks:
     
 Information can be found in Wikiportret ticket 2021021010009189 (VRT access required)
 """
-
+import threading
 import requests
 import urllib
 import time
@@ -87,6 +87,7 @@ class Bot:
             return self.get_token(t, n + 1)
 
     def post(self, params):
+        raise NotImplementedError('This version should NEVER post!')
         assert 'action' in params, 'Please provide an action'
         t = float(time.time())
         self.ti = [i for i in self.ti if i >= t - 60]  # Clean this mess
@@ -164,21 +165,49 @@ class Image:
         self._nl = NlBot()
         self._meta = MetaBot()
         self.qid = None  # this is the Wikidata item that we want to use
-        self.claims = None  # temporary storage of the claims @Wikidata
+        self._claims = None  # temporary storage of the _claims @Wikidata
         self.mid = None  # id of the file on Wikimedia commons
-        self.mc = None  # A dictionary to store the claims for the Commons item in
+        self.mc = None  # A dictionary to store the _claims for the Commons item in
         self.date = None  # Variable to store the data at which image was taken.
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
+        self.deaddate = None  # Centrally store date the person died
+        self.catname = None  # Custom name of the Commons' category
+        self.personname = None  # Store the name of the subject (used in the caption & response)
 
     def __str__(self):
         return f'Processing {self.file}, an image of {self.name}.'
 
+    # Property, mainly used for debugging purposes
+    @property
+    def claims(self):
+        return str(self._claims)
+
+    # Function needed for interface: prepare the bot (use threading for efficiency)
+    def prepare_image_data(self):
+        # Setting up the initial data for Commons & Wikidata
+        t1 = threading.Thread(target=self.get_commons_claims)
+        t2 = threading.Thread(target=self.get_commons_text)
+        t3 = threading.Thread(target=self.ini_wikidata)
+
+        # Once initial data have been set up, second layer of data should be loaded
+        t4 = threading.Thread(target=self.get_deceased_date)
+        t5 = threading.Thread(target=self.collect_date)
+        t4.start()
+        t5.start()
+        t4.join()
+        t5.join()
+        return True  # Just return True to indicate that the function was performed normally
+
     # Do a first task - make the category on commons
-    def make_cat(self):
+    def make_cat(self, name=None):
         'This function will, when triggered, generate an empty category on Wikimedia Commons.'
+        if name is None:
+            name = self.name  # Just use the value stored centrally
+        elif not isinstance(name, str):
+            raise TypeError('I can only use strings as category names!')
         content = r'{{Wikidata Infobox}}'  # Only call this method if there is a valid Wikidata item!
         pars = {'action': 'edit',
-                'title': f'Category:{self.name}',
+                'title': f'Category:{name}',
                 'text': content,
                 'summary': self.sum,
                 'createonly': True,
@@ -186,9 +215,9 @@ class Image:
         return self._commons.post(pars)
 
     # Second task - go to Wikidata and modify somethings there
-    # First get the number of the item on Wikidata and the associated claims
+    # First get the number of the item on Wikidata and the associated _claims
     def ini_wikidata(self):
-        "this function will generate the item number and gets the claims connected to that item"
+        """this function will generate the item number and gets the _claims connected to that item"""
         # first, get the initial json from the API ()
         pars = {'action': 'wbgetentities',
                 'titles': self.name,
@@ -196,13 +225,16 @@ class Image:
                 'props': 'claims'}
         q = self._wikidata.get(pars)['entities']
         self.qid = next(iter(q.keys()))
+        # For some reason, the claims were no longer stored
+        self._claims = q[self.qid]['claims']
         assert self.qid != '-1', 'I could not find a valid Wikidata item!'
-        self.claims = q[self.qid]['claims']
-        return self.qid, self.claims
+        self.get_deceased_date()  # Get this limitation - once the claims are set
+        self.collect_date()  # Get the date of the image - once the claims are set
+        return self.qid, self._claims
 
     def interwiki(self):
-        "This function will set the interwikilink at Wikidata"
-        if self.claims is None or self.qid is None:
+        """This function will set the interwikilink at Wikidata"""
+        if self._claims is None or self.qid is None:
             self.ini_wikidata()  # the Wikidata interface should first be  called to see what's already present
         # Begin to initialize the dictionary that will do the job
         iwd = {'action': 'wbsetsitelink',
@@ -215,13 +247,13 @@ class Image:
 
     def set_image(self):
         "This function will modify the P18-property of the selected item (which inserts the image at commons)"
-        if self.claims is None or self.qid is None:
+        if self._claims is None or self.qid is None:
             self.ini_wikidata()
-        for i in self.claims.get('P18', ()):
+        for i in self._claims.get('P18', ()):
             print('Watch out, there are already images present! Please check this!')
             j = i['mainsnak']['datavalue']['value']
             if j == self.file:
-                return j  # It is already in there, stop the frunction
+                return j  # It is already in there, stop the function
         # Continue with the setting of the new claim
         p18d = {'action': 'wbcreateclaim',
                 'property': 'P18',
@@ -231,14 +263,14 @@ class Image:
                 'entity': self.qid,
                 'value': f'"{self.file}"'}
         k = self._wikidata.post(p18d)
-        self.claims['P18'] = self.claims.get('P18', []) + [k['claim']]
+        self._claims['P18'] = self._claims.get('P18', []) + [k['claim']]
         return k
 
     def commons_cat(self):
         "This function will set the Commons category of the subject (P373)"
-        if self.claims is None or self.qid is None:
+        if self._claims is None or self.qid is None:
             self.ini_wikidata()
-        for i in self.claims.get('P373', ()):
+        for i in self._claims.get('P373', ()):
             j = i['mainsnak']['datavalue']['value']
             if j == self.name:
                 return j  # It is already in there, stop the frunction
@@ -288,17 +320,37 @@ class Image:
     def short_urls(self):
         return self.short_url_commons(), self.short_url_nlwiki()
 
-    def check_deceased(self):
+    def get_deceased_date(self):
         "This function checks whether the subject is deceased, and when this happened."
-        if not self.claims:
+        if not self._claims:
             self.ini_wikidata()
-        claim = self.claims.get('P570')  # Returns none if no such claim is present
+        claim = self._claims.get('P570')  # Returns none if no such claim is present
         if claim is None:
-            return None  # Just abort the function here
+            # The claim was not set
+            # Even though it is likely that the person is not dead, we'll set a placeholder
+            # This does NOT mean that the queried object will die today or one of the coming days
+            # This shenanigan is just a technicality to stop people from dating images in the future
+            # There is thus no need to contact emergency@ after seeing this code
+            self.deaddate = dt.datetime.utcnow().replace(hour=0,
+                                                         minute=0,
+                                                         second=0) + dt.timedelta(days=1)
+            return self.deaddate
         for i in claim:
             if 'mainsnak' in i:
                 main = i['mainsnak']['datavalue']['value']['time']
-                return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
+                self.deaddate = dt.datetime.strptime(main,
+                                                     "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
+                                                                                    minute=0,
+                                                                                    second=0)
+                return self.deaddate
+
+    def check_deceased(self, custom=None):
+        if self.deaddate is None:
+            self.get_deceased_date()
+        # Check whether the supplied date is valid
+        if custom is None:
+            custom = self.date
+        return custom <= self.deaddate  # True if the date is valid, False if there's a problem
 
     def get_date_from_commons_text(self):
         "Scans the source code of the file page on Commons to determine the date at which the image was made"
@@ -312,8 +364,10 @@ class Image:
         date_found = date_found.replace(' ', '').replace('|date=', '')
         print(date_found)
 
-    def date_meta(self):
-        "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
+    def collect_date(self):
+        "Tries to figure out when an image was generated"
+        if self.date is not None:
+            return self.date  # Abort the function execution here
         z = self._commons.get({'action': 'query',
                                'titles': f'File:{self.file}',
                                'prop': 'imageinfo',
@@ -322,20 +376,27 @@ class Image:
         t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
         u = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
         if u:
-            d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
+            self.date = dt.datetime.strptime(u[0],
+                                     "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
                                                                         second=0)  # Remove the precise timestamp
-            cl = self.claims.get('P18')  # We can get this one
+
+        return None
+
+    def date_meta(self, d=None):
+        # SIGNIFICANT CHANGES WERE MADE TO THIS FUCNTION - BE CAREFUL!!!
+        "Writes the date of image generation and pushes it to Wikidata"
+        if d is None:
+            d = self.collect_date()  # We still need to get the date
+        if d:
+            cl = self._claims.get('P18')  # We can get this one - image value passed to the system
             assert cl is not None, 'Watch out, we found an error'
             for i in cl:
                 if i['mainsnak']['datavalue']['value'] == self.file:
-                    idc = i['id']
+                    idc = i['id']  # Locate the claim containing the image name
                     break  # Stop the iterations
-            if 'P585' not in i.get('qualifiers', ()):  # Code should only be executed if this hasn't been specified yet
-                deceased = self.check_deceased()
-                if deceased is not None and d > deceased:
-                    print(
-                        'The metadata are likely corrupt, so I will not add a date past the date at which the subject died.')
-                    return None  # Return None to abort this function
+            if 'P585' not in idc.get('qualifiers', ()):  # Code should only be executed if this hasn't been specified yet
+                if self.check_deceased() is False:
+                    return None  # Something's wrong
                 val = f'"time": "+{d.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
                 n = {'action': 'wbsetqualifier',
                      'claim': idc,
@@ -345,14 +406,13 @@ class Image:
                      'summary': self.sum,
                      'bot': True}
                 self._wikidata.post(n)
-                self.date = d  # Store the obtained date centrally
         else:
             print('Could not find a useful date')
 
     def get_commons_claims(self):
-        "This function will get the claims on Commons (and content of the page)"
+        "This function will get the _claims on Commons (and content of the page)"
         temp = self._commons.get({'action': 'wbgetentities',
-                                  'props': 'claims',
+                                  'props': '_claims',
                                   'sites': 'commonswiki',
                                   'titles': f'File:{self.file}'})['entities']
         self.mid = next(iter(temp))
@@ -396,10 +456,10 @@ class Image:
         else:
             print('The ticket number is already added as a claim.')
 
-    def set_licence_properties(self):
+    def set_license_properties(self):
         "This function will set the copyright related structured data (P275 and P6216)"
         if self.mc is None:
-            self.get_commons_claims()  # Set the claims using the previously defined function
+            self.get_commons_claims()  # Set the _claims using the previously defined function
 
         # First, do the P275 thingy
         if 'P275' not in self.mc:
@@ -451,11 +511,13 @@ class Image:
         else:
             print('The copyright status was already present')
 
-    def add_category(self):
+    def add_category(self, catname=None):
         "This function will append the category generated before if it is not yet in the Commons datasheet"
         if self.comtext is None:
             self.get_commons_text()
-        cat = f'[[Category:{self.name}]]'
+        if catname is None:  # Provide the option to override some things
+            catname = self.name
+        cat = f'[[Category:{catname}]]'
         if cat in self.comtext:
             print('The category was already in the text')
             return None
@@ -491,9 +553,9 @@ class Image:
         "This function can be used to generate a standard response for the uploader"
         commonslink, nllink = shorts if shorts is not None else self.short_urls()
         lines = (
-        f"Hartelijk dank voor het vrijgeven van uw afbeelding. Ik heb de afbeelding in de centrale mediadatabase van Wikimedia (Wikimedia Commons) geplaatst. U kunt de afbeelding hier bekijken: {commonslink} .",
-        f"Daarnaast heb ik de afbeelding in dit artikel geplaatst op de Nederlandstalige Wikipedia: {nllink} .",
-        "Dank voor de donatie van deze afbeelding!")
+            f"Hartelijk dank voor het vrijgeven van uw afbeelding. Ik heb de afbeelding in de centrale mediadatabase van Wikimedia (Wikimedia Commons) geplaatst. U kunt de afbeelding hier bekijken: {commonslink} .",
+            f"Daarnaast heb ik de afbeelding in dit artikel geplaatst op de Nederlandstalige Wikipedia: {nllink} .",
+            "Dank voor de donatie van deze afbeelding!")
         # The lines are prepared, now clearly print it
         return '\n\n'.join(lines)  # Returns the string itself. The final printing stuff is done in the interface
 
@@ -606,7 +668,7 @@ class Image:
 
         # Properties that should be set on Commons
         print(
-            "I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
+            "I'll initialize the interface for Commons (getting the _claims already present and the page of the file).")
         try:
             # Perform these tasks at all time
             self.get_commons_claims()
@@ -615,7 +677,7 @@ class Image:
                 print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
                 self.ticket()
                 print('Now adding other information on copyright (P275/P6216)')
-                self.set_licence_properties()
+                self.set_license_properties()
                 print('Property set, I will need support from Wikidata for the next steps.')
         except:
             print('Something went wrong while processing the stuff for Commons.')
@@ -624,7 +686,7 @@ class Image:
         try:
             # Always perform this task
             print(
-                'Getting claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
+                'Getting _claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
             self.ini_wikidata()
             print(
                 'Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell Commons who is depicted (if you allow me to).')
@@ -648,7 +710,7 @@ class Image:
                 print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
                 self.set_image()
                 print('The image has been set. I will now look for a date.')
-                # Doing one more Wikidata related thing, cause this needs the claims on Commons
+                # Doing one more Wikidata related thing, cause this needs the _claims on Commons
                 print('I proceed with setting the date as a qualifyer for the image.')
                 self.date_meta()
                 print('The identity of the depicted is now properly listed on Wikidata and Commons.')

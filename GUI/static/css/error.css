@@ -1,0 +1,6 @@
+/* CSS to control the formatting of error messages */
+.errormessage {
+    color: red;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 30pt;
+}

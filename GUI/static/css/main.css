@@ -57,7 +57,38 @@ body {
     background-color: rgb(185, 233, 255);
     display: flex;
     line-height: 1.1;
+    padding-left: 0.5%;
+    padding-right: 0.5%;
 }
+
+.inputoverview {
+    background-color: rgb(185, 233, 255);
+    line-height: 1.1;
+    display: flex;
+    position: relative;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.1%;
+}
+
+.right-element {
+    position: absolute;
+    right: 0.1%;
+}
+
+.left-element {
+    position: absolute;
+    left: 0.1%;
+}
+
+.user-input-frame {
+    background-color: #acabab; /* Light gray background color */
+    border-radius: 5px; /* Rounded edges */
+    padding: 10px; /* Add padding to the frame */
+    display: inline-block; /* Inline block to keep it on the same line */
+    color: #000; /* Text color for the user's input */
+}
+
 
 /* CSS for the user info box (bottom of the page, shows who is currently logged in) */
 /* This CSS code was generously provided by ChatGPT */
@@ -70,4 +101,10 @@ body {
     padding: 5px;
     border-radius: 3px;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.large {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 1vh;
 }

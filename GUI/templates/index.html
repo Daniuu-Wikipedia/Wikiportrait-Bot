@@ -2,14 +2,13 @@
 {% extends 'base.html' %}
 
 {% block head %}
-
 {% endblock %}
 
 {% block body %}
 <!-- Generate the input section -->
  <div class="inputlayer">
     <!-- First Input: name of the file on Commons -->
-    <form action="review"
+    <form action="load"
           style="display: flex;"
           method="POST">
 
@@ -26,15 +25,19 @@
         <input type="text"
                id="Article"
                name="Article"
+               oninput="checkForProhibitedCharacters(this.value)"
                style="background-color: rgb(185, 233, 255);"
                placeholder="Naam van het artikel">
 
         <!-- Button to submit this file to the server -->
         <input type="submit"
+               id="submit-button"
                value="VERWERK">
+        <script src="{{ url_for('static', filename='js/text_submit_field_1.js') }}"></script>
     </form>
 </div>
 <div class="user-info-box">
+    <!-- Keep the name of the logged-in user -->
     <span id="user-name">{{ user_name }}</span>
 </div>
 {% endblock %}

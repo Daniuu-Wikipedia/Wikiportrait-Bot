@@ -4,36 +4,137 @@
 {% extends 'base.html' %}
 
 {% block head %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Review_form.css') }}">
 {% endblock %}
 
 {% block body %}
 <!-- Generate the input section -->
- <div class="inputlayer">
-    <!-- First Input: name of the file on Commons -->
-    <form action="review"
-          style="display: flex;"
-          method="POST">
+ <div class="inputoverview">
+    <!-- First layer: whatever the user entered in the input section -->
+     <div class="left-element">
+        Naam v/d afbeelding op Commons: <span class="user-input-frame">{{ bot.file }}</span>
+     </div>
+     <p></p> <!-- Put here to sync the height of the light blue layer to the height of the frames -->
+     <div class="right-element">
+         Naam v/h artikel: <span class="user-input-frame">{{ data.nlart }}</span>
+     </div>
 
-        <p>Naam v/d afbeelding op Commons </p>
-        <input type="text"
-               id="File"
-               name="File"
-               style="background-color: rgb(185, 233, 255);"
-               oninput="changeBackgroundColorFile(this.value)"
-               placeholder="Naam van het bestand">
-
-        <!-- Second Input: name of the Article on the Dutch Wikipedia -->
-        <p>Naam v/h artikel</p>
-        <input type="text"
-               id="Article"
-               name="Article"
-               style="background-color: rgb(185, 233, 255);"
-               placeholder="Naam van het artikel">
-
-        <!-- Button to submit this file to the server -->
-        <input type="submit"
-               value="VERWERK">
-    </form>
 </div>
+<form action="submit"
+      method="POST">
+    <div class="form-container">
+        <!-- First column: information for Wikidata -->
+        <div class="form-column">
+            <span class="large">Informatie voor Wikidata:</span>
+            <div class="form-group">
+                <div class="label-checkbox">
+                    <label for="i11" class="form-label">Label 1</label>
+                    <input type="checkbox"
+                           id="check11"
+                           class="form-checkbox"
+                           unchecked>
+                </div>
+                <input type="text"
+                       id="i11"
+                       class="form-input"
+                       disabled>
+            </div>
+            <div class="form-group">
+                <div class="label-checkbox">
+                    <label for="i12" class="form-label">Label 1</label>
+                    <input type="checkbox"
+                           id="check12"
+                           class="form-checkbox"
+                           unchecked>
+                </div>
+                <input type="text"
+                       id="i12"
+                       class="form-input"
+                       disabled>
+            </div>
+            <div class="form-group">
+                <div class="label-checkbox">
+                    <label for="i13" class="form-label">Label 1</label>
+                    <input type="checkbox"
+                           id="check13"
+                           class="form-checkbox"
+                           unchecked>
+                </div>
+                <input type="text" id="i13" class="form-input" disabled>
+            </div>
+        </div>
+        <!-- Second column: all information on the image itself -->
+        <div class="form-column">
+            <span class="large">Informatie over de afbeelding:</span>
+            <div class="form-group">
+                <div class="label-checkbox">
+                    <label for="i21"
+                           class="form-label">Label 1</label>
+                    <input type="checkbox"
+                           id="check21"
+                           class="form-checkbox"
+                           unchecked>
+                </div>
+                <input type="text"
+                       id="i21"
+                       class="form-input"
+                       disabled>
+            </div>
+            <div class="form-group">
+                <div class="label-checkbox">
+                    <label for="i22" class="form-label">Label 1</label>
+                    <input type="checkbox"
+                           id="check22"
+                           class="form-checkbox"
+                           unchecked>
+                </div>
+                <input type="text"
+                       id="i22"
+                       class="form-input"
+                       disabled>
+            </div>
+            <div class="form-group">
+                <div class="label-checkbox">
+                    <label for="i23" class="form-label">Label 1</label>
+                    <input type="checkbox"
+                           id="check23"
+                           class="form-checkbox"
+                           unchecked>
+                </div>
+                <select id="license"
+                class="form-select" selected="{{ selected_license }}">
+                    {% for option in license_options %}
+                        <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <!-- And fully at the bottom, we have a third bar with checkboxes -->
+    <div class="horizontal-bar">
+        <div class="center-align">
+            <label for="checkbox1">Verzorg alle data op Commons</label>
+            <input type="checkbox"
+                   id="checkbox1"
+                   checked>
+        </div>
+        <div class="center-align">
+            <label for="checkbox2">Koppel de afbeelding aan Wikidata</label>
+            <input type="checkbox"
+                   id="checkbox2"
+                   checked>
+        </div>
+        <div class="center-align">
+            <label for="checkbox3">Plaats de afbeelding op nlwiki</label>
+            <input type="checkbox"
+                   id="checkbox3"
+                   checked>
+        </div>
+    </div>
+
+    <input type="submit" value="Submit">
+    <script src="{{ url_for('static', filename='js/checkbox_input_text.js') }}"></script>
+
+</form>
+
 {% endblock %}

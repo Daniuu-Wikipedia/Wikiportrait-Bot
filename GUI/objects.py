@@ -39,6 +39,11 @@ class SiteSettings:
         # Background color will be set through a property
 
         # Part 2: field for inputting the name of the article on nlwiki
+        # This field is needed to exchange data
+        self._image = None
+
+        # Part 3: field for inputting the name of the image on Wikimedia Commons
+        self._article = None
 
     @property
     def image_input_bg(self):
@@ -52,4 +57,30 @@ class SiteSettings:
         if isinstance(new, bool):
             self.imageval = new
 
+    # Properties to manage the article stored in here
+    @property
+    def nlart(self) -> str:
+        return self._article
 
+    @nlart.setter
+    def nlart(self, new: str):
+        if isinstance(new, str):
+            self._article = new
+
+    @nlart.deleter
+    def nlart(self):
+        self._article = None
+
+    # Properties to control the value stored for the image
+    @property
+    def image_name(self) -> str:
+        return self._image
+
+    @image_name.setter
+    def image_name(self, other: str):
+        if isinstance(other, str):
+            self._image = other
+
+    @image_name.deleter
+    def image_name(self):
+        self._image = None

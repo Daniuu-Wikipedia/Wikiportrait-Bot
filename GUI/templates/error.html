@@ -1,0 +1,16 @@
+<!-- Uses the Jinja2 engine to inherit from base.html -->
+<!-- This page will be displayed whenever the program encounters an error -->
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
+{% endblock %}
+
+{% block body %}
+<!-- Just yield a screen that tells the user that they messed up -->
+<div class="errormessage">
+    ERROR - I could not handle your request!
+</div>
+The message I received is:</br>
+{{message}}
+{% endblock %}

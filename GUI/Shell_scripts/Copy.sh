@@ -17,4 +17,4 @@ cp static ~/www/python/src/
 cp Shell_scripts ~/Shell
 
 # Restart the webservice
-webservice restart
+# webservice --backend=kubernetes python3.11 restart

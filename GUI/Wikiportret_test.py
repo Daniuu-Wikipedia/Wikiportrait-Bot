@@ -266,7 +266,7 @@ class Image:
         self._claims['P18'] = self._claims.get('P18', []) + [k['claim']]
         return k
 
-    def commons_cat(self):
+    def commons_cat(self, custom=None):
         "This function will set the Commons category of the subject (P373)"
         if self._claims is None or self.qid is None:
             self.ini_wikidata()

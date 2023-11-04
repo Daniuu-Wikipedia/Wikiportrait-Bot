@@ -102,7 +102,8 @@ def review():
                            data=data,
                            bot=bot_object,
                            license_options=Image.licenses.keys(),
-                           selected_license='CC-BY-SA-3.0')
+                           selected_license='CC-BY-SA 4.0',
+                           user_name='Test user')
 
 
 # The page the users will see whenever they submit an image for posting

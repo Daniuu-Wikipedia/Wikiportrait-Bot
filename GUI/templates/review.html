@@ -28,7 +28,7 @@
             <span class="large">Informatie voor Wikidata:</span>
             <div class="form-group">
                 <div class="label-checkbox">
-                    <label for="i11" class="form-label">Label 1</label>
+                    <label for="i11" class="form-label">Naam v/d foto</label>
                     <input type="checkbox"
                            id="check11"
                            class="form-checkbox"
@@ -37,11 +37,12 @@
                 <input type="text"
                        id="i11"
                        class="form-input"
+                       value="WIDGET NOG NIET GEBRUIKEN"
                        disabled>
             </div>
             <div class="form-group">
                 <div class="label-checkbox">
-                    <label for="i12" class="form-label">Label 1</label>
+                    <label for="i12" class="form-label">Datum waarop foto genomen is (DD/MM/YYYY)</label>
                     <input type="checkbox"
                            id="check12"
                            class="form-checkbox"
@@ -50,17 +51,22 @@
                 <input type="text"
                        id="i12"
                        class="form-input"
+                       value="{{ bot.date.day }}/{{ bot.date.month }}/{{ bot.date.year}}"
                        disabled>
             </div>
             <div class="form-group">
                 <div class="label-checkbox">
-                    <label for="i13" class="form-label">Label 1</label>
+                    <label for="i13" class="form-label">Bewerkingssamenvatting</label>
                     <input type="checkbox"
                            id="check13"
                            class="form-checkbox"
                            unchecked>
                 </div>
-                <input type="text" id="i13" class="form-input" disabled>
+                <input type="text"
+                       id="i13"
+                       class="form-input"
+                       value="{{ bot.sum }}"
+                       disabled>
             </div>
         </div>
         <!-- Second column: all information on the image itself -->
@@ -69,7 +75,7 @@
             <div class="form-group">
                 <div class="label-checkbox">
                     <label for="i21"
-                           class="form-label">Label 1</label>
+                           class="form-label">Naam v/d categorie op Wikimedia Commons</label>
                     <input type="checkbox"
                            id="check21"
                            class="form-checkbox"
@@ -78,11 +84,12 @@
                 <input type="text"
                        id="i21"
                        class="form-input"
+                       value="{{ bot.name }}"
                        disabled>
             </div>
             <div class="form-group">
                 <div class="label-checkbox">
-                    <label for="i22" class="form-label">Label 1</label>
+                    <label for="i22" class="form-label">Bijschrift op de Nederlandstalige Wikipedia</label>
                     <input type="checkbox"
                            id="check22"
                            class="form-checkbox"
@@ -90,19 +97,22 @@
                 </div>
                 <input type="text"
                        id="i22"
+                       value="{{ bot.name }} in {{ bot.date.year }}"
                        class="form-input"
                        disabled>
             </div>
             <div class="form-group">
                 <div class="label-checkbox">
-                    <label for="i23" class="form-label">Label 1</label>
+                    <label for="license" class="form-label">Afbeelding vrijgegeven onder licentie</label>
                     <input type="checkbox"
                            id="check23"
                            class="form-checkbox"
                            unchecked>
                 </div>
                 <select id="license"
-                class="form-select" selected="{{ selected_license }}">
+                        class="form-select"
+                        disabled>
+                    <option value="Commons" selected>Inladen vanaf Commons</option>
                     {% for option in license_options %}
                         <option value="{{ option }}">{{ option }}</option>
                     {% endfor %}
@@ -134,7 +144,11 @@
 
     <input type="submit" value="Submit">
     <script src="{{ url_for('static', filename='js/checkbox_input_text.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/checkbox_selector.js') }}"></script>
 
 </form>
-
+<div class="user-info-box">
+    <!-- Keep the name of the logged-in user -->
+    <span id="user-name">Ingelogd als {{ user_name }}</span>
+</div>
 {% endblock %}

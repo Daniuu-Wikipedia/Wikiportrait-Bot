@@ -1,5 +1,5 @@
 # File to copy all files from the Github repo into the proper directory at Toolfore
-cd ~/Wikiportrait-Bot
+cd ~/Wikiportrait-Bot/GUI
 
 # Copy the new Python files to the usual directory
 cp *.py ~/www/python/src

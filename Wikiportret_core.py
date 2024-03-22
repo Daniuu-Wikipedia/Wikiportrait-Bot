@@ -133,6 +133,27 @@ class NlBot(Bot):
     def __init__(self):
         super().__init__('https://nl.wikipedia.org/w/api.php')
 
+    def is_dp(self, title):
+        """
+        Checks whether the page with given title is a disambiguation page.
+        This function relies on https://www.mediawiki.org/wiki/Extension:Disambiguator
+        This function uses the MediaWiki API & the "disambiguation" ppprop
+        """
+        if not isinstance(title, str):
+            raise TypeError('Thy shall not pass non-strings to the "is_dp"-routine!')
+
+        # Type checking done, send a request to the wiki to check whether the supplied page is a disambiguation page
+        dp_get_dict = {'action': 'query',
+                       'prop': 'pageprops',
+                       'titles': title,
+                       'ppprop': 'disambiguation'}
+        dp_material = self.get(dp_get_dict)  # Get the content from the wiki
+
+        # Now check whether the requested page is a dp
+        place = dp_material.get('query', {})['pages']
+        key = next(iter(place.keys()))
+        return 'disambiguation' in place[key].get('pageprops', {})
+
 
 class Image:
     'This class will contain the main methods that are required for the post-processing of an image from Wikiportrait'
@@ -491,9 +512,9 @@ class Image:
         "This function can be used to generate a standard response for the uploader"
         commonslink, nllink = shorts if shorts is not None else self.short_urls()
         lines = (
-        f"Hartelijk dank voor het vrijgeven van uw afbeelding. Ik heb de afbeelding in de centrale mediadatabase van Wikimedia (Wikimedia Commons) geplaatst. U kunt de afbeelding hier bekijken: {commonslink} .",
-        f"Daarnaast heb ik de afbeelding in dit artikel geplaatst op de Nederlandstalige Wikipedia: {nllink} .",
-        "Dank voor de donatie van deze afbeelding!")
+            f"Hartelijk dank voor het vrijgeven van uw afbeelding. Ik heb de afbeelding in de centrale mediadatabase van Wikimedia (Wikimedia Commons) geplaatst. U kunt de afbeelding hier bekijken: {commonslink} .",
+            f"Daarnaast heb ik de afbeelding in dit artikel geplaatst op de Nederlandstalige Wikipedia: {nllink} .",
+            "Dank voor de donatie van deze afbeelding!")
         # The lines are prepared, now clearly print it
         return '\n\n'.join(lines)  # Returns the string itself. The final printing stuff is done in the interface
 
@@ -680,9 +701,11 @@ class Image:
         return self.name, k, confirmation
 
 
+"""
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
     a = Image('Jo Vander Meylen.jpg', "Jo Vander Meylen")
     a(True, True, True, True, True)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()
+"""

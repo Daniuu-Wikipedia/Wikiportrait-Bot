@@ -712,11 +712,9 @@ class Image:
         return self.name, k, confirmation
 
 
-"""
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
     a = Image('Jo Vander Meylen.jpg', "Jo Vander Meylen")
     a(True, True, True, True, True)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()
-"""

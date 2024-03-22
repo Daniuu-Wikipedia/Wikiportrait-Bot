@@ -11,7 +11,7 @@ cp -r templates ~/www/python/src/
 cp -r static ~/www/python/src/
 
 # Copy the novel versions of the shell scripts to our home folder
-cp -r Shell_scripts ~/Shell
+cp -r Shell_scripts/*.sh ~/Shell
 
 # Get rid of some obsolete files in the webservice's directory
 cd ~/www/python/src

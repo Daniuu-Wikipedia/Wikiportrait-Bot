@@ -612,6 +612,9 @@ class Image:
         # Some cleaning, save the garbage collector some work
         del content, low
 
+    def is_dp(self):
+        return self._nl.is_dp(self.name)
+
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False):
         """This function can be used to do handle an entire request at once.
         Arguments (and their function):
@@ -621,6 +624,14 @@ class Image:
             * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
             * Conf: is set to True, the confirmation for VRT will be printed explicitly.
         """
+
+        # First things first (addition 2024-03-22)
+        # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
+        # If a disambiguation page is detected, an error will be thrown
+        if self.is_dp():
+            print('WARNING: the page you passed is a disambiguation page!')
+            time.sleep(10)
+            raise ValueError('Found a disambiguation page - stopping the processing!')
 
         # Category on Wikimedia Commons
         print('I will now process the image on Commons')

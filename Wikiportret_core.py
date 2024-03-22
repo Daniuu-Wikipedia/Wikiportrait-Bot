@@ -576,6 +576,12 @@ class Image:
                         # There is already a caption present, there's no need to add something new
                         print('\nWARNING: there was already a caption present!\n')
                         time.sleep(1)
+            elif re.search(r'\{{2}infobox[^|]+\}{2}', low) is not None:
+                # Scenario: there is an infobox, but it was not given any parameters
+                # This is one of the scenario's in which the bot typically malfunctions
+                # Whenever this happens, add the image & caption as separate
+                # To spot this kind of scenario's a regex is used to detect syntax {{infobox X}}
+                return None
             else:
                 # Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
                 # Determine the precise location of the infobox (and where we need to insert the image)

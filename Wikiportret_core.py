@@ -803,6 +803,7 @@ class Image:
                 print('Now adding other information on copyright (P275/P6216)')
                 self.set_licence_properties()
                 print('Property set, I will need support from Wikidata for the next steps.')
+        # noinspection PyBroadException
         except:
             print('Something went wrong while processing the stuff for Commons.')
 

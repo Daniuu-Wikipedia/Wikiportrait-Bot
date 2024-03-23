@@ -466,12 +466,18 @@ class Image:
             # Previous versions of the code removed the hours, minutes, seconds...
             # New code: does this whenever self.date is being set
             # New code also removes obsolete type check
+
+            # This part of the code: adds the date as a qualifier to the image
+            # The code must first figure out where the image is being stored first
             cl = self.claims.get('P18')  # We can get this one
             assert cl is not None, 'Watch out, we found an error'
+            idc = None  # Style thingy - define variable & raise error later if not set
             for i in cl:
                 if i['mainsnak']['datavalue']['value'] == self.file:
                     idc = i['id']
                     break  # Stop the iterations - we found what we needed to find
+            if idc is None:  # Bit difficult to set a qualifier if the image is not yet set
+                raise ValueError('The image was not attached to the Wikidata item!')
             if 'P585' not in i.get('qualifiers', ()):  # Code should only be executed if this hasn't been specified yet
                 deceased = self.date_deceased()
                 if deceased is not None and self.check_person_alive():

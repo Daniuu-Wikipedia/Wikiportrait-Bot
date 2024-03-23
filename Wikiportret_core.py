@@ -24,35 +24,42 @@ from requests_oauthlib import OAuth1
 
 
 class MaxlagError(Exception):
-    "This is a special error, specially made for when Maxlag occurs - it warns the operator of the bot"
+    """This is a special error, specially made for when Maxlag occurs - it warns the operator of the bot"""
 
     def __str__(self):
         print('\n')
         print(
-            'Watch out! a maxlag error was spotted. This means that the Wikimedia API is slow. The bot run will be terminated, please try again in a few minutes!')
+            'Maxlag error was spotted. The Wikimedia API is slow. Bot will be terminated, try again in a few minutes!')
         time.sleep(2)
         return "Maxlag error occured, bot run aborted."
 
 
 class Bot:
-    'This class is designed to facilitate all interactions with Wikipedia (and to get the processing functions out of other calsses)'
+    """
+    This class is designed to facilitate all interactions with Wikipedia
+        (and to get the processing functions out of other classes)
+    """
     max_edit = 12  # The maximum number of edits that a single bot can do per minute
 
     def __init__(self, api, m=None):
-        'Constructs a bot, designed to interact with one Wikipedia'
+        """Constructs a bot, designed to interact with one Wikipedia"""
         self.api = api
         self.ti = []  # A list to store the time stamps of the edits in
         self._token = None  # This is a token that is handy
         self._auth = None  # The OAuth ID (this is the token that will allow the auth - store this for every bot)
-        self._max = Bot.max_edit if m is None else m  # this value is set, and can be changed if a bot bit would be granted
+        self._max = Bot.max_edit if m is None else m  # Can be changed if bot bit is granted
         self.testing = False  # By default, set all bots to write to the wiki
         self._testfile = 'General.txt'  # File to which output is written if bot is called in test mode
 
     def __str__(self):
         return self.api.copy()
 
+    # noinspection PyPep8Naming
     def verify_OAuth(self, file="Tokens_Wikiportraitbot.txt"):
-        'This function will verify whether the OAuth-auth has been configured. If not, it will do the configuration.'
+        """
+        This function will verify whether the OAuth-auth has been configured.
+        If not, it will do the configuration.
+        """
         if self._auth is None:
             with open(file, 'r') as secret:
                 self._auth = OAuth1(
@@ -66,13 +73,13 @@ class Bot:
         return self._token[0]
 
     def get(self, payload):
-        "This function will provide functionality that does all the get requests"
+        """This function will provide functionality that does all the get requests"""
         self.verify_OAuth()
         payload['format'] = 'json'  # Set the output format to json
         return requests.get(self.api, params=payload, auth=self._auth).json()
 
     def get_token(self, t='csrf', n=0, store=True):
-        'This function will get a token'
+        """This function will get a token"""
         assert isinstance(t, str), 'Please provide a string as a token!'
         pay = {'action': 'query',
                'meta': 'tokens',
@@ -103,7 +110,7 @@ class Bot:
             elif 'claim' in params['action']:
                 print('\nSetting property %s to %s\n' % (params['prop'], params['value']))
             elif 'link' in params['action']:
-                print('\nSetting link to %s to value %s'%(params['linksite'], params['linktitle']))
+                print('\nSetting link to %s to value %s' % (params['linksite'], params['linktitle']))
             else:
                 raise NotImplementedError(
                     'Bot called in test mode - with an action unknown to me: %s' % (params['action']))
@@ -126,7 +133,7 @@ class Bot:
             if 'code' in k['error'] and 'maxlag' in k['error']['code']:
                 print('Maxlag occured, please try to file the request at a later point in space and time.')
                 raise MaxlagError
-                time.sleep(10)
+                # time.sleep(10)
         return k
 
 
@@ -148,7 +155,7 @@ class MetaBot(Bot):
         self._testfile = 'Meta_output.txt'
 
     def short(self, params):
-        "This function can be used to create a short url (without generating a token first)"
+        """This function can be used to create a short url (without generating a token first)"""
         params['format'] = 'json'
         return requests.post(self.api, data=params, auth=self._auth).json()
 
@@ -181,7 +188,9 @@ class NlBot(Bot):
 
 
 class Image:
-    'This class will contain the main methods that are required for the post-processing of an image from Wikiportrait'
+    """
+    This class will contain the main methods that are required for the post-processing of an image from Wikiportrait
+    """
     # Program some endpoints as static variables (they will be common for all objects)
     commons = "https://commons.wikimedia.org/w/api.php"
     wikidata = "https://www.wikidata.org/w/api.php"
@@ -309,7 +318,7 @@ class Image:
         return self.qid, self.claims
 
     def interwiki(self):
-        "This function will set the interwikilink at Wikidata"
+        """This function will set the interwikilink at Wikidata"""
         if self.claims is None or self.qid is None:
             self.ini_wikidata()  # the Wikidata interface should first be  called to see what's already present
         # Begin to initialize the dictionary that will do the job
@@ -322,7 +331,7 @@ class Image:
         return self._wikidata.post(iwd)
 
     def set_image(self):
-        "This function will modify the P18-property of the selected item (which inserts the image at commons)"
+        """This function will modify the P18-property of the selected item (which inserts the image at commons)"""
         if self.claims is None or self.qid is None:
             self.ini_wikidata()
         for i in self.claims.get('P18', ()):
@@ -343,7 +352,7 @@ class Image:
         return k
 
     def commons_cat(self):
-        "This function will set the Commons category of the subject (P373)"
+        """This function will set the Commons category of the subject (P373)"""
         if self.claims is None or self.qid is None:
             self.ini_wikidata()
         for i in self.claims.get('P373', ()):
@@ -360,7 +369,7 @@ class Image:
         return self._wikidata.post(p18d)
 
     def purge(self):
-        "This function will purge the cache of the corresponding page on Commons and the Wikidata-item"
+        """This function will purge the cache of the corresponding page on Commons and the Wikidata-item"""
         print('I am starting with purging the cache of the file on Commons.')
         purgedic = {'action': 'purge',
                     'titles': f'Category:{self.name}',
@@ -378,7 +387,7 @@ class Image:
 
     # Generate a shortened URL to the image on Commons
     def short_url_commons(self):
-        'This function will generate a shortened url for the image'
+        """This function will generate a shortened url for the image"""
         url = 'https://' + urllib.parse.quote(
             f'commons.wikimedia.org/wiki/File:{self.file}')  # https:// added in front of the parser
         z = self._meta.short({'action': 'shortenurl',
@@ -386,7 +395,7 @@ class Image:
         return z['shortenurl']['shorturl']
 
     def short_url_nlwiki(self):
-        "This function will generate a shortened url for the article on nlwiki"
+        """This function will generate a shortened url for the article on nlwiki"""
         url = 'https://' + urllib.parse.quote(
             f'nl.wikipedia.org/wiki/{self.name}')  # https:// added in front of the parser
         z = self._meta.short({'action': 'shortenurl',
@@ -497,7 +506,7 @@ class Image:
             print('Could not find a useful date')
 
     def get_commons_claims(self):
-        "This function will get the claims on Commons (and content of the page)"
+        """This function will get the claims on Commons (and content of the page)"""
         temp = self._commons.get({'action': 'wbgetentities',
                                   'props': 'claims',
                                   'sites': 'commonswiki',
@@ -506,7 +515,7 @@ class Image:
         self.mc = next(iter(temp.values())).get('statements', [])
 
     def get_commons_text(self):
-        "This function will get the content of the file page on Commons"
+        """This function will get the content of the file page on Commons"""
         if self.comtext is None:
             self.comtext = self._commons.get({'action': 'parse',
                                               'page': f'File:{self.file}',
@@ -514,7 +523,9 @@ class Image:
         return self.comtext  # Store this one as a variable of the class, will be more pratical
 
     def ticket(self):
-        "This function will add the ticket number (from the Wikiportrait template) as P6305 on Commons"
+        """
+        This function will add the ticket number (from the Wikiportrait template) as P6305 on Commons
+        """
         # First, check whether the number has already been set or not
         if self.mc is None:
             self.get_commons_claims()
@@ -544,7 +555,7 @@ class Image:
             print('The ticket number is already added as a claim.')
 
     def set_licence_properties(self):
-        "This function will set the copyright related structured data (P275 and P6216)"
+        """This function will set the copyright related structured data (P275 and P6216)"""
         if self.mc is None:
             self.get_commons_claims()  # Set the claims using the previously defined function
 
@@ -599,7 +610,7 @@ class Image:
             print('The copyright status was already present')
 
     def add_category(self):
-        "This function will append the category generated before if it is not yet in the Commons datasheet"
+        """This function will append the category generated before if it is not yet in the Commons datasheet"""
         if self.comtext is None:
             self.get_commons_text()
         cat = f'[[Category:{self.name}]]'
@@ -616,7 +627,7 @@ class Image:
         print('Category has been added.')
 
     def depicts(self):
-        "This function adds a P180-statement to the file on Commons"
+        """This function adds a P180-statement to the file on Commons"""
         if self.mc is None:
             self.get_commons_claims()
         if self.qid is None:
@@ -635,7 +646,7 @@ class Image:
             print('Property P180 already present')
 
     def generate_confirmation(self, shorts=None):
-        "This function can be used to generate a standard response for the uploader"
+        """This function can be used to generate a standard response for the uploader"""
         commonslink, nllink = shorts if shorts is not None else self.short_urls()
         lines = (
             f"Hartelijk dank voor het vrijgeven van uw afbeelding. Ik heb de afbeelding in de centrale mediadatabase van Wikimedia (Wikimedia Commons) geplaatst. U kunt de afbeelding hier bekijken: {commonslink} .",
@@ -645,14 +656,14 @@ class Image:
         return '\n\n'.join(lines)  # Returns the string itself. The final printing stuff is done in the interface
 
     def generate_caption(self):
-        "Generates a caption to be added to the article with the image"
+        """Generates a caption to be added to the article with the image"""
         # Important case: date was filed
         if self.date:
             return f'{self.name} in {self.date.year}'
         return self.name
 
     def add_image_to_article(self):
-        "This function is designed to add the image to the article in an automated fashion"
+        """This function is designed to add the image to the article in an automated fashion"""
         # Get the current Wikitext
         parsedic = {'action': 'parse',
                     'page': self.name,
@@ -667,7 +678,7 @@ class Image:
             time.sleep(3)
             return None  # Do not continue with this function
 
-        # Check whether or not an infobox is present on the article (and get the rule with the image)
+        # Check whether an infobox is present on the article (and get the rule with the image)
         if self.file in content:
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
             time.sleep(3)  # Sleep two seconds before continuing, accentuate the error to the operator
@@ -694,7 +705,7 @@ class Image:
                 content = content.replace(line, line.rstrip() + f' {self.file}\n')
 
                 # Next step: add caption to the infobox
-                caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^\|]+',
+                caploc = re.search(r'\|\s*(bij|onder)schrift\s*=[^|]+',
                                    content.lower())  # find where caption should be inserted - DO NOT REUSE LOW SINCE CHANGES WERE MADE
                 if caploc is not None:
                     check_caption = content[caploc.start():caploc.end()].rstrip().split('=')
@@ -717,7 +728,7 @@ class Image:
             else:
                 # Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
                 # Determine the precise location of the infobox (and where we need to insert the image)
-                append_location = re.search(r'\{\{infobox[^\|]*', low).end()
+                append_location = re.search(r'\{\{infobox[^|]*', low).end()
                 # Determine the number of spaces that must be inserted to get a nice lay-out of the infobox
                 next_par = re.match(r'\|[^=]+', low[append_location:])
                 spaces = next_par.end() - next_par.start() - 12  # The number of additional spaces that we must insert

@@ -219,6 +219,7 @@ class Image:
         self.mc = None  # A dictionary to store the claims for the Commons item in
         self.date = None  # Variable to store the data at which image was taken.
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
+        self._imagedate = None  # Set the date at which the image was taken
 
         # For safety
         self.configure_bots_for_testing()
@@ -248,9 +249,23 @@ class Image:
         self._nl.testing = self.testing
         self._meta.testing = self.testing
 
+    # Properties to control the timestamp of the image
+    @property
+    def date(self):
+        return self._imagedate
+
+    @date.setter
+    def date(self, new):
+        if isinstance(new, dt.datetime):
+            self._imagedate = new
+
+    @date.deleter
+    def date(self):
+        self._imagedate = None
+
     # Do a first task - make the category on commons
     def make_cat(self):
-        'This function will, when triggered, generate an empty category on Wikimedia Commons.'
+        """This function will, when triggered, generate an empty category on Wikimedia Commons."""
         content = r'{{Wikidata Infobox}}'  # Only call this method if there is a valid Wikidata item!
         pars = {'action': 'edit',
                 'title': f'Category:{self.name}',
@@ -263,7 +278,7 @@ class Image:
     # Second task - go to Wikidata and modify somethings there
     # First get the number of the item on Wikidata and the associated claims
     def ini_wikidata(self):
-        "this function will generate the item number and gets the claims connected to that item"
+        """this function will generate the item number and gets the claims connected to that item"""
         # first, get the initial json from the API ()
         pars = {'action': 'wbgetentities',
                 'titles': self.name,
@@ -364,7 +379,9 @@ class Image:
         return self.short_url_commons(), self.short_url_nlwiki()
 
     def check_deceased(self):
-        "This function checks whether the subject is deceased, and when this happened."
+        """
+        This function checks when a person passed away (if the Wikidata property is set like that).
+        """
         if not self.claims:
             self.ini_wikidata()
         claim = self.claims.get('P570')  # Returns none if no such claim is present
@@ -387,18 +404,36 @@ class Image:
         date_found = date_found.replace(' ', '').replace('|date=', '')
         print(date_found)
 
-    def date_meta(self):
-        "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
+    def get_image_date(self):
+        """
+        Grabs the point in time at which the image was generated.
+        Returns: the point in time at which the image was generated.
+        """
         z = self._commons.get({'action': 'query',
                                'titles': f'File:{self.file}',
                                'prop': 'imageinfo',
                                'iiprop': 'commonmetadata'})
         q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
         t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
-        u = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
+        self.date = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
+        return self.date
+
+    def date_meta(self, manual_value=None):
+        "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
+        if manual_value is not None and isinstance(manual_value, dt.datetime):
+            u = manual_value  # Facilitate manual override of the date
+        elif self._imagedate is not None:
+            u = self._imagedate
+        else:
+            u = self.get_image_date()
         if u:
-            d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
-                                                                        second=0)  # Remove the precise timestamp
+            if isinstance(u, str):
+                d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
+                                                                            second=0)  # Remove the precise timestamp
+            elif isinstance(u, dt.datetime):
+                d = dt.datetime(year=u.year, month=u.month, day=u.day)
+            else:
+                raise TypeError('Invalid time passed - this cannot be set as a point in time @Wikidata')
             cl = self.claims.get('P18')  # We can get this one
             assert cl is not None, 'Watch out, we found an error'
             for i in cl:

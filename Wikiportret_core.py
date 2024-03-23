@@ -551,6 +551,9 @@ class Image:
             pattern1 = r'\|\s*afbeelding\s*=[^\|]+'  # Regex pattern to find out where the image is located
             image_match = re.search(pattern1, low)
 
+            pattern2 = r'\{{2}infobox[^|]+\}{2}'
+            infobox_no_par_match = re.search(pattern2, low)
+
             # Second part: add the image to the text of the article (step only needed if an infobox is present, other case can be handled straight away)
             if image_match is not None:
                 # Case in which an infobox is present (so, some post-processing steps needed)
@@ -576,12 +579,15 @@ class Image:
                         # There is already a caption present, there's no need to add something new
                         print('\nWARNING: there was already a caption present!\n')
                         time.sleep(1)
-            elif re.search(r'\{{2}infobox[^|]+\}{2}', low) is not None:
+            elif infobox_no_par_match is not None:
                 # Scenario: there is an infobox, but it was not given any parameters
                 # This is one of the scenario's in which the bot typically malfunctions
                 # Whenever this happens, add the image & caption as separate
                 # To spot this kind of scenario's a regex is used to detect syntax {{infobox X}}
-                return None
+                print('WARNING: the infobox only contained no parameters!')
+                to_change = content[infobox_no_par_match.start():infobox_no_par_match.end()]
+                add_text = f'| afbeelding= {self.file}' + r'}}'
+                content = content.replace(to_change, to_change[:-2] + add_text)
             else:
                 # Case: there is an infobox, but we don't have the Image parameter present - we need to add it ourselves
                 # Determine the precise location of the infobox (and where we need to insert the image)

@@ -45,6 +45,8 @@ class Bot:
         self._token = None  # This is a token that is handy
         self._auth = None  # The OAuth ID (this is the token that will allow the auth - store this for every bot)
         self._max = Bot.max_edit if m is None else m  # this value is set, and can be changed if a bot bit would be granted
+        self.testing = False  # By default, set all bots to write to the wiki
+        self._testfile = 'General.txt'  # File to which output is written if bot is called in test mode
 
     def __str__(self):
         return self.api.copy()
@@ -88,6 +90,23 @@ class Bot:
 
     def post(self, params):
         assert 'action' in params, 'Please provide an action'
+
+        # Additional safety loop for testing
+        if self.testing is True:  # This loop is designed to prevent the bots from making accidental edits while in
+            # test mode
+            print('BOT called in test mode!')
+            if params['action'] == 'edit':
+                with open(self._testfile, 'w', encoding='utf8') as outfile:
+                    outfile.write(params['text'])
+            elif params['action'] == 'purge':
+                print('Received a request to purge the page %s' % (params['titles']))
+            elif 'claim' in params['action']:
+                print('\nSetting property %s to %s\n' % (params['prop'], params['value']))
+            else:
+                raise NotImplementedError(
+                    'Bot called in test mode - with an action unknown to me: %s' % (params['action']))
+            return {}  # Return empty dictionary - stops the function immediately
+
         t = float(time.time())
         self.ti = [i for i in self.ti if i >= t - 60]  # Clean this mess
         if len(self.ti) >= Bot.max_edit:  # Check this again, after doing the cleaning
@@ -112,16 +131,19 @@ class Bot:
 class WikidataBot(Bot):
     def __init__(self):
         super().__init__('https://www.wikidata.org/w/api.php')
+        self._testfile = 'Wikidata_output.txt'
 
 
 class CommonsBot(Bot):
     def __init__(self):
         super().__init__('https://commons.wikimedia.org/w/api.php')
+        self._testfile = 'Commons_output.txt'
 
 
 class MetaBot(Bot):
     def __init__(self):
         super().__init__('https://meta.wikimedia.org/w/api.php')
+        self._testfile = 'Meta_output.txt'
 
     def short(self, params):
         "This function can be used to create a short url (without generating a token first)"
@@ -132,6 +154,7 @@ class MetaBot(Bot):
 class NlBot(Bot):
     def __init__(self):
         super().__init__('https://nl.wikipedia.org/w/api.php')
+        self._testfile = 'Nlwiki_output.txt'
 
     def is_dp(self, title):
         """
@@ -179,6 +202,10 @@ class Image:
         self.file, self.name = file.replace('File:', '').strip(), name.strip()  # Just assign the values
         self.sum = f'Processing image of {self.name}'
 
+        # Set a boolean indicating whether we are testing
+        # If True, the bots will be programmed to make no edits
+        self._testing = False
+
         # Store a bunch of tokens, that can be used in the further processing (and to make edits in general)
         self._commons = CommonsBot()
         self._wikidata = WikidataBot()
@@ -191,8 +218,33 @@ class Image:
         self.date = None  # Variable to store the data at which image was taken.
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
 
+        # For safety
+        self.configure_bots_for_testing()
+
     def __str__(self):
         return f'Processing {self.file}, an image of {self.name}.'
+
+    # Properties controlling the test mode of the bot
+    @property
+    def testing(self):
+        return self._testing
+
+    @testing.setter
+    def testing(self, new):
+        if isinstance(new, bool):
+            self._testing = new
+            print(f'Setting the test mode to {self._testing}')
+            self.configure_bots_for_testing()
+
+    # Additional method; making life handier
+    def configure_bots_for_testing(self):
+        """
+        A method that configures all wiki-interfaces to swap into a test mode
+        """
+        self._commons.testing = self.testing
+        self._wikidata.testing = self.testing
+        self._nl.testing = self.testing
+        self._meta.testing = self.testing
 
     # Do a first task - make the category on commons
     def make_cat(self):
@@ -635,6 +687,7 @@ class Image:
             * Data_connect: if set to True, the image will be connected to the given person's Wikidata item.
             * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
             * Conf: is set to True, the confirmation for VRT will be printed explicitly.
+            * Test: if set to True, the bot will be run in its test mode - so not making any edits to the wiki
         """
 
         # First things first (addition 2024-03-22)

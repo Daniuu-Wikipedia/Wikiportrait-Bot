@@ -220,6 +220,7 @@ class Image:
         self.date = None  # Variable to store the data at which image was taken.
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
         self._imagedate = None  # Set the date at which the image was taken
+        self._timedeath = None  # To store the time of death of the individual
 
         # For safety
         self.configure_bots_for_testing()
@@ -262,6 +263,20 @@ class Image:
     @date.deleter
     def date(self):
         self._imagedate = None
+
+    # Properties to deal with the time of death
+    @property
+    def death(self):
+        return self._timedeath
+
+    @death.setter
+    def death(self, new):
+        if isinstance(new, dt.datetime):
+            self._timedeath = new
+
+    @death.deleter
+    def death(self):
+        self._timedeath = None
 
     # Do a first task - make the category on commons
     def make_cat(self):
@@ -378,10 +393,13 @@ class Image:
     def short_urls(self):
         return self.short_url_commons(), self.short_url_nlwiki()
 
-    def check_deceased(self):
+    def date_deceased(self):
         """
         This function checks when a person passed away (if the Wikidata property is set like that).
+        returns: Datetime timestamp containing the date at which the person passed away
         """
+        if self.death is not None:
+            return self.death  # No need to check this twice
         if not self.claims:
             self.ini_wikidata()
         claim = self.claims.get('P570')  # Returns none if no such claim is present
@@ -392,8 +410,21 @@ class Image:
                 main = i['mainsnak']['datavalue']['value']['time']
                 return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
 
+    def check_person_alive(self, date=None):
+        """
+        Method checks whether a person was alive at the given point in time
+        The main goal of this method is to prevent timestamps to be added to images after the time of death of a person
+        returns: boolean indicating whether the person was alive at the indicated date
+        """
+        if date is None:  # If no explicit value is passed, get the class
+            date = self.date
+        death_date = self.death
+        if death_date is not None and date > death_date:
+            return False
+        return True
+
     def get_date_from_commons_text(self):
-        "Scans the source code of the file page on Commons to determine the date at which the image was made"
+        """Scans the source code of the file page on Commons to determine the date at which the image was made"""
         if self.comtext is None:
             self.get_commons_text()
         date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]'  # Regex to search where the match occurs
@@ -415,25 +446,27 @@ class Image:
                                'iiprop': 'commonmetadata'})
         q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
         t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
-        self.date = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
+        d = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
+        if not d:  # We got an empty list, no valid dates were passed
+            return None  # Abort the execution of the function
+        self.date = dt.datetime.strptime(d[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
+                                                                            second=0)  # Remove the precise timestamp
         return self.date
 
     def date_meta(self, manual_value=None):
-        "This function will get the date at which the file was taken from Commons and adds it as a qualifier."
+        """This function will get the date at which the file was taken from Commons and adds it as a qualifier."""
         if manual_value is not None and isinstance(manual_value, dt.datetime):
             u = manual_value  # Facilitate manual override of the date
-        elif self._imagedate is not None:
-            u = self._imagedate
+        elif self.date is not None:
+            u = self.date
         else:
             u = self.get_image_date()
         if u:
-            if isinstance(u, str):
-                d = dt.datetime.strptime(u[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
-                                                                            second=0)  # Remove the precise timestamp
-            elif isinstance(u, dt.datetime):
+            if isinstance(u, dt.datetime):
                 d = dt.datetime(year=u.year, month=u.month, day=u.day)
             else:
-                raise TypeError('Invalid time passed - this cannot be set as a point in time @Wikidata')
+                raise TypeError('Invalid time passed - must be Datetime object!')
+            self.date = d  # Store the obtained date centrally
             cl = self.claims.get('P18')  # We can get this one
             assert cl is not None, 'Watch out, we found an error'
             for i in cl:
@@ -441,7 +474,7 @@ class Image:
                     idc = i['id']
                     break  # Stop the iterations
             if 'P585' not in i.get('qualifiers', ()):  # Code should only be executed if this hasn't been specified yet
-                deceased = self.check_deceased()
+                deceased = self.date_deceased()
                 if deceased is not None and d > deceased:
                     print(
                         'The metadata are likely corrupt, so I will not add a date past the date at which the subject died.')
@@ -819,7 +852,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Jo Vander Meylen.jpg', "Jo Vander Meylen")
+    a = Image('Milan hofmans-1709650271.jpg', "Milan Hofmans")
     a(True, True, True, True, True, True)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

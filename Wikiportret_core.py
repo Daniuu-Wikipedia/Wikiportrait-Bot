@@ -102,6 +102,8 @@ class Bot:
                 print('Received a request to purge the page %s' % (params['titles']))
             elif 'claim' in params['action']:
                 print('\nSetting property %s to %s\n' % (params['prop'], params['value']))
+            elif 'link' in params['action']:
+                print('\nSetting link to %s to value %s'%(params['linksite'], params['linktitle']))
             else:
                 raise NotImplementedError(
                     'Bot called in test mode - with an action unknown to me: %s' % (params['action']))
@@ -783,6 +785,6 @@ class Image:
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
     a = Image('Jo Vander Meylen.jpg', "Jo Vander Meylen")
-    a(True, True, True, True, True)  # Still keep the standard confirmation
+    a(True, True, True, True, True, True)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

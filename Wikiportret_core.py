@@ -217,7 +217,6 @@ class Image:
         self.claims = None  # temporary storage of the claims @Wikidata
         self.mid = None  # id of the file on Wikimedia commons
         self.mc = None  # A dictionary to store the claims for the Commons item in
-        self.date = None  # Variable to store the data at which image was taken.
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
         self._imagedate = None  # Set the date at which the image was taken
         self._timedeath = None  # To store the time of death of the individual
@@ -251,6 +250,7 @@ class Image:
         self._meta.testing = self.testing
 
     # Properties to control the timestamp of the image
+    # self.date was not a property in some older versions of the code
     @property
     def date(self):
         return self._imagedate
@@ -258,7 +258,10 @@ class Image:
     @date.setter
     def date(self, new):
         if isinstance(new, dt.datetime):
-            self._imagedate = new
+            self._imagedate = new.replace(hour=0,
+                                          microsecond=0,
+                                          minute=0,
+                                          second=0)
 
     @date.deleter
     def date(self):
@@ -456,30 +459,26 @@ class Image:
     def date_meta(self, manual_value=None):
         """This function will get the date at which the file was taken from Commons and adds it as a qualifier."""
         if manual_value is not None and isinstance(manual_value, dt.datetime):
-            u = manual_value  # Facilitate manual override of the date
-        elif self.date is not None:
-            u = self.date
-        else:
-            u = self.get_image_date()
-        if u:
-            if isinstance(u, dt.datetime):
-                d = dt.datetime(year=u.year, month=u.month, day=u.day)
-            else:
-                raise TypeError('Invalid time passed - must be Datetime object!')
-            self.date = d  # Store the obtained date centrally
+            self.date = manual_value  # Facilitate manual override of the date
+        elif self.date is None:
+            self.get_image_date()
+        if self.date is not None:
+            # Previous versions of the code removed the hours, minutes, seconds...
+            # New code: does this whenever self.date is being set
+            # New code also removes obsolete type check
             cl = self.claims.get('P18')  # We can get this one
             assert cl is not None, 'Watch out, we found an error'
             for i in cl:
                 if i['mainsnak']['datavalue']['value'] == self.file:
                     idc = i['id']
-                    break  # Stop the iterations
+                    break  # Stop the iterations - we found what we needed to find
             if 'P585' not in i.get('qualifiers', ()):  # Code should only be executed if this hasn't been specified yet
                 deceased = self.date_deceased()
-                if deceased is not None and d > deceased:
+                if deceased is not None and self.check_person_alive():
                     print(
                         'The metadata are likely corrupt, so I will not add a date past the date at which the subject died.')
                     return None  # Return None to abort this function
-                val = f'"time": "+{d.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
+                val = f'"time": "+{self.date.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
                 n = {'action': 'wbsetqualifier',
                      'claim': idc,
                      'value': '{' + val + '}',
@@ -488,7 +487,6 @@ class Image:
                      'summary': self.sum,
                      'bot': True}
                 self._wikidata.post(n)
-                self.date = d  # Store the obtained date centrally
         else:
             print('Could not find a useful date')
 

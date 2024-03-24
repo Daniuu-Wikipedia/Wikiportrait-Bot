@@ -229,6 +229,9 @@ class Image:
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
         self._imagedate = None  # Set the date at which the image was taken
         self._timedeath = None  # To store the time of death of the individual
+        self._licence = 'CC-BY-SA 4.0'  # Use CC-BY-SA 4.0 as default value (drives properties)
+        self._customcaption = None  # Allow for a manual override of the caption
+        self._customcatname = None
 
         # For safety
         self.configure_bots_for_testing()
@@ -290,12 +293,61 @@ class Image:
     def death(self):
         self._timedeath = None
 
+    # Properties dealing with the license under which the image is released
+    # Default licence is CC-BY-SA 4.0
+    @property
+    def licence(self):
+        return self._licence
+
+    @licence.setter
+    def licence(self, new):
+        if isinstance(new, str):
+            self._licence = new
+
+    @licence.deleter
+    def licence(self):
+        self._licence = 'CC-BY-SA 4.0'  # Reset the default licence
+
+    # Property to simplify dealing with captions
+    @property
+    def caption(self):
+        if self._customcaption is None:
+            return self.generate_caption()
+        return self._customcaption
+
+    @caption.setter
+    def caption(self, new):
+        if isinstance(new, str):
+            self._customcaption = new
+        elif new is None:
+            self._customcaption = None
+
+    @caption.deleter
+    def caption(self):
+        self._customcaption = None
+
+    # Properties to make it easier to deal with the category on Commons
+    @property
+    def catname(self):
+        if self._customcatname is None:
+            return self.name
+        return self._customcatname
+
+    @catname.setter
+    def catname(self, new):
+        if isinstance(new, str):
+            self._customcatname = new
+
+    @catname.deleter
+    def catname(self):
+        self._customcatname = None
+
     # Do a first task - make the category on commons
     def make_cat(self):
         """This function will, when triggered, generate an empty category on Wikimedia Commons."""
         content = r'{{Wikidata Infobox}}'  # Only call this method if there is a valid Wikidata item!
         pars = {'action': 'edit',
-                'title': f'Category:{self.name}',
+                'title': f'Category:{self.catname}',
                 'text': content,
                 'summary': self.sum,
                 'createonly': True,
@@ -554,8 +606,7 @@ class Image:
         else:
             print('The ticket number is already added as a claim.')
 
-    def set_licence_properties(self):
-        """This function will set the copyright related structured data (P275 and P6216)"""
+    def get_licence_for_image(self):
         if self.mc is None:
             self.get_commons_claims()  # Set the claims using the previously defined function
 
@@ -566,8 +617,16 @@ class Image:
             k = re.findall('PERMISSION=\s?\S+ [\d.]+', self.comtext.upper())  # Filter the permission rule (using regex)
             lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=',
                                                                                                           '').strip()
+        self.licence = lic
+        return self.licence
+
+    def set_licence_properties(self):
+        """This function will set the copyright related structured data (P275 and P6216)"""
+        if 'P275' not in self.mc:
+            self.get_licence_for_image()  # Get the licence for the image
+            # Previous versions of the code had the licence incorporated here
             # lic = 'CC-BY-SA 4.0'
-            licq = Image.licenses.get(lic)
+            licq = Image.licenses.get(self.licence)
             if licq is not None:  # We found an item for Wikidata that can be connected to this one
                 val = f'"entity-type": "item", "numeric-id": {licq},"id": "Q{licq}"'
                 dic = {'action': 'wbcreateclaim',
@@ -584,7 +643,7 @@ class Image:
                 print('Could not find a license')
                 return None  # No licence found
         else:
-            print('The P275 was already set')
+            print('P275 was already set')
 
         # Now set the second claim
         if 'P6216' not in self.mc:
@@ -658,7 +717,7 @@ class Image:
     def generate_caption(self):
         """Generates a caption to be added to the article with the image"""
         # Important case: date was filed
-        if self.date:
+        if self.date is not None:
             return f'{self.name} in {self.date.year}'
         return self.name
 

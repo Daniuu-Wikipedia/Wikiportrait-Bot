@@ -343,8 +343,10 @@ class Image:
         self._customcatname = None
 
     # Do a first task - make the category on commons
-    def make_cat(self):
+    def make_cat(self, custom=None):
         """This function will, when triggered, generate an empty category on Wikimedia Commons."""
+        if custom is not None:
+            self.catname = custom  # Type checking will be done in the property setter
         content = r'{{Wikidata Infobox}}'  # Only call this method if there is a valid Wikidata item!
         pars = {'action': 'edit',
                 'title': f'Category:{self.catname}',
@@ -956,6 +958,6 @@ class Image:
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
     a = Image('Milan hofmans-1709650271.jpg', "Milan Hofmans")
-    a(True, True, True, True, True, True)  # Still keep the standard confirmation
+    a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

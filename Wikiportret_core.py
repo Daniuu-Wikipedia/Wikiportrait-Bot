@@ -764,6 +764,34 @@ class Image:
     def is_dp(self):
         return self._nl.is_dp(self.name)
 
+    # Method to be used by the future interface
+    # This method just parses the data that are needed for future inputs
+    # The method will not yet do anything
+    def prepare_information(self, test=False):
+        # Make sure the bot is in test mode whenever it's needed
+        self.testing = test
+
+        # First: check whether we are dealing with a disambiguation page
+        # First things first (addition 2024-03-22)
+        # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
+        # If a disambiguation page is detected, an error will be thrown
+        if self.is_dp():
+            print('WARNING: the page you passed is a disambiguation page!')
+            time.sleep(10)
+            raise ValueError('Found a disambiguation page - stopping the processing!')
+
+        print('Getting the information (starting with Commons)')
+        self.get_commons_claims()
+        self.get_commons_text()
+
+        print('Now getting the information from Wikidata')
+        self.ini_wikidata()
+
+        print('Getting information on when the image was generated')
+        self.get_image_date()
+
+
+
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False, test=False):
         """This function can be used to do handle an entire request at once.
         Arguments (and their function):
@@ -775,8 +803,8 @@ class Image:
             * Test: if set to True, the bot will be run in its test mode - so not making any edits to the wiki
         """
 
-        if test is True:  # Make sure the bot is set to test mode (and does not make any edits)
-            self.testing = True
+        # Make sure the bot is set to test mode (and does not make any edits)
+        self.testing = test
 
         # First things first (addition 2024-03-22)
         # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
@@ -792,7 +820,6 @@ class Image:
         # Properties that should be set on Commons
         print(
             "I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
-        # noinspection PyBroadException
         try:
             # Perform these tasks at all time
             self.get_commons_claims()

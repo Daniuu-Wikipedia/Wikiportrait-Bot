@@ -879,7 +879,6 @@ class Image:
 
         return True
 
-
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False, test=False):
         """This function can be used to do handle an entire request at once.
         Arguments (and their function):

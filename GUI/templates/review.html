@@ -37,6 +37,7 @@
                 </div>
                 <input type="text"
                        id="i11"
+                       name="i11"
                        class="form-input"
                        value="WIDGET NOG NIET GEBRUIKEN"
                        disabled>
@@ -46,12 +47,13 @@
                     <label for="i12" class="form-label">Datum waarop foto genomen is (DD/MM/YYYY)</label>
                     <input type="checkbox"
                            id="check12"
-                           name="check12"
+                           name="checkdate"
                            class="form-checkbox"
                            unchecked>
                 </div>
                 <input type="text"
                        id="i12"
+                       name="datevalue"
                        class="form-input"
                        value="{{ bot.date.day }}/{{ bot.date.month }}/{{ bot.date.year}}"
                        disabled>
@@ -61,12 +63,13 @@
                     <label for="i13" class="form-label">Bewerkingssamenvatting</label>
                     <input type="checkbox"
                            id="check13"
-                           name="check13"
+                           name="checksummary"
                            class="form-checkbox"
                            unchecked>
                 </div>
                 <input type="text"
                        id="i13"
+                       name="summaryvalue"
                        class="form-input"
                        value="{{ bot.sum }}"
                        disabled>
@@ -81,12 +84,13 @@
                            class="form-label">Naam v/d categorie op Wikimedia Commons</label>
                     <input type="checkbox"
                            id="check21"
-                           name="check21"
+                           name="checkcat"
                            class="form-checkbox"
                            unchecked>
                 </div>
                 <input type="text"
                        id="i21"
+                       name="catvalue"
                        class="form-input"
                        value="{{ bot.name }}"
                        disabled>
@@ -96,12 +100,13 @@
                     <label for="i22" class="form-label">Bijschrift op de Nederlandstalige Wikipedia</label>
                     <input type="checkbox"
                            id="check22"
-                           name="check22"
+                           name="checkcaption"
                            class="form-checkbox"
                            unchecked>
                 </div>
                 <input type="text"
                        id="i22"
+                       name="captionvalue"
                        value="{{ bot.name }} in {{ bot.date.year }}"
                        class="form-input"
                        disabled>
@@ -111,12 +116,13 @@
                     <label for="license" class="form-label">Afbeelding vrijgegeven onder licentie</label>
                     <input type="checkbox"
                            id="check23"
-                           name="check23"
+                           name="checklicence"
                            class="form-checkbox"
                            unchecked>
                 </div>
                 <select id="license"
                         class="form-select"
+                        name="licencevalue"
                         disabled>
                     <option value="Commons" selected>Inladen vanaf Commons</option>
                     {% for option in license_options %}

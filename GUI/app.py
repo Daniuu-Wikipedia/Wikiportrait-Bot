@@ -10,6 +10,9 @@ from time import sleep
 # Import Toolforge to update the user agent of the app
 import toolforge
 
+# Datetime library to assist handling of some dates
+import datetime as dt
+
 toolforge.set_user_agent('Wikiportret-updater',
                          email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
 
@@ -109,9 +112,24 @@ def review():
 # The page the users will see whenever they submit an image for posting
 @app.route('/submit', methods=['POST', 'GET'])
 def submit():
-    global data
+    global data, bot_object
     if request.method == 'POST':
-        print('check12' in request.form)
+        # First things first: we need to adjust some values
+        # But this only happens if some specific checkboxes are checked
+        # If a checkbox is checked, it's name will appear in request.form
+        if 'checkdate' in request.form:  # Date of image capture is adjusted
+            d, m, y = request.form['datevalue'].strip().split('/')
+            d, m, y = int(d.strip()), int(m.strip()), int(y.strip())
+            bot_object.date = dt.datetime(y, m, d)
+            del d, m, y  # Temporary variables, clear these
+        if 'checksummary' in request.form:  # Use custom edit summary
+            bot_object.sum = request.form['summaryvalue'].strip()
+        if 'checkcat' in request.form:  # Custom category name
+            bot_object.catname = request.form['catvalue'].strip()  # Call the correct catname
+        if 'checkcaption' in request.form:  # Custom caption
+            bot_object.caption = request.form['captionvalue'].strip()
+        if 'checklicence' in request.form:  # Custom license, there is still a bug here...
+            bot_object.license = request.form['licencevalue'].strip()
 
         return render_template('review.html',
                                data=data,

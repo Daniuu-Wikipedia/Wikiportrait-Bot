@@ -55,8 +55,8 @@ def load():
         return 'You can only POST to this page!'
     else:
         # Handle the POST request
-        article_nl: str = request.form['Article'].strip()
-        image: str = request.form['File'].strip()
+        article_nl = request.form['Article'].strip()
+        image = request.form['File'].strip()
         data.image_name = image
         data.nlart = article_nl  # Centralize the settings to the global DATA object
         # In the background, we will start setting up the bot
@@ -110,18 +110,17 @@ def review():
 @app.route('/submit', methods=['POST', 'GET'])
 def submit():
     global data
-    return render_template('error.html',
-                           message='''Bovenal bemin één God.\n
-Zweer niet ijdel, vloek noch spot.\n
-Heilig steeds de dag des Heren.\n
-Vader, moeder zult gij eren.\n
-Dood niet, geef geen ergernis,\n
-Doe nooit wat onkuisheid is.\n
-Vlucht het stelen en bedriegen.\n
-Ook de achterklap en 't liegen.\n
-Wees steeds kuis in uw gemoed.\n
-En begeer nooit iemands goed.''')
+    if request.method == 'POST':
+        print('check12' in request.form)
 
+        return render_template('review.html',
+                               data=data,
+                               bot=bot_object,
+                               license_options=Image.licenses.keys(),
+                               selected_license='CC-BY-SA 4.0',
+                               user_name='Test user')
+    else:
+        print('THIS PAGE CAN ONLY BE CALLED VIA A POST REQUEST!')
 
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON

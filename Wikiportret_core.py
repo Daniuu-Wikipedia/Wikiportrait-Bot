@@ -15,6 +15,7 @@ The bot will do a couple of tasks:
 Information can be found in Wikiportret ticket 2021021010009189 (VRT access required)
 """
 
+import threading  # Required to speed up dealing with the web interface
 import requests
 import urllib
 import time
@@ -837,7 +838,7 @@ class Image:
         # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
         # If a disambiguation page is detected, an error will be thrown
         if self.is_dp():
-            print('WARNING: the page you passed is a disambiguation page!')
+            print('ERROR: the page you passed is a disambiguation page!')
             time.sleep(10)
             raise ValueError('Found a disambiguation page - stopping the processing!')
 
@@ -851,6 +852,32 @@ class Image:
         print('Getting information on when the image was generated')
         self.get_image_date()
 
+    def prepare_image_data(self):
+        # More or less the same as prepare_information, just with threading enabled
+        self.testing = True  # This is a safety measure to present
+        # First, check whether we are dealing with a dp
+        if self.is_dp():
+            print('ERROR: the page you passed is a disambiguation page!')
+            time.sleep(10)
+            raise ValueError('Found a disambiguation page - stopping the processing!')
+        # Vamos!
+        # For convenience, add threads to this party
+        t1 = threading.Thread(target=self.get_commons_claims)
+        t2 = threading.Thread(target=self.get_commons_text)
+
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        # Wikidata
+        t3 = threading.Thread(target=self.ini_wikidata)
+        t3.start()
+        t3.join()
+
+        self.get_image_date()
+
+        return True
 
 
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False, test=False):

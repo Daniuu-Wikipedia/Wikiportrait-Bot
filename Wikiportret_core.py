@@ -275,6 +275,8 @@ class Image:
                                           microsecond=0,
                                           minute=0,
                                           second=0)
+        else:
+            raise TypeError('Dates must be valid datetimes!')
 
     @date.deleter
     def date(self):

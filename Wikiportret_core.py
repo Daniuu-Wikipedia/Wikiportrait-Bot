@@ -500,7 +500,6 @@ class Image:
             return None  # No usefull date in the Commons source text
         date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
         date_found = date_found.replace(' ', '').replace('|date=', '')
-        print(date_found)
 
     def get_image_date(self):
         """

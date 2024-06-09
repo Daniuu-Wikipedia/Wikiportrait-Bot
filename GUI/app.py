@@ -19,7 +19,7 @@ toolforge.set_user_agent('Wikiportret-updater',
 
 # Import some auxiliary classes
 from objects import SiteSettings
-from Wikiportret_test import Image
+from Wikiportret_core import Image
 
 data = SiteSettings()
 bot_object = None

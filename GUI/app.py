@@ -3,7 +3,9 @@
 # render_template: the functionality to deal with .html-templates
 # request: to be able to handle requests using the Flask library
 import threading
+import mwoauth
 
+import flask
 from flask import Flask, render_template, request, Response
 from time import sleep
 
@@ -21,6 +23,8 @@ toolforge.set_user_agent('Wikiportret-updater',
 # from flask_sqlalchemy import SQLAlchemy
 
 # Import some auxiliary classes
+import os
+import tomllib
 from objects import SiteSettings
 from Wikiportret_core import Image
 
@@ -31,16 +35,97 @@ bot_object = None
 app = Flask(__name__)
 
 
-# Setup up the starting screen
+# Load configuration from TOML file
+__dir__ = os.path.dirname(__file__)
+with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
+    app.config.update(tomllib.load(f))
+
+
+
+# New code featuring OAuth
+
+# Load configuration from TOML file
+__dir__ = os.path.dirname(__file__)
+with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
+    app.config.update(tomllib.load(f))
+
+
 @app.route('/')
 def index():
+    greeting = app.config['GREETING']
+    username = flask.session.get('username', None)
+    return flask.render_template(
+        'index.html', username=username, greeting=greeting)
+
+
+@app.route('/login')
+def login():
+    """Initiate an OAuth login.
+
+    Call the MediaWiki server to get request secrets and then redirect the
+    user to the MediaWiki server to sign the request.
+    """
+    consumer_token = mwoauth.ConsumerToken(
+        app.config['CONSUMER_KEY'], app.config['CONSUMER_SECRET'])
+    try:
+        redirect, request_token = mwoauth.initiate(
+            app.config['OAUTH_MWURI'], consumer_token)
+    except Exception:
+        app.logger.exception('mwoauth.initiate failed')
+        return flask.redirect(flask.url_for('index'))
+    else:
+        flask.session['request_token'] = dict(zip(
+            request_token._fields, request_token))
+        return flask.redirect(redirect)
+
+
+@app.route('/oauth-callback')
+def oauth_callback():
+    """OAuth handshake callback."""
+    if 'request_token' not in flask.session:
+        flask.flash(u'OAuth callback failed. Are cookies disabled?')
+        return flask.redirect(flask.url_for('index'))
+
+    consumer_token = mwoauth.ConsumerToken(
+        app.config['CONSUMER_KEY'], app.config['CONSUMER_SECRET'])
+
+    try:
+        access_token = mwoauth.complete(
+            app.config['OAUTH_MWURI'],
+            consumer_token,
+            mwoauth.RequestToken(**flask.session['request_token']),
+            flask.request.query_string)
+
+        identity = mwoauth.identify(
+            app.config['OAUTH_MWURI'], consumer_token, access_token)
+    except Exception:
+        app.logger.exception('OAuth authentication failed')
+
+    else:
+        flask.session['access_token'] = dict(zip(
+            access_token._fields, access_token))
+        flask.session['username'] = identity['username']
+
+    return flask.redirect(flask.url_for('index'))
+
+
+@app.route('/logout')
+def logout():
+    """Log the user out by clearing their session."""
+    flask.session.clear()
+    return flask.redirect(flask.url_for('index'))
+
+
+# Setup up the starting screen
+@app.route('/old')
+def index_old():
     global data
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument
     # Perform these actions if a POST request is sent (submitted via the form)
     if request.method == 'POST':
         pass  # Perform actions to initialize the form
-    return render_template('index.html',
+    return render_template('indexold.html',
                            data=data,
                            user_name='Test')
 

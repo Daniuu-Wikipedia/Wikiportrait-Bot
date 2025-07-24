@@ -13,6 +13,5 @@ PyInstaller.__main__.run([
     '--onefile',
     '--console',
     '--clean'
-    #r'--add-data <C:\Users\Student Daniel\Anaconda3\Lib\site-packages\pip\_vendor\certifi;cacert.pem>'
     #Console for I/O is required
 ])

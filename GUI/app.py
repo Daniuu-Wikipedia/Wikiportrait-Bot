@@ -100,13 +100,14 @@ def oauth_callback():
             app.config['OAUTH_MWURI'], consumer_token, access_token)
     except Exception:
         app.logger.exception('OAuth authentication failed')
+        return flask.redirect(flask.url_for('index'))
 
     else:
         flask.session['access_token'] = dict(zip(
             access_token._fields, access_token))
         flask.session['username'] = identity['username']
 
-    return flask.redirect(flask.url_for('index'))
+    return flask.redirect(flask.url_for('input'))
 
 
 @app.route('/logout')
@@ -117,17 +118,17 @@ def logout():
 
 
 # Setup up the starting screen
-@app.route('/old')
-def index_old():
+@app.route('/input')
+def input():
     global data
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument
     # Perform these actions if a POST request is sent (submitted via the form)
     if request.method == 'POST':
         pass  # Perform actions to initialize the form
-    return render_template('indexold.html',
+    return render_template('input.html',
                            data=data,
-                           user_name='Test')
+                           user_name=flask.session['username'])
 
 
 # Create a page to be displayed while the bot is getting the initial data

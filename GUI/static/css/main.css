@@ -92,16 +92,26 @@ body {
 
 /* CSS for the user info box (bottom of the page, shows who is currently logged in) */
 /* This CSS code was generously provided by ChatGPT */
-.user-info-box {
+.user-info-box, .user-info-box-logged-out {
     position: fixed;
     bottom: 0.1vh; /* Adjust the distance from the bottom as needed */
     right: 0.1%; /* Adjust the distance from the right as needed */
     /* background-color: #3498db; */
-    color: #808080;
     padding: 5px;
     border-radius: 3px;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
+
+.user-info-box{
+    color: #808080;
+}
+
+.user-info-box-logged-out{
+    color: #ff0000;
+    background-color: #ffcc00;
+    font-weight: bold;
+}
+
 
 .large {
     font-size: 24px;

@@ -6,7 +6,7 @@ import threading
 import mwoauth
 
 import flask
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, session
 from time import sleep
 
 # Import Toolforge to update the user agent of the app
@@ -34,13 +34,10 @@ bot_object = None
 # Define the application (this will be the object representing the web page we're interested in)
 app = Flask(__name__)
 
-
 # Load configuration from TOML file
 __dir__ = os.path.dirname(__file__)
 with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
     app.config.update(tomllib.load(f))
-
-
 
 # New code featuring OAuth
 
@@ -55,7 +52,8 @@ def index():
     greeting = app.config['GREETING']
     username = flask.session.get('username', None)
     return flask.render_template(
-        'index.html', username=username, greeting=greeting)
+        # Warning: do not start this version of the webservice!
+        'input.html', username=username, greeting=greeting)
 
 
 @app.route('/login')
@@ -128,7 +126,7 @@ def input():
         pass  # Perform actions to initialize the form
     return render_template('input.html',
                            data=data,
-                           user_name=flask.session['username'])
+                           user_name=flask.session.get('username', None))
 
 
 # Create a page to be displayed while the bot is getting the initial data
@@ -136,6 +134,14 @@ def input():
 def load():
     # This page is designed to facilitate loading relevant data in the background
     # This page must be called by the index page
+
+    user = flask.session.get('username', None)
+    if user is None:
+        message = 'AUTHENTICATION ERROR!'
+        return render_template('error.html',
+                               message=message)
+
+
     global data
     global bot_object  # Not ideal, but it does work
     if request.method == 'GET':
@@ -187,12 +193,17 @@ def review():
     global data, bot_object
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
+    user = flask.session.get('username', None)
+    if user is None:
+        message = 'AUTHENTICATION ERROR!'
+        return render_template('error.html',
+                               message=message)
     return render_template('review.html',
                            data=data,
                            bot=bot_object,
                            license_options=Image.licenses.keys(),
                            selected_license='CC-BY-SA 4.0',
-                           user_name='Test user')
+                           user_name=user)
 
 
 # The page the users will see whenever they submit an image for posting
@@ -225,6 +236,7 @@ def submit():
                                user_name='Test user')
     else:
         print('THIS PAGE CAN ONLY BE CALLED VIA A POST REQUEST!')
+
 
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON

@@ -36,8 +36,16 @@
         <script src="{{ url_for('static', filename='js/text_submit_field_1.js') }}"></script>
     </form>
 </div>
+{% if user_name %}
 <div class="user-info-box">
     <!-- Keep the name of the logged-in user -->
     <span id="user-name">Ingelogd als {{ user_name }}</span>
 </div>
+{% else %}
+<div class="user-info-box-logged-out">
+    <!-- Keep the name of the logged-in user -->
+    <span id="user-name-missing">OPGELET: U bent NIET ingelogd!</span>
+</div>
+
+{% endif %}
 {% endblock %}

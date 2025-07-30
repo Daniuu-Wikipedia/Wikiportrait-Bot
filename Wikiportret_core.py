@@ -984,7 +984,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Wendela gevers deynoot-1747862631.jpeg', "Wendela Gevers Deynoot")
+    a = Image('Jesse luijendijk wethouder.jpg', "Jesse Luijendijk")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

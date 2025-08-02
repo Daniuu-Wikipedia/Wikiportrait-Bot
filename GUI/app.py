@@ -53,7 +53,7 @@ def index():
     username = flask.session.get('username', None)
     return flask.render_template(
         # Warning: do not start this version of the webservice!
-        'input.html', username=username, greeting=greeting)
+        'index.html', username=username, greeting=greeting)
 
 
 @app.route('/login')

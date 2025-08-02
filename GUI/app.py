@@ -6,9 +6,6 @@ import threading
 import mwoauth
 
 import flask
-from flask import Flask, render_template, request, redirect, url_for, Response
-from time import sleep
-
 # Import Toolforge to update the user agent of the app
 import toolforge
 
@@ -32,15 +29,12 @@ data = SiteSettings()
 bot_object = None
 
 # Define the application (this will be the object representing the web page we're interested in)
-app = Flask(__name__)
-
+app = flask.Flask(__name__)
 
 # Load configuration from TOML file
 __dir__ = os.path.dirname(__file__)
 with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
     app.config.update(tomllib.load(f))
-
-
 
 # New code featuring OAuth
 
@@ -124,11 +118,11 @@ def input():
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument
     # Perform these actions if a POST request is sent (submitted via the form)
-    if request.method == 'POST':
+    if flask.request.method == 'POST':
         pass  # Perform actions to initialize the form
-    return render_template('input.html',
-                           data=data,
-                           user_name=flask.session['username'])
+    return flask.render_template('input.html',
+                                 data=data,
+                                 user_name=flask.session['username'])
 
 
 # Create a page to be displayed while the bot is getting the initial data
@@ -138,14 +132,14 @@ def load():
     # This page must be called by the index page
     global data
     global bot_object  # Not ideal, but it does work
-    if request.method == 'GET':
+    if flask.request.method == 'GET':
         return 'This page cannot be loaded directly!'
-    elif request.method != 'POST':
+    elif flask.request.method != 'POST':
         return 'You can only POST to this page!'
     else:
         # Handle the POST request
-        article_nl = request.form['Article'].strip()
-        image = request.form['File'].strip()
+        article_nl = flask.request.form['Article'].strip()
+        image = flask.request.form['File'].strip()
         data.image_name = image
         data.nlart = article_nl  # Centralize the settings to the global DATA object
         # In the background, we will start setting up the bot
@@ -163,51 +157,54 @@ def load():
         thread.start()
 
         # Redirect naar de loading pagina
-        return render_template('loading.html')
+        return flask.render_template('loading.html')
+
+
 # Define the routing towards the review section
 @app.route('/review', methods=['POST', 'GET'])
 def review():
     global data, bot_object
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
-    return render_template('review.html',
-                           data=data,
-                           bot=bot_object,
-                           license_options=Image.licenses.keys(),
-                           selected_license='CC-BY-SA 4.0',
-                           user_name='Test user')
+    return flask.render_template('review.html',
+                                 data=data,
+                                 bot=bot_object,
+                                 license_options=Image.licenses.keys(),
+                                 selected_license='CC-BY-SA 4.0',
+                                 user_name='Test user')
 
 
 # The page the users will see whenever they submit an image for posting
 @app.route('/submit', methods=['POST', 'GET'])
 def submit():
     global data, bot_object
-    if request.method == 'POST':
+    if flask.request.method == 'POST':
         # First things first: we need to adjust some values
         # But this only happens if some specific checkboxes are checked
-        # If a checkbox is checked, it's name will appear in request.form
-        if 'checkdate' in request.form:  # Date of image capture is adjusted
-            d, m, y = request.form['datevalue'].strip().split('/')
+        # If a checkbox is checked, it's name will appear in flask.request.form
+        if 'checkdate' in flask.request.form:  # Date of image capture is adjusted
+            d, m, y = flask.request.form['datevalue'].strip().split('/')
             d, m, y = int(d.strip()), int(m.strip()), int(y.strip())
             bot_object.date = dt.datetime(y, m, d)
             del d, m, y  # Temporary variables, clear these
-        if 'checksummary' in request.form:  # Use custom edit summary
-            bot_object.sum = request.form['summaryvalue'].strip()
-        if 'checkcat' in request.form:  # Custom category name
-            bot_object.catname = request.form['catvalue'].strip()  # Call the correct catname
-        if 'checkcaption' in request.form:  # Custom caption
-            bot_object.caption = request.form['captionvalue'].strip()
-        if 'checklicence' in request.form:  # Custom license, there is still a bug here...
-            bot_object.license = request.form['licencevalue'].strip()
+        if 'checksummary' in flask.request.form:  # Use custom edit summary
+            bot_object.sum = flask.request.form['summaryvalue'].strip()
+        if 'checkcat' in flask.request.form:  # Custom category name
+            bot_object.catname = flask.request.form['catvalue'].strip()  # Call the correct catname
+        if 'checkcaption' in flask.request.form:  # Custom caption
+            bot_object.caption = flask.request.form['captionvalue'].strip()
+        if 'checklicence' in flask.request.form:  # Custom license, there is still a bug here...
+            bot_object.license = flask.request.form['licencevalue'].strip()
 
-        return render_template('review.html',
-                               data=data,
-                               bot=bot_object,
-                               license_options=Image.licenses.keys(),
-                               selected_license='CC-BY-SA 4.0',
-                               user_name='Test user')
+        return flask.render_template('review.html',
+                                     data=data,
+                                     bot=bot_object,
+                                     license_options=Image.licenses.keys(),
+                                     selected_license='CC-BY-SA 4.0',
+                                     user_name='Test user')
     else:
         print('THIS PAGE CAN ONLY BE CALLED VIA A POST REQUEST!')
+
 
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON

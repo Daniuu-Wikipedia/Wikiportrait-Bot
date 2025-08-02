@@ -372,6 +372,18 @@ class Image:
         self.qid = next(iter(q.keys()))
         assert self.qid != '-1', 'I could not find a valid Wikidata item!'
         self.claims = q[self.qid]['claims']
+        birth_date = None
+        death_date = None
+        if 'P569' in self.claims:
+            # birthdate
+            birth_date = self.claims['P569'][0]['mainsnak']['datavalue']['value']['time']
+        if 'P570' in self.claims:
+            # deathdate
+            birth_date = self.claims['P570'][0]['mainsnak']['datavalue']['value']['time']
+        death_date = dt.datetime.strptime(birth_date[1:], "%Y-%m-%dT%H:%M:%SZ").strftime(
+            "%d/%m/%Y")
+        self.deathdate = death_date
+
         return self.qid, self.claims
 
     def interwiki(self):

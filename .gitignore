@@ -16,4 +16,5 @@ build/*
 dist/*
 *.yaml
 *.toml
+GUI/Wikiportret_core.py
 /GUI/Wikiportret_core.py

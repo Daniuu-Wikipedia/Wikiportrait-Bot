@@ -2,50 +2,46 @@
 {% extends 'base.html' %}
 
 {% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Input_fields.css') }}">
 {% endblock %}
 
 {% block body %}
-<!-- Generate the input section -->
- <div class="inputlayer">
-    <!-- First Input: name of the file on Commons -->
-    <form action="load"
-          style="display: flex;"
-          method="POST">
+    <!-- Generate the input section -->
+    <div class="inputlayer">
+        <form action="load"
+              method="POST"
+              style="display: flex; flex-direction: column; gap: 1rem;">
 
-        <p>Naam v/d afbeelding op Commons </p>
-        <input type="text"
-               id="File"
-               name="File"
-               style="background-color: rgb(185, 233, 255);"
-               oninput="changeBackgroundColorFile(this.value)"
-               placeholder="Naam van het bestand">
+            <div class="form-group">
+                <label for="File">Naam v/d afbeelding op Commons</label>
+                <input type="text"
+                       id="File"
+                       name="File"
+                       class="form-input"
+                       style="background-color: rgb(185, 233, 255);"
+                       oninput="changeBackgroundColorFile(this.value)"
+                       placeholder="Naam van het bestand">
+            </div>
 
-        <!-- Second Input: name of the Article on the Dutch Wikipedia -->
-        <p>Naam v/h artikel</p>
-        <input type="text"
-               id="Article"
-               name="Article"
-               oninput="checkForProhibitedCharacters(this.value)"
-               style="background-color: rgb(185, 233, 255);"
-               placeholder="Naam van het artikel">
+            <div class="form-group">
+                <label for="Article">Naam v/h artikel</label>
+                <input type="text"
+                       id="Article"
+                       name="Article"
+                       class="form-input"
+                       oninput="checkForProhibitedCharacters(this.value)"
+                       style="background-color: rgb(185, 233, 255);"
+                       placeholder="Naam van het artikel">
+            </div>
 
-        <!-- Button to submit this file to the server -->
-        <input type="submit"
-               id="submit-button"
-               value="VERWERK">
-        <script src="{{ url_for('static', filename='js/text_submit_field_1.js') }}"></script>
-    </form>
-</div>
-{% if user_name %}
-<div class="user-info-box">
-    <!-- Keep the name of the logged-in user -->
-    <span id="user-name">Ingelogd als {{ user_name }}</span>
-</div>
-{% else %}
-<div class="user-info-box-logged-out">
-    <!-- Keep the name of the logged-in user -->
-    <span id="user-name-missing">OPGELET: U bent NIET ingelogd!</span>
-</div>
-
-{% endif %}
+            <input type="submit"
+                   id="submit-button"
+                   value="VERWERK"
+                   style="font-size: 1.2rem; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer;">
+            <script src="{{ url_for('static', filename='js/text_submit_field_1.js') }}"></script>
+        </form>
+    </div>
+    <div class="user-info-box">
+        <span id="user-name">Ingelogd als {{ user_name }}</span>
+    </div>
 {% endblock %}

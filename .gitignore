@@ -15,5 +15,5 @@ __pycache__
 build/*
 dist/*
 *.yaml
-/GUI/Wikiportret_core.py
 *.toml
+/GUI/Wikiportret_core.py

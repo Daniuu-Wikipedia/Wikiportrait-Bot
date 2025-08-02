@@ -6,7 +6,7 @@ import threading
 import mwoauth
 
 import flask
-from flask import Flask, render_template, request, Response, session
+from flask import Flask, render_template, request, redirect, url_for, Response
 from time import sleep
 
 # Import Toolforge to update the user agent of the app
@@ -34,10 +34,13 @@ bot_object = None
 # Define the application (this will be the object representing the web page we're interested in)
 app = Flask(__name__)
 
+
 # Load configuration from TOML file
 __dir__ = os.path.dirname(__file__)
 with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
     app.config.update(tomllib.load(f))
+
+
 
 # New code featuring OAuth
 
@@ -52,8 +55,7 @@ def index():
     greeting = app.config['GREETING']
     username = flask.session.get('username', None)
     return flask.render_template(
-        # Warning: do not start this version of the webservice!
-        'index.html', username=username, greeting=greeting)
+        'input.html', username=username, greeting=greeting)
 
 
 @app.route('/login')
@@ -126,7 +128,7 @@ def input():
         pass  # Perform actions to initialize the form
     return render_template('input.html',
                            data=data,
-                           user_name=flask.session.get('username', None))
+                           user_name=flask.session['username'])
 
 
 # Create a page to be displayed while the bot is getting the initial data
@@ -134,14 +136,6 @@ def input():
 def load():
     # This page is designed to facilitate loading relevant data in the background
     # This page must be called by the index page
-
-    user = flask.session.get('username', None)
-    if user is None:
-        message = 'AUTHENTICATION ERROR!'
-        return render_template('error.html',
-                               message=message)
-
-
     global data
     global bot_object  # Not ideal, but it does work
     if request.method == 'GET':
@@ -156,54 +150,32 @@ def load():
         data.nlart = article_nl  # Centralize the settings to the global DATA object
         # In the background, we will start setting up the bot
         bot_object = Image(data.image_name, data.nlart)  # Set the bot up
-        bot_object.prepare_image_data()  # Load stuff in the background
 
-        # Now we can start the auxiliary function
-        def respond_while_preparing():
-            yield "I am loading your data!"
-            sleep(1)
-            t1 = threading.Thread(target=bot_object.get_commons_claims)
-            t2 = threading.Thread(target=bot_object.get_commons_text)
-            t3 = threading.Thread(target=bot_object.ini_wikidata)
-
-            t1.start()
-            t2.start()
-            t3.start()
-            t1.join()
-            t2.join()
-            t3.join()
-            # Include JavaScript for redirection
-            # JavaScript provided by ChatGPT
-            del t1, t2, t3
+        def background_load():
+            bot_object.prepare_image_data()  # Load stuff in the background
+            bot_object.get_commons_claims()
+            bot_object.get_commons_text()
+            bot_object.ini_wikidata()
             print(bot_object.claims)
-            # return None  # Just added to debug
-            yield """
-            <script>
-                setTimeout(function() {
-                    window.location.href = '/review';  // Redirect to the final page
-                }, 1000);  // Adjust the delay (in milliseconds) before redirection
-            </script>"""
 
-        return Response(respond_while_preparing(), content_type='text/html')
+        # Start the background loading in a separate thread
+        thread = threading.Thread(target=background_load)
+        thread.start()
 
-
+        # Redirect naar de loading pagina
+        return render_template('loading.html')
 # Define the routing towards the review section
 @app.route('/review', methods=['POST', 'GET'])
 def review():
     global data, bot_object
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
-    user = flask.session.get('username', None)
-    if user is None:
-        message = 'AUTHENTICATION ERROR!'
-        return render_template('error.html',
-                               message=message)
     return render_template('review.html',
                            data=data,
                            bot=bot_object,
                            license_options=Image.licenses.keys(),
                            selected_license='CC-BY-SA 4.0',
-                           user_name=user)
+                           user_name='Test user')
 
 
 # The page the users will see whenever they submit an image for posting
@@ -236,7 +208,6 @@ def submit():
                                user_name='Test user')
     else:
         print('THIS PAGE CAN ONLY BE CALLED VIA A POST REQUEST!')
-
 
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON

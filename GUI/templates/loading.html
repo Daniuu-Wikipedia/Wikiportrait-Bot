@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Laden...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+{% endblock %}
+
+{% block body %}
+    <div class="loading-container">
+        <h1>Bezig met laden...</h1>
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+        <p id="loading-message">Even geduld, de gegevens worden opgehaald.</p>
+    </div>
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+{% endblock %}

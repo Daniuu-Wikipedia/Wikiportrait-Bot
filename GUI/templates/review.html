@@ -9,17 +9,17 @@
 
 {% block body %}
 <!-- Generate the input section -->
- <div class="inputoverview">
+<div class="inputoverview">
     <!-- First layer: whatever the user entered in the input section -->
-     <div class="left-element">
-        Naam v/d afbeelding op Commons: <span class="user-input-frame">{{ bot.file }}</span>
-     </div>
-     <p></p> <!-- Put here to sync the height of the light blue layer to the height of the frames -->
-     <div class="right-element">
-         Naam v/h artikel: <span class="user-input-frame">{{ data.nlart }}</span>
-     </div>
-
+    <div class="left-element">
+        Naam v/d afbeelding op Commons: <span class="user-input-frame"><span class="truncated-text" title="{{ bot.file }}">{{ bot.file }}</span></span>
+    </div>
+    <p></p> <!-- Put here to sync the height of the light blue layer to the height of the frames -->
+    <div class="right-element">
+        Naam v/h artikel: <span class="user-input-frame">{{ data.nlart }}</span>
+    </div>
 </div>
+
 <form action="submit"
       method="POST">
     <div class="form-container">
@@ -27,130 +27,141 @@
         <div class="form-column">
             <span class="large">Informatie voor Wikidata:</span>
             <div class="form-group">
-                <div class="label-checkbox">
-                    <label for="i11" class="form-label">Naam v/d foto</label>
+                <label for="i11" class="form-label">Naam v/d foto</label>
+                <div class="input-container">
                     <input type="checkbox"
                            id="check11"
                            name="check11"
                            class="form-checkbox"
                            unchecked>
+                    <input type="text"
+                           id="i11"
+                           name="i11"
+                           class="form-input"
+                           value="WIDGET NOG NIET GEBRUIKEN"
+                           disabled>
                 </div>
-                <input type="text"
-                       id="i11"
-                       name="i11"
-                       class="form-input"
-                       value="WIDGET NOG NIET GEBRUIKEN"
-                       disabled>
             </div>
             <div class="form-group">
-                <div class="label-checkbox">
-                    <label for="i12" class="form-label">Datum waarop foto genomen is (DD/MM/YYYY)</label>
+                <label for="i12" class="form-label">Datum waarop foto genomen is (DD/MM/YYYY)</label>
+                <div class="input-container">
                     <input type="checkbox"
                            id="check12"
                            name="checkdate"
                            class="form-checkbox"
                            unchecked>
+                    <input type="date"
+                           id="i12"
+                           name="datevalue"
+                           class="form-input"
+                           value="{{ bot.date.day }}/{{ bot.date.month }}/{{ bot.date.year}}"
+                           disabled>
                 </div>
-                <input type="text"
-                       id="i12"
-                       name="datevalue"
-                       class="form-input"
-                       value="{{ bot.date.day }}/{{ bot.date.month }}/{{ bot.date.year}}"
-                       disabled>
             </div>
             <div class="form-group">
-                <div class="label-checkbox">
-                    <label for="i13" class="form-label">Bewerkingssamenvatting</label>
+                <label for="i13" class="form-label">Bewerkingssamenvatting</label>
+                <div class="input-container">
                     <input type="checkbox"
                            id="check13"
                            name="checksummary"
                            class="form-checkbox"
                            unchecked>
+                    <input type="text"
+                           id="i13"
+                           name="summaryvalue"
+                           class="form-input"
+                           value="{{ bot.sum }}"
+                           disabled>
                 </div>
-                <input type="text"
-                       id="i13"
-                       name="summaryvalue"
-                       class="form-input"
-                       value="{{ bot.sum }}"
-                       disabled>
+            </div>
+            <div class="form-group">
+                <label for="i14" class="form-label">Overlijdensdatum (DD/MM/YYYY)</label>
+                <div class="input-container">
+                    <input type="text"
+                           id="i14"
+                           name="deathdatevalue"
+                           class="form-input"
+                           value="{{ bot.deathdate }}" 
+                           disabled>
+                </div>
             </div>
         </div>
         <!-- Second column: all information on the image itself -->
         <div class="form-column">
             <span class="large">Informatie over de afbeelding:</span>
             <div class="form-group">
-                <div class="label-checkbox">
-                    <label for="i21"
-                           class="form-label">Naam v/d categorie op Wikimedia Commons</label>
+                <label for="i21"
+                       class="form-label">Categorienaam op Wiki Commons</label>
+                <div class="input-container">
                     <input type="checkbox"
                            id="check21"
                            name="checkcat"
                            class="form-checkbox"
                            unchecked>
+                    <input type="text"
+                           id="i21"
+                           name="catvalue"
+                           class="form-input"
+                           value="{{ bot.name }}"
+                           disabled>
                 </div>
-                <input type="text"
-                       id="i21"
-                       name="catvalue"
-                       class="form-input"
-                       value="{{ bot.name }}"
-                       disabled>
             </div>
             <div class="form-group">
-                <div class="label-checkbox">
-                    <label for="i22" class="form-label">Bijschrift op de Nederlandstalige Wikipedia</label>
+                <label for="i22" class="form-label">Bijschrift op de WikiNL</label>
+                <div class="input-container">
                     <input type="checkbox"
                            id="check22"
                            name="checkcaption"
                            class="form-checkbox"
                            unchecked>
+                    <input type="text"
+                           id="i22"
+                           name="captionvalue"
+                           class="form-input"
+                           value="{{ bot.name }} in {{ bot.date.year }}"
+                           disabled>
                 </div>
-                <input type="text"
-                       id="i22"
-                       name="captionvalue"
-                       value="{{ bot.name }} in {{ bot.date.year }}"
-                       class="form-input"
-                       disabled>
             </div>
             <div class="form-group">
-                <div class="label-checkbox">
-                    <label for="license" class="form-label">Afbeelding vrijgegeven onder licentie</label>
+                <label for="license" class="form-label">Afbeelding vrijgegeven onder licentie</label>
+                <div class="input-container">
                     <input type="checkbox"
                            id="check23"
                            name="checklicence"
                            class="form-checkbox"
                            unchecked>
+                    <select id="license"
+                            class="form-select"
+                            name="licencevalue"
+                            disabled>
+                        <option value="Commons" selected>Inladen vanaf Commons</option>
+                        {% for option in license_options %}
+                            <option value="{{ option }}">{{ option }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <select id="license"
-                        class="form-select"
-                        name="licencevalue"
-                        disabled>
-                    <option value="Commons" selected>Inladen vanaf Commons</option>
-                    {% for option in license_options %}
-                        <option value="{{ option }}">{{ option }}</option>
-                    {% endfor %}
-                </select>
             </div>
         </div>
     </div>
     <!-- And fully at the bottom, we have a third bar with checkboxes -->
     <div class="horizontal-bar">
         <div class="center-align">
-            <label for="checkbox1">Verzorg alle data op Commons</label>
             <input type="checkbox"
                    id="checkbox1"
                    checked>
+            <label for="checkbox1">Verzorg alle data op Commons</label>
         </div>
         <div class="center-align">
-            <label for="checkbox2">Koppel de afbeelding aan Wikidata</label>
             <input type="checkbox"
                    id="checkbox2"
                    checked>
+            <label for="checkbox2">Koppel de afbeelding aan Wikidata</label>
         </div>
         <div class="center-align">
-            <label for="checkbox3">Plaats de afbeelding op nlwiki</label>
             <input type="checkbox"
                    id="checkbox3"
                    checked>
+            <label for="checkbox3">Plaats de afbeelding op nlwiki</label>
         </div>
     </div>
 
@@ -163,4 +174,6 @@
     <!-- Keep the name of the logged-in user -->
     <span id="user-name">Ingelogd als {{ user_name }}</span>
 </div>
+<script src="{{ url_for('static', filename='js/date_formatter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/date_validator.js') }}"></script>
 {% endblock %}

@@ -472,12 +472,11 @@ class Image:
         if not self.claims:
             self.ini_wikidata()
         claim = self.claims.get('P570')  # Returns none if no such claim is present
-        if claim is None:
-            return None  # Just abort the function here
-        for i in claim:
-            if 'mainsnak' in i:
-                main = i['mainsnak']['datavalue']['value']['time']
-                return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
+        if claim is not None:  # Make it return None otherwise
+            for i in claim:
+                if 'mainsnak' in i:
+                    main = i['mainsnak']['datavalue']['value']['time']
+                    return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
 
     def check_person_alive(self, date=None):
         """

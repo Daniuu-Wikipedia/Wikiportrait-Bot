@@ -12,18 +12,16 @@ import toolforge
 # Datetime library to assist handling of some dates
 import datetime as dt
 
-toolforge.set_user_agent('Wikiportret-updater',
-                         email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
-
-# Import all utilities for working with a database
-# Not required in this project
-# from flask_sqlalchemy import SQLAlchemy
-
 # Import some auxiliary classes
 import os
 import tomllib
 from objects import SiteSettings
 from Wikiportret_core import Image
+
+
+toolforge.set_user_agent('Wikiportret-updater',
+                         email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
+
 
 data = SiteSettings()
 bot_object = None

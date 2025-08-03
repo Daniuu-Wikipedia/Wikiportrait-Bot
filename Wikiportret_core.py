@@ -229,6 +229,7 @@ class Image:
         self.mc = None  # A dictionary to store the claims for the Commons item in
         self.comtext = None  # Text associated with the image on Commons (save for a couple of purposes)
         self._imagedate = None  # Set the date at which the image was taken
+        self._timebirth = None  # Store the date of birth of the individual on the picture
         self._timedeath = None  # To store the time of death of the individual
         self._licence = 'CC-BY-SA 4.0'  # Use CC-BY-SA 4.0 as default value (drives properties)
         self._customcaption = None  # Allow for a manual override of the caption
@@ -295,6 +296,19 @@ class Image:
     @death.deleter
     def death(self):
         self._timedeath = None
+
+    @property
+    def birth(self):
+        return self._timebirth
+
+    @birth.setter
+    def birth(self, new):
+        if isinstance(new, dt.datetime):
+            self._timebirth = new
+
+    @birth.deleter
+    def birth(self):
+        self._timebirth = None
 
     # Properties dealing with the license under which the image is released
     # Default licence is CC-BY-SA 4.0
@@ -372,17 +386,10 @@ class Image:
         self.qid = next(iter(q.keys()))
         assert self.qid != '-1', 'I could not find a valid Wikidata item!'
         self.claims = q[self.qid]['claims']
-        birth_date = None
-        death_date = None
-        if 'P569' in self.claims:
-            # birthdate
-            birth_date = self.claims['P569'][0]['mainsnak']['datavalue']['value']['time']
-        if 'P570' in self.claims:
-            # deathdate
-            birth_date = self.claims['P570'][0]['mainsnak']['datavalue']['value']['time']
-        death_date = dt.datetime.strptime(birth_date[1:], "%Y-%m-%dT%H:%M:%SZ").strftime(
-            "%d/%m/%Y")
-        self.deathdate = death_date
+
+        # Extraction of P569 & P570 to occur through other methods (call them by default)
+        self.date_deceased()
+        self.date_born()
 
         return self.qid, self.claims
 
@@ -427,7 +434,7 @@ class Image:
         for i in self.claims.get('P373', ()):
             j = i['mainsnak']['datavalue']['value']
             if j == self.name:
-                return j  # It is already in there, stop the frunction
+                return j  # It is already in there, stop the function
         p18d = {'action': 'wbcreateclaim',
                 'property': 'P373',
                 'snaktype': 'value',
@@ -490,6 +497,22 @@ class Image:
                     main = i['mainsnak']['datavalue']['value']['time']
                     return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
 
+    def date_born(self):
+        """
+        This function checks when a person was born (if the Wikidata property P569 is set like that).
+        returns: Datetime timestamp containing the date at which the person passed away
+        """
+        if self.birth is not None:
+            return self.birth  # No need to check this twice
+        if not self.claims:
+            self.ini_wikidata()
+        claim = self.claims.get('P569')  # Returns none if no such claim is present
+        if claim is not None:  # Make it return None otherwise
+            for i in claim:
+                if 'mainsnak' in i:
+                    main = i['mainsnak']['datavalue']['value']['time']
+                    return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
+
     def check_person_alive(self, date=None):
         """
         Method checks whether a person was alive at the given point in time
@@ -498,9 +521,10 @@ class Image:
         """
         if date is None:  # If no explicit value is passed, get the class
             date = self.date
-        death_date = self.death
-        if death_date is not None and date > death_date:
+        if self.death is not None and date > self.death:
             return False
+        if self.birth is not None and date < self.birth:
+            return False  # Obviously, person was not alive at this point...
         return True
 
     def get_date_from_commons_text(self):

@@ -394,7 +394,7 @@ class Image:
         return self.qid, self.claims
 
     def interwiki(self):
-        """This function will set the interwikilink at Wikidata"""
+        """This function will set the interwikilink to Commons at Wikidata"""
         if self.claims is None or self.qid is None:
             self.ini_wikidata()  # the Wikidata interface should first be  called to see what's already present
         # Begin to initialize the dictionary that will do the job
@@ -403,7 +403,7 @@ class Image:
                'bot': True,
                'summary': self.sum,
                'linksite': 'commonswiki',
-               'linktitle': f'Category:{self.name}'}
+               'linktitle': f'Category:{self.catname}'}
         return self._wikidata.post(iwd)
 
     def set_image(self):
@@ -441,14 +441,14 @@ class Image:
                 'bot': True,
                 'summary': self.sum,
                 'entity': self.qid,
-                'value': f'"{self.name}"'}  # Set a new P373 claim
+                'value': f'"{self.catname}"'}  # Set a new P373 claim
         return self._wikidata.post(p18d)
 
     def purge(self):
         """This function will purge the cache of the corresponding page on Commons and the Wikidata-item"""
         print('I am starting with purging the cache of the file on Commons.')
         purgedic = {'action': 'purge',
-                    'titles': f'Category:{self.name}',
+                    'titles': f'Category:{self.catname}',
                     'forcelinkupdate': True,
                     'forcerecursivelinkupdate': True}
         self._commons.post(purgedic)
@@ -711,7 +711,7 @@ class Image:
         """This function will append the category generated before if it is not yet in the Commons datasheet"""
         if self.comtext is None:
             self.get_commons_text()
-        cat = f'[[Category:{self.name}]]'
+        cat = f'[[Category:{self.catname}]]'
         if cat in self.comtext:
             print('The category was already in the text')
             return None

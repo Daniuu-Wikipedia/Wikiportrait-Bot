@@ -620,7 +620,7 @@ class Image:
         # First, check whether the number has already been set or not
         if self.mc is None:
             self.get_commons_claims()
-        if 'P6305' not in self.mc:  # the property still has to be set
+        if self.mc.get('P6305') is None:  # the property still has to be set
             if self.comtext is None:
                 self.get_commons_text()
             tick = re.findall(r'(\{\{wikiportrait2\|\d{16})', self.comtext)
@@ -650,7 +650,7 @@ class Image:
             self.get_commons_claims()  # Set the claims using the previously defined function
 
         # First, do the P275 thingy
-        if 'P275' not in self.mc:
+        if self.mc.get('P275') is None:
             if self.comtext is None:
                 self.get_commons_text()
             k = re.findall('PERMISSION=\s?\S+ [\d.]+', self.comtext.upper())  # Filter the permission rule (using regex)
@@ -661,7 +661,7 @@ class Image:
 
     def set_licence_properties(self):
         """This function will set the copyright related structured data (P275 and P6216)"""
-        if 'P275' not in self.mc:
+        if self.mc.get('P275') is None:
             self.get_licence_for_image()  # Get the licence for the image
             # Previous versions of the code had the licence incorporated here
             # lic = 'CC-BY-SA 4.0'
@@ -685,7 +685,7 @@ class Image:
             print('P275 was already set')
 
         # Now set the second claim
-        if 'P6216' not in self.mc:
+        if self.mc.get('P6216') is None:
             if self.comtext is None:
                 self.get_commons_text()
             if any((i in self.comtext.lower() for i in ('pd', 'public domain'))):
@@ -730,7 +730,7 @@ class Image:
             self.get_commons_claims()
         if self.qid is None:
             self.ini_wikidata()
-        if 'P180' not in self.mc:
+        if self.mc.get('P180') is None:
             val = f'"entity-type": "item", "numeric-id": {self.qid[1:]},"id": "{self.qid}"'
             dic = {'action': 'wbcreateclaim',
                    'summary': f'{self.sum}, upload via #Wikiportret',

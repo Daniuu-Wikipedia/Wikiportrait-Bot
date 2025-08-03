@@ -2,4 +2,8 @@
 bash Pull.sh
 bash Copy.sh
 
+# Restart the webservice
+# webservice --backend=kubernetes python3.11 restart
+
+
 # EOF

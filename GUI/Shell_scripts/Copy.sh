@@ -23,5 +23,3 @@ rm Wikiportret_CMD_interface.py  # File solely for local use
 rm Installer_Wikiportraitbot.py  # Nobody should run this one from Toolforge
 rm -r __pycache__  # Remove any obsolete Python cache
 
-# Restart the webservice
-# webservice --backend=kubernetes python3.11 restart

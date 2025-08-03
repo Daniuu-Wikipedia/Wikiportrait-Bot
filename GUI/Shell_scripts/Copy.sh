@@ -1,3 +1,7 @@
+# File to sync the latest interface build into the GUI directory
+# Make sure this one is in.gitignore!
+cp ~/Wikiportrait-Bot/Wikiportret_core.py ~/Wikiportrait-Bot/GUI/Wikiportret_core.py
+
 # File to copy all files from the Github repo into the proper directory at Toolfore
 cd ~/Wikiportrait-Bot/GUI
 

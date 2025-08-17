@@ -61,4 +61,26 @@ class WebImage(Image):
 
     # Part 2: overloads for some methods: will directly write stuff to the session once parsed
     # Note: these methods will use the properties from part 1 of the file
+    def set_session_variables(self):
+        """
+        Method stores some variables in the user's session.
+        These variables are used for communication within one specific upload thread
+        """
+        session['name'] = self.name
+        session['file'] = self.file
+        session['qid'] = self.claims_dict
+        session['mid'] = self.commmons_claims
 
+    def read_session_variables(self):
+        """
+        Method re-reads the session variables.
+        Please note: file name & person's name are automatically set from the form
+        """
+        self.claims_dict = session.get('claims_dict')
+        self.commmons_claims = session.get('commmons_claims')
+
+    def clear_session_variables(self):
+        session.pop('name', None)
+        session.pop('qid', None)
+        session.pop('mid', None)
+        session.pop('file', None)

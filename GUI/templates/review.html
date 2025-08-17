@@ -16,7 +16,7 @@
     </div>
     <p></p> <!-- Put here to sync the height of the light blue layer to the height of the frames -->
     <div class="right-element">
-        Naam v/h artikel: <span class="user-input-frame">{{ data.nlart }}</span>
+        Naam v/h artikel: <span class="user-input-frame">{{ bot.name }}</span>
     </div>
 </div>
 
@@ -54,7 +54,10 @@
                            id="i12"
                            name="datevalue"
                            class="form-input"
-                           value="{{ bot.date.day }}/{{ bot.date.month }}/{{ bot.date.year}}"
+                           {% if bot.date %}
+                                value="{{ bot.date.year }}-{{ '%02d'|format(bot.date.month) }}-{{ '%02d'|format(bot.date.day) }}"
+                           {% endif %}
+                           placeholder="2025-08-17"
                            disabled>
                 </div>
             </div>

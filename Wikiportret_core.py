@@ -20,6 +20,7 @@ import requests
 import urllib
 import time
 import datetime as dt
+import os
 import re  # Regex to filter the ticket number
 from requests_oauthlib import OAuth1
 
@@ -61,6 +62,7 @@ class Bot:
         This function will verify whether the OAuth-auth has been configured.
         If not, it will do the configuration.
         """
+        print(os.getcwd())
         if self._auth is None:
             with open(file, 'r') as secret:
                 self._auth = OAuth1(
@@ -271,7 +273,7 @@ class Image:
 
     @date.setter
     def date(self, new):
-        if isinstance(new, dt.datetime):
+        if isinstance(new, (dt.datetime, dt.date)):
             self._imagedate = new.replace(hour=0,
                                           microsecond=0,
                                           minute=0,
@@ -290,25 +292,42 @@ class Image:
 
     @death.setter
     def death(self, new):
-        if isinstance(new, dt.datetime):
+        if isinstance(new, (dt.datetime, dt.date)):
             self._timedeath = new
 
     @death.deleter
     def death(self):
         self._timedeath = None
 
+    # Properties for dealing with the birth date of the subject
     @property
     def birth(self):
         return self._timebirth
 
     @birth.setter
     def birth(self, new):
-        if isinstance(new, dt.datetime):
+        if isinstance(new, (dt.datetime, dt.date)):
             self._timebirth = new
 
     @birth.deleter
     def birth(self):
         self._timebirth = None
+
+    # We need some additional stuff, specifically for the Flask session
+    @property
+    def date_for_session(self):
+        if self.date is not None:
+            return self.date.date().isoformat()
+
+    @property
+    def bd_for_session(self):
+        if self.birth is not None:
+            return self.birth.date().isoformat()
+
+    @property
+    def dd_for_session(self):
+        if self.death is not None:
+            return self.death.date().isoformat()
 
     # Properties dealing with the license under which the image is released
     # Default licence is CC-BY-SA 4.0
@@ -433,7 +452,7 @@ class Image:
             self.ini_wikidata()
         for i in self.claims.get('P373', ()):
             j = i['mainsnak']['datavalue']['value']
-            if j == self.name:
+            if j == self.catname:
                 return j  # It is already in there, stop the function
         p18d = {'action': 'wbcreateclaim',
                 'property': 'P373',
@@ -1023,7 +1042,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('48th_Highlanders_of_Holland_2025_1_(4).jpg', "48th Highlanders of Holland Pipes and Drums")
+    a = Image('Adrienne Vrisekoop.jpeg', "Adrienne Vrisekoop")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

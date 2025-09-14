@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }, 1000);
     } else {
       loadingMessage.textContent = "Gegevens laden: " + progress + "%";
-      setTimeout(updateProgress, 500);
+      setTimeout(updateProgress, 1250);
     }
   }
   setTimeout(function () {

@@ -18,13 +18,9 @@ class WebImage(Image):
         out = {}  # Empty dict
         if self.claims is None:
             self.ini_wikidata()
+        for i in (373, 569, 570):
+            out[f'P{i:d}'] = self.claims.get(f'P{i:d}')
         out['P373'] = self.claims.get('P373')  # Regular string
-        for i in (569, 570):  # Dates, so be careful
-            temp = self.claims.get(f'P{i:d}')
-            if temp is not None:
-                temp = temp.isoformat(timespec='auto')
-            out[f'P{i:d}'] = temp
-            del temp
         # P18 is a special case, requires a list as default
         out['P18'] = self.claims.get('P18', [])
         return out
@@ -33,10 +29,6 @@ class WebImage(Image):
     def claims_dict(self, value):
         if isinstance(value, dict):
             self.claims = value  # To be used when loading to Commons
-            for i in (569, 570):
-                if isinstance(self.claims[i], str):
-                    self.claims[i] = dt.datetime.fromisoformat(self.claims[i])
-
 
     @property
     def commmons_claims(self):
@@ -70,6 +62,11 @@ class WebImage(Image):
         session['file'] = self.file
         session['qid'] = self.claims_dict
         session['mid'] = self.commmons_claims
+        session['customcommons'] = self._customcatname
+        session['birth'] = self.bd_for_session
+        session['death'] = self.dd_for_session
+        session['date'] = self.date_for_session
+        session.modified = True
 
     def read_session_variables(self):
         """
@@ -78,9 +75,31 @@ class WebImage(Image):
         """
         self.claims_dict = session.get('claims_dict')
         self.commmons_claims = session.get('commmons_claims')
+        self.catname = session.get('customcommons')
+        print('Session read', session.get('birth'), session.get('death'), session.get('date'))
+        # Important dates
+        # P569: birth date
+        if session.get('birth') is not None:
+            self.birth = dt.date.fromisoformat(session['birth'])
+        # P570: death date
+        if session.get('death') is not None:
+            self.death = dt.date.fromisoformat(session['death'])
+        # Image generation date
+        if session.get('date') is not None:
+            self.date = dt.date.fromisoformat(session['date'])
+        print('Read', self.birth, self.death, self.date, 'Session date', session.get('date'))
 
-    def clear_session_variables(self):
+    @staticmethod
+    def clear_session_variables():
         session.pop('name', None)
         session.pop('qid', None)
         session.pop('mid', None)
         session.pop('file', None)
+        session.pop('customcommons', None)
+
+
+# Convenient auxiliary method
+def read_from_session():
+    new = WebImage(session['file'], session['name'])
+    new.read_session_variables()
+    return new

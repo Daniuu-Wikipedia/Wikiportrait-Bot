@@ -7,12 +7,10 @@ This is the interface that allows Wikiportret to operate through the command lin
 @author: Daniuu
 """
 from time import sleep
-from sys import exit
 from Wikiportret_core import *  #Import all modules from the Wikiportret core in this interface
 
-
 class Interface:
-    "This class will contain all code for the cmd I/O"
+    """This class will contain all code for the cmd I/O"""
 
     def __init__(self):
         self()

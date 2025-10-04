@@ -21,7 +21,8 @@ from objects import SiteSettings
 
 # from Wikiportret_core import Image
 from Wikiportret_core_web_link import WebImage, read_from_session
-import Wikiportret_API_utils
+import Wikiportret_API_utils as wpor_api
+import Wikiportret_db_utils as db_utils
 
 
 toolforge.set_user_agent('Wikiportret-updater',
@@ -120,7 +121,7 @@ def oauth_callback():
         # Store the access_token
         token_to_store = dict(zip(access_token._fields, access_token))
         # Obtain a valid token from the Wikiportret API
-        wikiportret_key = Wikiportret_API_utils.generate_wikiportret_key()
+        wikiportret_key = wpor_api.generate_wikiportret_key()
 
         # Write data to the db (tokens table)
         query = f"""
@@ -185,6 +186,18 @@ def load():
         # Set some objects to the session during the debugging stage
         flask.session['file'] = flask.request.form['File'].strip()
         flask.session['name'] = flask.request.form['Article'].strip()
+
+        # Set stuff to the database - this goes into the sessions table
+        query = f'''
+        insert into `sessions` (`operator_id`, `page`, `file`) 
+        values ({get_user_id(flask.session['username'])}, {bot_object.name}, {bot_object.file});
+        '''
+        connection = toolforge.toolsdb(app.config['DB_NAME'])
+        with connection.cursor() as cursor:
+            cursor.query(query)
+            cursor.commit()
+            cursor.close()
+        connection.close()
 
         @flask.copy_current_request_context  # Copy current request context into background thread
         def background_load():

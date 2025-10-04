@@ -49,7 +49,7 @@ def index():
     greeting = app.config['GREETING']
     username = flask.session.get('username', None)
     return flask.render_template(
-        'input.html', username=username, greeting=greeting)
+        'index.html', username=username, greeting=greeting)
 
 
 # Convert username into id
@@ -135,7 +135,7 @@ def oauth_callback():
         # Even though flask.session has some security built in to prevent tampering with the session cookie
         flask.session['username'] = identity['username']
 
-    return flask.redirect(flask.url_for('input'))
+    return flask.redirect(flask.url_for('input'))  # After logging in, direct user to login screen
 
 
 @app.route('/logout')

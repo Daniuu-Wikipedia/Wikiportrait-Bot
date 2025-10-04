@@ -1,15 +1,18 @@
-<!DOCTYPE HTML>
-<html>
-    <head>
-        <title>My first Flask OAuth tool</title>
-    </head>
-    <body>
-        {% if username %}
-        <p>Hello {{ username }}!</p>
-        <p><a href="{{ url_for('logout') }}">logout</a></p>
-        {% else %}
-        <p>{{ greeting }}</p>
-        <p><a href="{{ url_for('login') }}">login</a></p>
-        {% endif %}
-    </body>
-</html>
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Laden...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="loading-container">
+    {% if username %}
+    <p>Hello {{ username }}!</p>
+    <p><a href="{{ url_for('logout') }}">logout</a></p>
+    {% else %}
+    <p>Welkom bij Wikiportret! Om door te gaan dient u ingelogd te zijn!</p>
+    <p><a href="{{ url_for('login') }}">Klik hier om in te loggen!</a></p>
+    {% endif %}
+</div>
+{% endblock %}

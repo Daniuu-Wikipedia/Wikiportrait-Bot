@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-    <title>Laden...</title>
+    <title>Wikiportret processor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
 {% endblock %}
 
@@ -15,4 +15,8 @@
     <p><a href="{{ url_for('login') }}">Klik hier om in te loggen!</a></p>
     {% endif %}
 </div>
+<div class="user-info-box">
+    <span id="user-name">Ingelogd als {{ user_name }}</span>
+</div>
+
 {% endblock %}

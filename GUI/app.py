@@ -46,10 +46,14 @@ with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
 
 @app.route('/')
 def index():
-    greeting = app.config['GREETING']
     username = flask.session.get('username', None)
-    return flask.render_template(
-        'index.html', username=username, greeting=greeting)
+    # For development purposes only: manually override the username
+    flask.session['username'] = 'Test user'
+    if username is None:
+        return flask.render_template(
+            'index.html', username=username)
+    # In case user is already logged in, continue
+    return flask.redirect(flask.url_for('input'))
 
 
 # Convert username into id
@@ -70,6 +74,7 @@ def login():
     Call the MediaWiki server to get request secrets and then redirect the
     user to the MediaWiki server to sign the request.
     """
+    flask.session.clear()
     consumer_token = mwoauth.ConsumerToken(
         app.config['CONSUMER_KEY'], app.config['CONSUMER_SECRET'])
     try:
@@ -153,6 +158,8 @@ def input():
     # Perform these actions if a POST request is sent (submitted via the form)
     if flask.request.method == 'POST':
         raise NotImplementedError('API-based loading is not yet supported!')  # Perform actions to initialize the form
+    elif get_user_id(flask.session.get('username')) is None:
+        return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     return flask.render_template('input.html',
                                  user_name=flask.session['username'])
 
@@ -166,6 +173,8 @@ def load():
         return 'This page cannot be loaded directly!'
     elif flask.request.method != 'POST':
         return 'You can only POST to this page!'
+    elif get_user_id(flask.session.get('username')) is None:
+        return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     else:
         # Handle the POST request
         # In the background, we will start setting up the bot
@@ -198,6 +207,8 @@ def load():
 def review():
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
+    if get_user_id(flask.session.get('username')) is None:
+        return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     bot_object = read_from_session()
     print(bot_object.date, bot_object.birth, bot_object.death, bot_object.catname)
     return flask.render_template('review.html',

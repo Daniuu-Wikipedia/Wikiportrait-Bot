@@ -3,6 +3,8 @@
 # render_template: the functionality to deal with .html-templates
 # request: to be able to handle requests using the Flask library
 import threading
+from multiprocessing import connection
+
 import mwoauth
 
 import flask
@@ -16,8 +18,10 @@ import datetime as dt
 import os
 import tomllib
 from objects import SiteSettings
+
 # from Wikiportret_core import Image
 from Wikiportret_core_web_link import WebImage, read_from_session
+import Wikiportret_API_utils
 
 
 toolforge.set_user_agent('Wikiportret-updater',
@@ -47,6 +51,17 @@ def index():
     return flask.render_template(
         'input.html', username=username, greeting=greeting)
 
+
+# Convert username into id
+def get_user_id(username):
+    connection = toolforge.toolsdb(app.config['DB_NAME'])
+    with connection.cursor() as cursor:  # Cursor needed to access the db
+        query = f'SELECT `user_id` from `users` where `username`={username}'
+        cursor.execute(query)
+        name = cursor.fetchone().get('user_id')   # Be ready is it's None
+        cursor.close()  # Close the cursor
+    connection.close()  # Close the connection
+    return name
 
 @app.route('/login')
 def login():
@@ -93,8 +108,31 @@ def oauth_callback():
         return flask.redirect(flask.url_for('index'))
 
     else:
-        flask.session['access_token'] = dict(zip(
-            access_token._fields, access_token))
+        # Verify that the user is actually authorized
+        user_id = get_user_id(identity['username'])  # Safety check
+        if user_id is None:
+            return flask.redirect(flask.url_for('index'))  # Error, do not continue
+        # Store the access_token
+        token_to_store = dict(zip(access_token._fields, access_token))
+        # Obtain a valid token from the Wikiportret API
+        wikiportret_key = Wikiportret_API_utils.generate_wikiportret_key()
+
+        # Write data to the db (tokens table)
+        query = f"""
+        insert into `tokens` (`operator_id`, `oauth_token`, `wikiportrait_token`)
+        values ({user_id}, {token_to_store}, {wikiportret_key});
+        """
+        # And now, time to push this to the db
+        connection = toolforge.toolsdb(app.config['DB_NAME'])
+        with connection.cursor() as cursor:
+            cursor.query(query)
+            cursor.commit()
+            cursor.close()
+        connection.close()
+
+        # Store the username in the session (just making my life slightly easier)
+        # For security reasons, the underlying keys are never shown to the user
+        # Even though flask.session has some security built in to prevent tampering with the session cookie
         flask.session['username'] = identity['username']
 
     return flask.redirect(flask.url_for('input'))

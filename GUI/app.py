@@ -3,16 +3,11 @@
 # render_template: the functionality to deal with .html-templates
 # request: to be able to handle requests using the Flask library
 import threading
-from multiprocessing import connection
-
 import mwoauth
 
 import flask
 # Import Toolforge to update the user agent of the app
 import toolforge
-
-# Datetime library to assist handling of some dates
-import datetime as dt
 
 # Import some auxiliary classes
 import os
@@ -56,17 +51,6 @@ def index():
     # In case user is already logged in, continue
     return flask.redirect(flask.url_for('input'))
 
-
-# Convert username into id
-def get_user_id(username):
-    connection = toolforge.toolsdb(app.config['DB_NAME'])
-    with connection.cursor() as cursor:  # Cursor needed to access the db
-        query = f'SELECT `user_id` from `users` where `username`={username}'
-        cursor.execute(query)
-        name = cursor.fetchone().get('user_id')   # Be ready is it's None
-        cursor.close()  # Close the cursor
-    connection.close()  # Close the connection
-    return name
 
 @app.route('/login')
 def login():
@@ -115,7 +99,7 @@ def oauth_callback():
 
     else:
         # Verify that the user is actually authorized
-        user_id = get_user_id(identity['username'])  # Safety check
+        user_id = db_utils.get_user_id(identity['username'])  # Safety check
         if user_id is None:
             return flask.redirect(flask.url_for('index'))  # Error, do not continue
         # Store the access_token
@@ -129,12 +113,7 @@ def oauth_callback():
         values ({user_id}, {token_to_store}, {wikiportret_key});
         """
         # And now, time to push this to the db
-        connection = toolforge.toolsdb(app.config['DB_NAME'])
-        with connection.cursor() as cursor:
-            cursor.query(query)
-            cursor.commit()
-            cursor.close()
-        connection.close()
+        db_utils.adjust_db(query)
 
         # Store the username in the session (just making my life slightly easier)
         # For security reasons, the underlying keys are never shown to the user
@@ -159,7 +138,7 @@ def input():
     # Perform these actions if a POST request is sent (submitted via the form)
     if flask.request.method == 'POST':
         raise NotImplementedError('API-based loading is not yet supported!')  # Perform actions to initialize the form
-    elif get_user_id(flask.session.get('username')) is None:
+    elif db_utils.get_user_id(flask.session.get('username')) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     return flask.render_template('input.html',
                                  user_name=flask.session['username'])
@@ -174,7 +153,7 @@ def load():
         return 'This page cannot be loaded directly!'
     elif flask.request.method != 'POST':
         return 'You can only POST to this page!'
-    elif get_user_id(flask.session.get('username')) is None:
+    elif db_utils.get_user_id(flask.session.get('username')) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     else:
         # Handle the POST request
@@ -190,14 +169,10 @@ def load():
         # Set stuff to the database - this goes into the sessions table
         query = f'''
         insert into `sessions` (`operator_id`, `page`, `file`) 
-        values ({get_user_id(flask.session['username'])}, {bot_object.name}, {bot_object.file});
+        values ({db_utils.get_user_id(flask.session['username'])},
+         {bot_object.name}, {bot_object.file});
         '''
-        connection = toolforge.toolsdb(app.config['DB_NAME'])
-        with connection.cursor() as cursor:
-            cursor.query(query)
-            cursor.commit()
-            cursor.close()
-        connection.close()
+        db_utils.adjust_db(query)
 
         @flask.copy_current_request_context  # Copy current request context into background thread
         def background_load():
@@ -220,10 +195,9 @@ def load():
 def review():
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
-    if get_user_id(flask.session.get('username')) is None:
+    if db_utils.get_user_id(flask.session.get('username')) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     bot_object = read_from_session()
-    print(bot_object.date, bot_object.birth, bot_object.death, bot_object.catname)
     return flask.render_template('review.html',
                                  license_options=WebImage.licenses.keys(),
                                  selected_license='CC-BY-SA 4.0',
@@ -256,8 +230,6 @@ def submit():
                                      license_options=WebImage.licenses.keys(),
                                      selected_license='CC-BY-SA 4.0',
                                      user_name='Test user')
-    else:
-        print('THIS PAGE CAN ONLY BE CALLED VIA A POST REQUEST!')
 
 
 if __name__ == '__main__':

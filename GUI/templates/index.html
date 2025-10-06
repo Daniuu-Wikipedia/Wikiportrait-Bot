@@ -6,17 +6,30 @@
 {% endblock %}
 
 {% block body %}
-<div class="loading-container">
-    {% if username %}
-    <p>Hello {{ username }}!</p>
-    <p><a href="{{ url_for('logout') }}">logout</a></p>
-    {% else %}
-    <p>Welkom bij Wikiportret! Om door te gaan dient u ingelogd te zijn!</p>
-    <p><a href="{{ url_for('login') }}">Klik hier om in te loggen!</a></p>
-    {% endif %}
-</div>
-<div class="user-info-box">
-    <span id="user-name">Ingelogd als {{ user_name }}</span>
-</div>
+    <div class="loading-container">
+        {% if username %}
+        <p>Hello {{ username }}!</p>
+        <p><a href="{{ url_for('logout') }}">logout</a></p>
+        {% else %}
+        <p>Welkom bij Wikiportret! Om door te gaan dient u ingelogd te zijn!</p>
+        <p><a href="{{ url_for('login') }}">Klik hier om in te loggen!</a></p>
+        {% endif %}
+    </div>
+    <div class="user-info-container">
+        <div class="user-info-box">
+            {% if user_name %}
+                <span id="user-name">Ingelogd als {{ user_name }}</span>
+                <form action="/logout" method="post">
+                    <button type="submit" class="logout-button">Logout</button>
+                </form>
+            {% else %}
+            <span id="user-name-unknown"
+                  style="color: #5e0d0d"><em>Niet aangemeld</em></span>
+                <form action="/login" method="get">
+                    <button type="submit" class="login-button">Aanmelden</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
 
 {% endblock %}

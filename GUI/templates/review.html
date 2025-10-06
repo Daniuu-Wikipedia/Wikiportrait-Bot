@@ -194,10 +194,21 @@
     <script src="{{ url_for('static', filename='js/checkbox_selector.js') }}"></script>
 
 </form>
-<div class="user-info-box">
-    <!-- Keep the name of the logged-in user -->
-    <span id="user-name">Ingelogd als {{ user_name }}</span>
-</div>
+    <div class="user-info-container">
+        <div class="user-info-box">
+            {% if user_name %}
+                <span id="user-name">Ingelogd als {{ user_name }}</span>
+                <form action="/logout" method="post">
+                    <button type="submit" class="logout-button">Logout</button>
+                </form>
+            {% else %}
+                <span id="user-name-unknown"><em>Niet aangemeld</em></span>
+                <form action="/login" method="get">
+                    <button type="submit" class="login-button">Aanmelden</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
 <script src="{{ url_for('static', filename='js/date_formatter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/date_validator.js') }}"></script>
 {% endblock %}

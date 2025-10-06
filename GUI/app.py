@@ -45,10 +45,9 @@ with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
 def index():
     username = flask.session.get('username', None)
     # For development purposes only: manually override the username
-    flask.session['username'] = 'Test user'
     if username is None:
         return flask.render_template(
-            'index.html', username=username)
+            'index.html', username=None)
     # In case user is already logged in, continue
     return flask.redirect(flask.url_for('input'))
 
@@ -60,7 +59,7 @@ def login():
     Call the MediaWiki server to get request secrets and then redirect the
     user to the MediaWiki server to sign the request.
     """
-    flask.session.clear()
+    flask.session.clear()  # Triggers a new login
     consumer_token = mwoauth.ConsumerToken(
         app.config['CONSUMER_KEY'], app.config['CONSUMER_SECRET'])
     try:

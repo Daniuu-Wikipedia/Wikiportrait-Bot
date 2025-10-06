@@ -108,10 +108,14 @@ def oauth_callback():
         wikiportret_key = wpor_api.generate_wikiportret_key()
 
         # Write data to the db (tokens table)
-        # To do: remove any pre-existing tokens for the concerning user
+        # On duplicate key overwrites tokens if needed
         query = f"""
         insert into `tokens` (`operator_id`, `oauth_token`, `wikiportrait_token`)
-        values ({user_id}, '{token_to_store}', '{wikiportret_key}');
+        values ({user_id}, '{token_to_store}', '{wikiportret_key}')
+        on DUPLICATE_KEY UPDATE
+            oauth_token = VALUES(oauth_token)
+            wikiportrait_token = VALUES(wikiportrait_token)
+            timestamp = NOW();
         """
         # And now, time to push this to the db
         db_utils.adjust_db(query)

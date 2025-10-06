@@ -192,7 +192,8 @@ def load():
         thread.start()
 
         # Redirect naar de loading pagina
-        return flask.render_template('loading.html')
+        return flask.render_template('loading.html',
+                                     user_name=flask.session['username'])
 
 
 # Define the routing towards the review section
@@ -207,7 +208,7 @@ def review():
                                  license_options=WebImage.licenses.keys(),
                                  selected_license='CC-BY-SA 4.0',
                                  bot=bot_object,
-                                 user_name='Test user')
+                                 user_name=flask.session['username'])
 
 
 # The page the users will see whenever they submit an image for posting
@@ -234,7 +235,7 @@ def submit():
                                      bot=bot_object,
                                      license_options=WebImage.licenses.keys(),
                                      selected_license='CC-BY-SA 4.0',
-                                     user_name='Test user')
+                                     user_name=flask.session['username'])
 
 
 if __name__ == '__main__':

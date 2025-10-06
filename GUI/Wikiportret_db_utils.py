@@ -10,16 +10,14 @@ import tomllib
 import os
 
 
-def query_db(query, need_all=False):
+def query_db(query, dbname, need_all=False):
     """
     Query information from the database.
     (details on arguments & output to be added)
     """
     if not isinstance(query, str):
         return None
-    with open(os.path.join(os.path.dirname(__file__), 'config.toml'), 'rb') as f:
-        data = tomllib.load(f)
-    connection = toolforge.toolsdb(data['DB_NAME'])
+    connection = toolforge.toolsdb(dbname)
     with connection.cursor() as cursor:
         cursor.execute(query)
         if need_all is True:
@@ -39,12 +37,10 @@ def get_user_id(username):
     return None  # No valid user
 
 
-def adjust_db(query, retrieve_id=False):
+def adjust_db(query, dbname, retrieve_id=False):
     if not isinstance(query, str):
         return None
-    with open(os.path.join(os.path.dirname(__file__), 'config.toml'), 'rb') as f:
-        data = tomllib.load(f)
-    connection = toolforge.toolsdb(data['DB_NAME'])
+    connection = toolforge.toolsdb(dbname)
     with connection.cursor() as cursor:
         cursor.execute(query)
         connection.commit()

@@ -108,9 +108,10 @@ def oauth_callback():
         wikiportret_key = wpor_api.generate_wikiportret_key()
 
         # Write data to the db (tokens table)
+        # To do: remove any pre-existing tokens for the concerning user
         query = f"""
         insert into `tokens` (`operator_id`, `oauth_token`, `wikiportrait_token`)
-        values ({user_id}, {token_to_store}, {wikiportret_key});
+        values ({user_id}, '{token_to_store}', '{wikiportret_key}');
         """
         # And now, time to push this to the db
         db_utils.adjust_db(query)
@@ -126,6 +127,8 @@ def oauth_callback():
 @app.route('/logout')
 def logout():
     """Log the user out by clearing their session."""
+    # To do: remove associated entries from the db (clean up stuff)
+    # To do: remove tokens from the db
     flask.session.clear()
     return flask.redirect(flask.url_for('index'))
 
@@ -160,22 +163,20 @@ def load():
         # In the background, we will start setting up the bot
         bot_object = WebImage(flask.request.form['File'].strip(),
                               flask.request.form['Article'].strip())  # Configure a new bot object
-        # bot_object.set_session_variables()
 
-        # Set some objects to the session during the debugging stage
-        flask.session['file'] = flask.request.form['File'].strip()
-        flask.session['name'] = flask.request.form['Article'].strip()
+        # Previous versions of code set stuff to the session (now no longer needed: done via db)
 
         # Set stuff to the database - this goes into the sessions table
-        query = f'''
+        query = f"""
         insert into `sessions` (`operator_id`, `page`, `file`) 
-        values ({db_utils.get_user_id(flask.session['username'])},
-         {bot_object.name}, {bot_object.file});
-        '''
-        db_utils.adjust_db(query)
+        values ('{db_utils.get_user_id(flask.session['username'])}',
+         '{bot_object.name}', '{bot_object.file}');
+        """
+        flask.session['session_id'] = db_utils.adjust_db(query, retrieve_id=True)
 
-        @flask.copy_current_request_context  # Copy current request context into background thread
+        # @flask.copy_current_request_context  # Copy current request context into background thread
         def background_load():
+            # To do: modify underlying methods to write to the db
             bot_object.prepare_image_data()  # Load stuff in the background
             bot_object.get_commons_claims()
             bot_object.get_commons_text()

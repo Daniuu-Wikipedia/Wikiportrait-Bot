@@ -32,11 +32,11 @@ def query_db(query, need_all=False):
 
 
 def get_user_id(username):
-    return query_db(f'SELECT `user_id` from `users` where `username`={username}',
-                    need_all=False).get('user_id')
+    return query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
+                    need_all=False).get('user_id')  # '' are required to get a proper query
 
 
-def adjust_db(query):
+def adjust_db(query, retrieve_id=False):
     if not isinstance(query, str):
         return None
     with open(os.path.join(os.path.dirname(__file__), 'config.toml'), 'rb') as f:
@@ -45,6 +45,8 @@ def adjust_db(query):
     with connection.cursor() as cursor:
         cursor.execute(query)
         cursor.commit()
+        if retrieve_id is True:
+            new_row_id = cursor.lastrowid
         cursor.close()
     connection.close()
-    return True  # Just to indicate that everything worked out fine
+    return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine

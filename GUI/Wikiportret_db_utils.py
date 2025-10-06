@@ -32,8 +32,11 @@ def query_db(query, need_all=False):
 
 
 def get_user_id(username):
-    return query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
-                    need_all=False).get('user_id')  # '' are required to get a proper query
+    data = query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
+                    need_all=False)  # '' are required to get a proper query
+    if isinstance(data, tuple):
+        return data[0]
+    return None  # No valid user
 
 
 def adjust_db(query, retrieve_id=False):

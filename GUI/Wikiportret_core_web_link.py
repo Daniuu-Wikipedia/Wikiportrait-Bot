@@ -11,6 +11,21 @@ class WebImage(Image):
     def __init__(self, file, name):
         super().__init__(file, name)
 
+    def write_to_db(self, session_number):
+        pass
+
+    def wikidata_to_db(self, session_number):
+        pass
+
+    def commons_to_db(self, session_number):
+        pass
+
+    def ids_to_db(self, session_number):
+        pass  # Just write the ids for Commons & Wikidata
+
+    def input_data_to_db(self, session_number):
+        pass  # Write to the input_data table
+
     # Part 1 of the extension: additional properties for interaction with the session
     @property
     def claims_dict(self):  # Goal of property is to secure the required information

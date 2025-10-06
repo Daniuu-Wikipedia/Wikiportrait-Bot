@@ -16,7 +16,7 @@ import tomllib
 from objects import SiteSettings
 
 # from Wikiportret_core import Image
-from Wikiportret_core_web_link import WebImage
+from Wikiportret_core_web_link import WebImage, create_from_db
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
 
@@ -181,16 +181,18 @@ def load():
                                                          retrieve_id=True)
 
         # @flask.copy_current_request_context  # Copy current request context into background thread
-        def background_load():
+        def background_load(session_id):
             # To do: modify underlying methods to write to the db
             bot_object.prepare_image_data()  # Load stuff in the background
             bot_object.get_commons_claims()
             bot_object.get_commons_text()
             bot_object.ini_wikidata()
-            bot_object.set_session_variables()
+            # We need to clearly communicate with the db !!!
+            bot_object.write_to_db(session_id)
+            print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
 
         # Start the background loading in a separate thread
-        thread = threading.Thread(target=background_load)
+        thread = threading.Thread(target=background_load, args=(flask.session['session_id'],))
         thread.start()
 
         # Redirect naar de loading pagina
@@ -205,7 +207,7 @@ def review():
     # To add: this template can only be loaded if the verification procedure has been performed!
     if db_utils.get_user_id(flask.session.get('username')) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
-    bot_object = None  # To do: continue
+    bot_object = create_from_db(flask.session['session_id'])  # To do: continue
     return flask.render_template('review.html',
                                  license_options=WebImage.licenses.keys(),
                                  selected_license='CC-BY-SA 4.0',
@@ -218,7 +220,7 @@ def review():
 def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
-        bot_object = None  # To do: make adjustments needed
+        bot_object = create_from_db(flask.session['session_id'])  # To do: make adjustments needed
         # First things first: we need to adjust some values
         # But this only happens if some specific checkboxes are checked
         # If a checkbox is checked, it's name will appear in flask.request.form

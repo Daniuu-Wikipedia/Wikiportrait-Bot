@@ -47,7 +47,7 @@ def adjust_db(query, retrieve_id=False):
     connection = toolforge.toolsdb(data['DB_NAME'])
     with connection.cursor() as cursor:
         cursor.execute(query)
-        cursor.commit()
+        connection.commit()
         if retrieve_id is True:
             new_row_id = cursor.lastrowid
         cursor.close()

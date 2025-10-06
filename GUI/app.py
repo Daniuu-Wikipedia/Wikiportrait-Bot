@@ -4,6 +4,7 @@
 # request: to be able to handle requests using the Flask library
 import threading
 import mwoauth
+import json  # Makes life slightly easier
 
 import flask
 # Import Toolforge to update the user agent of the app
@@ -103,7 +104,7 @@ def oauth_callback():
         if user_id is None:
             return flask.redirect(flask.url_for('index'))  # Error, do not continue
         # Store the access_token
-        token_to_store = dict(zip(access_token._fields, access_token))
+        token_to_store = json.dumps(dict(zip(access_token._fields, access_token)))
         # Obtain a valid token from the Wikiportret API
         wikiportret_key = wpor_api.generate_wikiportret_key()
 

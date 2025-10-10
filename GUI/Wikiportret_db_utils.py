@@ -29,8 +29,9 @@ def query_db(query, dbname, need_all=False):
     return info  # Return the relevant info & process it elsewhere
 
 
-def get_user_id(username):
+def get_user_id(username, dbname):
     data = query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
+                    dbname,
                     need_all=False)  # '' are required to get a proper query
     if isinstance(data, tuple):
         return data[0]

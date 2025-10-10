@@ -62,6 +62,7 @@ def login():
     flask.session.clear()  # Triggers a new login
     consumer_token = mwoauth.ConsumerToken(
         app.config['CONSUMER_KEY'], app.config['CONSUMER_SECRET'])
+    # noinspection PyBroadException
     try:
         redirect, request_token = mwoauth.initiate(
             app.config['OAUTH_MWURI'], consumer_token)
@@ -99,7 +100,7 @@ def oauth_callback():
 
     else:
         # Verify that the user is actually authorized
-        user_id = db_utils.get_user_id(identity['username'])  # Safety check
+        user_id = db_utils.get_user_id(identity['username'], app.config['DB_NAME'])  # Safety check
         if user_id is None:
             return flask.redirect(flask.url_for('index'))  # Error, do not continue
         # Store the access_token
@@ -145,7 +146,7 @@ def input():
     # Perform these actions if a POST request is sent (submitted via the form)
     if flask.request.method == 'POST':
         raise NotImplementedError('API-based loading is not yet supported!')  # Perform actions to initialize the form
-    elif db_utils.get_user_id(flask.session.get('username')) is None:
+    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     return flask.render_template('input.html',
                                  user_name=flask.session['username'])
@@ -160,7 +161,7 @@ def load():
         return 'This page cannot be loaded directly!'
     elif flask.request.method != 'POST':
         return 'You can only POST to this page!'
-    elif db_utils.get_user_id(flask.session.get('username')) is None:
+    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     else:
         # Handle the POST request
@@ -173,7 +174,7 @@ def load():
         # Set stuff to the database - this goes into the sessions table
         query = f"""
         insert into `sessions` (`operator_id`, `page`, `file`) 
-        values ('{db_utils.get_user_id(flask.session['username'])}',
+        values ('{db_utils.get_user_id(flask.session['username'], app.config['DB_NAME'])}',
          '{bot_object.name}', '{bot_object.file}');
         """
         flask.session['session_id'] = db_utils.adjust_db(query,
@@ -205,7 +206,7 @@ def load():
 def review():
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
-    if db_utils.get_user_id(flask.session.get('username')) is None:
+    if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     bot_object = create_from_db(flask.session['session_id'], app.config['DB_NAME'])  # To do: continue
     return flask.render_template('review.html',
@@ -220,7 +221,7 @@ def review():
 def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
-        bot_object = create_from_db(flask.session['session_id'])  # To do: make adjustments needed
+        bot_object = create_from_db(flask.session['session_id'], app.config['DB_NAME'])  # To do: make adjustments needed
         # First things first: we need to adjust some values
         # But this only happens if some specific checkboxes are checked
         # If a checkbox is checked, it's name will appear in flask.request.form

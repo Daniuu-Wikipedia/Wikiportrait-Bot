@@ -114,8 +114,8 @@ def oauth_callback():
         insert into `tokens` (`operator_id`, `oauth_token`, `wikiportrait_token`)
         values ({user_id}, '{token_to_store}', '{wikiportret_key}')
         on DUPLICATE_KEY UPDATE
-            oauth_token = VALUES(oauth_token)
-            wikiportrait_token = VALUES(wikiportrait_token)
+            oauth_token = VALUES(oauth_token),
+            wikiportrait_token = VALUES(wikiportrait_token),
             timestamp = NOW();
         """
         # And now, time to push this to the db

@@ -112,10 +112,10 @@ def oauth_callback():
         # On duplicate key overwrites tokens if needed
         query = f"""
         INSERT INTO tokens (operator_id, oauth_token, wikiportrait_token)
-        VALUES ({user_id}, '{token_to_store}', '{wikiportret_key}') AS new
+        VALUES ({user_id}, '{token_to_store}', '{wikiportret_key}')
         ON DUPLICATE KEY UPDATE
-            oauth_token = new.oauth_token,
-            wikiportrait_token = new.wikiportrait_token,
+            oauth_token = '{token_to_store}',
+            wikiportrait_token = '{wikiportret_key}',
             `timestamp` = NOW();
         """
         # And now, time to push this to the db

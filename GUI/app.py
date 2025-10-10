@@ -113,7 +113,7 @@ def oauth_callback():
         query = f"""
         INSERT INTO `tokens` (`operator_id`, `oauth_token`, `wikiportrait_token`)
         VALUES ({user_id}, '{token_to_store}', '{wikiportret_key}') AS new
-        ON DUPLICATE_KEY UPDATE
+        ON DUPLICATE KEY UPDATE
             oauth_token = new.oauth_token,
             wikiportrait_token = new.wikiportrait_token,
             timestamp = NOW();

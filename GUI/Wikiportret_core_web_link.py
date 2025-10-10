@@ -3,6 +3,7 @@ A module to couple Wikiportret Core to some very handy Flask utilities
 """
 
 from Wikiportret_core import Image
+import Wikiportret_db_utils as dbut
 import json
 import mwoauth
 
@@ -10,21 +11,31 @@ import mwoauth
 class WebImage(Image):
     def __init__(self, file, name):
         super().__init__(file, name)
+        self.dbname = None
 
     def write_to_db(self, session_number):
-        pass
-
-    def wikidata_to_db(self, session_number):
-        pass
-
-    def commons_to_db(self, session_number):
-        pass
-
-    def ids_to_db(self, session_number):
-        pass  # Just write the ids for Commons & Wikidata
+        if self.claims is None:
+            self.ini_wikidata()
+        if self.comtext is None:
+            self.get_commons_text()
+        if self.mc is None:
+            self.get_commons_claims()
+        query = f"""
+        insert into `claims` (`session_number`, `json_response`, `commons_claims`, `qid`, `mid`, `comm_text`) 
+        values ({session_number},
+         '{json.dumps(self.claims)}',
+          '{json.dumps(self.mc)}',
+           '{self.qid}',
+            '{self.mid}',
+             '{self.comtext}');
+        """
+        dbut.adjust_db(query, self.dbname)
 
     def input_data_to_db(self, session_number):
-        pass  # Write to the input_data table
+        query = f"""
+        insert into input_data (`session_id`, `custom_caption`, `date`, `ticket`, `category_name`, `edit_summary`)
+        values ({session_number}, '{self.caption}', {self.date}, {self.mc.get('P6305')}, '{self.catname}', '{self.sum}')
+        """
 
     # Part 1 of the extension: additional properties for interaction with the session
     @property
@@ -60,7 +71,7 @@ class WebImage(Image):
         return json.dumps(self.mc)
 
 
-def create_from_db(session_number):
+def create_from_db(session_number, dbname):
     """
     Reads a session number & will then parse all relevant output form the db.
     Method takes two arguments:

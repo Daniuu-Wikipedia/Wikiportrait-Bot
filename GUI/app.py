@@ -167,9 +167,9 @@ def load():
         # In the background, we will start setting up the bot
         bot_object = WebImage(flask.request.form['File'].strip(),
                               flask.request.form['Article'].strip())  # Configure a new bot object
+        bot_object.dbname = app.config['DB_NAME']
 
         # Previous versions of code set stuff to the session (now no longer needed: done via db)
-
         # Set stuff to the database - this goes into the sessions table
         query = f"""
         insert into `sessions` (`operator_id`, `page`, `file`) 
@@ -207,7 +207,7 @@ def review():
     # To add: this template can only be loaded if the verification procedure has been performed!
     if db_utils.get_user_id(flask.session.get('username')) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
-    bot_object = create_from_db(flask.session['session_id'])  # To do: continue
+    bot_object = create_from_db(flask.session['session_id'], app.config['DB_NAME'])  # To do: continue
     return flask.render_template('review.html',
                                  license_options=WebImage.licenses.keys(),
                                  selected_license='CC-BY-SA 4.0',

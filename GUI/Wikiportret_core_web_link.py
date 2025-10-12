@@ -13,7 +13,6 @@ class WebImage(Image):
         self.dbname = config['DB_NAME']
         self.verify_OAuth(config, user=user)  # Automatically verify OAuth
 
-    # noinspection PyUnresolvedReferences
     def verify_OAuth(self, config, secret=None, user=None):  # Overloading from parent class
         # Note: self._auth is defined in the parent class
         if self._auth is not None:
@@ -23,10 +22,12 @@ class WebImage(Image):
                 secret = dbut.get_tokens_from_db(self.dbname, user)
             else:
                 raise TypeError('Only integers and strings are accepted as input for the user!')
-        self._auth = OAuth1(config['consumer_key'],
-                            config['consumer_secret'],
-                            secret['key'],
-                            secret['secret'])
+
+        # Call OAuth verification subroutines for separate bots
+        self._commons.verify_OAuth_web(config, secret)
+        self._wikidata.verify_OAuth_web(config, secret)
+        self._nl.verify_OAuth_web(config, secret)
+        self._meta.verify_OAuth_web(config, secret)
 
     def write_to_db(self, session_number):
         if self.claims is None:

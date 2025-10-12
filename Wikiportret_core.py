@@ -62,11 +62,19 @@ class Bot:
         This function will verify whether the OAuth-auth has been configured.
         If not, it will do the configuration.
         """
-        print(os.getcwd())
         if self._auth is None:
             with open(file, 'r') as secret:
                 self._auth = OAuth1(
                     *[i.strip() for i in secret][1::2])  # This is the reason why those keys should never be published
+
+    def verify_OAuth_web(self, config, secret):  # Overloading from parent class
+        # Note: self._auth is defined in the parent class
+        if self._auth is not None:
+            return None
+        self._auth = OAuth1(config['consumer_key'],
+                            config['consumer_secret'],
+                            secret['key'],
+                            secret['secret'])
 
     def verify_token(self):
         if self._token is None:

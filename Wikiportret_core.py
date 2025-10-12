@@ -71,8 +71,8 @@ class Bot:
         # Note: self._auth is defined in the parent class
         if self._auth is not None:
             return None
-        self._auth = OAuth1(config['consumer_key'],
-                            config['consumer_secret'],
+        self._auth = OAuth1(config['CONSUMER_KEY'],
+                            config['CONSUMER_SECRET'],
                             secret['key'],
                             secret['secret'])
 

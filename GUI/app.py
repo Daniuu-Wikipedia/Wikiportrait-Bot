@@ -168,7 +168,8 @@ def load():
         # In the background, we will start setting up the bot
         bot_object = WebImage(flask.request.form['File'].strip(),
                               flask.request.form['Article'].strip(),
-                              app.config['DB_NAME'])  # Configure a new bot object
+                              app.config,
+                              flask.session['username'])  # Configure a new bot object
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
 
         # Previous versions of code set stuff to the session (now no longer needed: done via db)

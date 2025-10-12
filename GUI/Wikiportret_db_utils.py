@@ -6,8 +6,6 @@ Auxliary functions are listed separately to keep the code of the main app clean
 """
 
 import toolforge
-import tomllib
-import os
 
 
 def query_db(query, dbname, need_all=False):
@@ -50,3 +48,17 @@ def adjust_db(query, dbname, retrieve_id=False):
         cursor.close()
     connection.close()
     return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine
+
+
+def get_tokens_from_db(dbname, operator_name):
+    if isinstance(operator_name, str):
+        query = f"""
+        select * from tokens where operator={get_user_id(operator_name, dbname)};
+        """
+    elif isinstance(operator_name, int):
+        query = f"""
+                select * from tokens where operator={operator_name};
+                """
+    else:
+        raise TypeError('operator_name must be str or int!')
+    return query_db(query, dbname)[1]

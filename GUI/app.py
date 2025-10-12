@@ -167,8 +167,9 @@ def load():
         # Handle the POST request
         # In the background, we will start setting up the bot
         bot_object = WebImage(flask.request.form['File'].strip(),
-                              flask.request.form['Article'].strip())  # Configure a new bot object
-        bot_object.dbname = app.config['DB_NAME']
+                              flask.request.form['Article'].strip(),
+                              app.config['DB_NAME'])  # Configure a new bot object
+        # bot_object.verify_OAuth(app.config, user=flask.session['username'])
 
         # Previous versions of code set stuff to the session (now no longer needed: done via db)
         # Set stuff to the database - this goes into the sessions table
@@ -208,7 +209,10 @@ def review():
     # To add: this template can only be loaded if the verification procedure has been performed!
     if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
-    bot_object = create_from_db(flask.session['session_id'], app.config['DB_NAME'])  # To do: continue
+    bot_object = create_from_db(flask.session['session_id'],
+                                app.config['DB_NAME'],
+                                flask.session['username'])  # To do: continue
+    # bot_object.verify_OAuth(app.config, user=flask.session['username'])
     return flask.render_template('review.html',
                                  license_options=WebImage.licenses.keys(),
                                  selected_license='CC-BY-SA 4.0',
@@ -221,7 +225,10 @@ def review():
 def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
-        bot_object = create_from_db(flask.session['session_id'], app.config['DB_NAME'])  # To do: make adjustments needed
+        bot_object = create_from_db(flask.session['session_id'],
+                                    app.config['DB_NAME'],
+                                    flask.session['username'])  # To do: make adjustments needed
+        # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         # First things first: we need to adjust some values
         # But this only happens if some specific checkboxes are checked
         # If a checkbox is checked, it's name will appear in flask.request.form

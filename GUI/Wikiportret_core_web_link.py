@@ -5,13 +5,28 @@ A module to couple Wikiportret Core to some very handy Flask utilities
 from Wikiportret_core import Image
 import Wikiportret_db_utils as dbut
 import json
-import mwoauth
-
+from requests_oauthlib import OAuth1
 
 class WebImage(Image):
-    def __init__(self, file, name):
+    def __init__(self, file, name, config, user):
         super().__init__(file, name)
-        self.dbname = None
+        self.dbname = config['DB_NAME']
+        self.verify_OAuth(config, user=user)  # Automatically verify OAuth
+
+    # noinspection PyUnresolvedReferences
+    def verify_OAuth(self, config, secret=None, user=None):  # Overloading from parent class
+        # Note: self._auth is defined in the parent class
+        if self._auth is not None:
+            return None
+        if secret is None:
+            if isinstance(user, (int, str)):
+                secret = dbut.get_tokens_from_db(self.dbname, user)
+            else:
+                raise TypeError('Only integers and strings are accepted as input for the user!')
+        self._auth = OAuth1(config['consumer_key'],
+                            config['consumer_secret'],
+                            secret['key'],
+                            secret['secret'])
 
     def write_to_db(self, session_number):
         if self.claims is None:
@@ -36,6 +51,7 @@ class WebImage(Image):
         insert into input_data (`session_id`, `custom_caption`, `date`, `ticket`, `category_name`, `edit_summary`)
         values ({session_number}, '{self.caption}', {self.date}, {self.mc.get('P6305')}, '{self.catname}', '{self.sum}')
         """
+        dbut.adjust_db(query, self.dbname)
 
     # Part 1 of the extension: additional properties for interaction with the session
     @property
@@ -71,7 +87,7 @@ class WebImage(Image):
         return json.dumps(self.mc)
 
 
-def create_from_db(session_number, dbname):
+def create_from_db(session_number, dbname, operator):
     """
     Reads a session number & will then parse all relevant output form the db.
     Method takes two arguments:

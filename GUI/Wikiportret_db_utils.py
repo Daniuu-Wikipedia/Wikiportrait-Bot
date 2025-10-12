@@ -53,11 +53,11 @@ def adjust_db(query, dbname, retrieve_id=False):
 def get_tokens_from_db(dbname, operator_name):
     if isinstance(operator_name, str):
         query = f"""
-        select * from tokens where operator={get_user_id(operator_name, dbname)};
+        select * from tokens where operator_id={get_user_id(operator_name, dbname)};
         """
     elif isinstance(operator_name, int):
         query = f"""
-                select * from tokens where operator={operator_name};
+                select * from tokens where operator_id={operator_name};
                 """
     else:
         raise TypeError('operator_name must be str or int!')

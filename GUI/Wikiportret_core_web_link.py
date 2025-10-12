@@ -14,9 +14,6 @@ class WebImage(Image):
         self.verify_OAuth(config, user=user)  # Automatically verify OAuth
 
     def verify_OAuth(self, config, secret=None, user=None):  # Overloading from parent class
-        # Note: self._auth is defined in the parent class
-        if self._auth is not None:
-            return None
         if secret is None:
             if isinstance(user, (int, str)):
                 secret = dbut.get_tokens_from_db(self.dbname, user)

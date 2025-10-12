@@ -6,6 +6,7 @@ Auxliary functions are listed separately to keep the code of the main app clean
 """
 
 import toolforge
+import json
 
 
 def query_db(query, dbname, need_all=False):
@@ -61,4 +62,4 @@ def get_tokens_from_db(dbname, operator_name):
                 """
     else:
         raise TypeError('operator_name must be str or int!')
-    return query_db(query, dbname)[1]
+    return json.loads(query_db(query, dbname)[1])  # Automatically

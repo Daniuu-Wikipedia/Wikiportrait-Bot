@@ -28,7 +28,7 @@ class WebImage(Image):
         self._meta.verify_OAuth_web(config, secret)
         del secret  # Destroy these immediately for obvious reasons
 
-    def write_to_db(self, session_number):
+    def write_to_db(self, session_number, connection=None):
         if self.claims is None:
             self.ini_wikidata()
         if self.comtext is None:
@@ -44,14 +44,14 @@ class WebImage(Image):
             '{self.mid}',
              '{self.comtext}');
         """
-        dbut.adjust_db(query, self.dbname)
+        dbut.adjust_db(query, self.dbname, connection=connection)
 
-    def input_data_to_db(self, session_number):
+    def input_data_to_db(self, session_number, connection=None):
         query = f"""
         insert into input_data (`session_id`, `custom_caption`, `date`, `ticket`, `category_name`, `edit_summary`)
-        values ({session_number}, '{self.caption}', {self.date}, {self.mc.get('P6305')}, '{self.catname}', '{self.sum}')
+        values ({session_number}, '{self.caption}', {self.date}, {self.mc.get('P6305')}, '{self.catname}', '{self.sum}');
         """
-        dbut.adjust_db(query, self.dbname)
+        dbut.adjust_db(query, self.dbname, connection=connection)
 
     # Part 1 of the extension: additional properties for interaction with the session
     @property
@@ -116,7 +116,7 @@ def create_from_db(session_number,
     connection = toolforge.toolsdb(dbname)
 
     # Second job: check in the db what file & nlwiki page the user wishes to process
-    query = "SELECT * FROM sessions WHERE session_id=%d" % session_number
+    query = "SELECT * FROM sessions WHERE session_id=%d;" % session_number
     result = dbut.query_db(query, dbname, connection=connection)  # Get relevant row as a tuple
     operator_id = result[1]  # Operator id, needed further down the road
     page, file = result[2], result[3]  # Make life slightly easier & shorten notation
@@ -126,7 +126,7 @@ def create_from_db(session_number,
 
     # Fourth job: obtain the relevant parameters from the db
     if retrieve_claims is True:
-        query = "SELECT * FROM claims WHERE session_id=%d" % session_number
+        query = "SELECT * FROM claims WHERE session_id=%d;" % session_number
         result = dbut.query_db(query, dbname, connection=connection)
         output.qid, output.mid = result[3], result[4]
         output.wikidata_claims_json = result[1]  # JSON loading is done through the property
@@ -135,7 +135,7 @@ def create_from_db(session_number,
 
         # Fifth job: if there is already some customized input data, get it
         if adjust_input_data is True:
-            query = "SELECT * FROM input_data WHERE session_id=%d" % session_number
+            query = "SELECT * FROM input_data WHERE session_id=%d;" % session_number
             result = dbut.query_db(query, dbname, connection=connection)
             # Now set the relevant properties
             if result[1] is not None:

@@ -34,7 +34,7 @@ class WebImage(Image):
         if self.mc is None:
             self.get_commons_claims()
         query = f"""
-        insert into `claims` (`session_number`, `json_response`, `commons_claims`, `qid`, `mid`, `comm_text`) 
+        insert into `claims` (`session_id`, `json_response`, `commons_claims`, `qid`, `mid`, `comm_text`) 
         values ({session_number},
          '{json.dumps(self.claims)}',
           '{json.dumps(self.mc)}',

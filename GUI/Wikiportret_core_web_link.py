@@ -1,11 +1,12 @@
 """
 A module to couple Wikiportret Core to some very handy Flask utilities
 """
+import toolforge
 
 from Wikiportret_core import Image
 import Wikiportret_db_utils as dbut
+import datetime as dt
 import json
-from requests_oauthlib import OAuth1
 
 class WebImage(Image):
     def __init__(self, file, name, config, user):
@@ -25,6 +26,7 @@ class WebImage(Image):
         self._wikidata.verify_OAuth_web(config, secret)
         self._nl.verify_OAuth_web(config, secret)
         self._meta.verify_OAuth_web(config, secret)
+        del secret  # Destroy these immediately for obvious reasons
 
     def write_to_db(self, session_number):
         if self.claims is None:
@@ -68,6 +70,13 @@ class WebImage(Image):
         """
         return json.dumps(self.claims)
 
+    @wikidata_claims_json.setter
+    def wikidata_claims_json(self, value):
+        if isinstance(value, dict):
+            self.claims = value
+        elif isinstance(value, str):
+            self.claims = json.loads(value)  # Directly load claims from JSON
+
     @property
     def commmons_claims(self):
         return self.mc
@@ -84,11 +93,64 @@ class WebImage(Image):
         """
         return json.dumps(self.mc)
 
+    @commons_claims_json.setter
+    def commons_claims_json(self, value):
+        if isinstance(value, dict):
+            self.mc = value
+        elif isinstance(value, str):
+            self.mc = json.loads(value)
 
-def create_from_db(session_number, dbname, operator):
+
+def create_from_db(session_number,
+                   dbname,
+                   config,
+                   retrieve_claims=True,
+                   adjust_input_data=True):
     """
     Reads a session number & will then parse all relevant output form the db.
     Method takes two arguments:
         * session number: integer representing a session in the database
     """
-    pass
+    # First job: create a connection to the db
+    # Since we need to run a few queries, we will just use one steady connection
+    connection = toolforge.toolsdb(dbname)
+
+    # Second job: check in the db what file & nlwiki page the user wishes to process
+    query = "SELECT * FROM sessions WHERE session_id=%d" % session_number
+    result = dbut.query_db(query, dbname, connection=connection)  # Get relevant row as a tuple
+    operator_id = result[1]  # Operator id, needed further down the road
+    page, file = result[2], result[3]  # Make life slightly easier & shorten notation
+
+    # Third job: all input is there to generate the WebImage desperately needed
+    output = WebImage(file, page, config, operator_id)
+
+    # Fourth job: obtain the relevant parameters from the db
+    if retrieve_claims is True:
+        query = "SELECT * FROM claims WHERE session_id=%d" % session_number
+        result = dbut.query_db(query, dbname, connection=connection)
+        output.qid, output.mid = result[3], result[4]
+        output.wikidata_claims_json = result[1]  # JSON loading is done through the property
+        output.commons_claims_json = result[2]
+        output.comtext = result[5]
+
+        # Fifth job: if there is already some customized input data, get it
+        if adjust_input_data is True:
+            query = "SELECT * FROM input_data WHERE session_id=%d" % session_number
+            result = dbut.query_db(query, dbname, connection=connection)
+            # Now set the relevant properties
+            if result[1] is not None:
+                output.caption = result[1]
+            if result[2] is not None:
+                if isinstance(result[2], dt.date):  # For now, assume that MySQL will do the job
+                    output.date = result[2]
+            if result[4] is not None:
+                output.category_name = result[4]
+            if result[5] is not None:
+                output.edit_summary = result[5]
+            if result[7] is not None:
+                output.birth = result[7]
+            if result[8] is not None:
+                output.death = result[8]
+            # Result 3 = ticket number, we don't need it for now
+            # Result 6 = used only for the db and cleanup scripts
+    return output

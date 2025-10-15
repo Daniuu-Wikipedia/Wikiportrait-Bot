@@ -183,20 +183,7 @@ def load():
                                                          app.config['DB_NAME'],
                                                          retrieve_id=True)
 
-        # @flask.copy_current_request_context  # Copy current request context into background thread
-        def background_load(session_id):
-            # To do: modify underlying methods to write to the db
-            bot_object.prepare_image_data()  # Load stuff in the background
-            bot_object.get_commons_claims()
-            bot_object.get_commons_text()
-            bot_object.ini_wikidata()
-            # We need to clearly communicate with the db !!!
-            bot_object.write_to_db(session_id)
-            print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
-
-        # Start the background loading in a separate thread
-        thread = threading.Thread(target=background_load, args=(flask.session['session_id'],))
-        thread.start()
+        # Background load is truly done in the background, by the continuous bg job
 
         # Redirect naar de loading pagina
         return flask.render_template('loading.html',

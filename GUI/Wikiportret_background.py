@@ -1,0 +1,89 @@
+# Script that will run continuously in the background of the webservice
+
+
+import toolforge
+import threading
+import tomllib
+import time
+import os
+import Wikiportret_core_web_link as wcl  # Dealing with the db & getting info from the UI
+import Wikiportret_db_utils as dbutil
+
+# First job: read config of the app
+__dir__ = os.path.dirname(__file__)
+with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
+    config = tomllib.load(f)
+
+# Reset the user agent per Toolforge policy
+toolforge.set_user_agent('Wikiportret-updater-bg',
+                         email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
+
+# Second job: prepare a connection for the db
+connection = toolforge.toolsdb(config['DB_NAME'])
+
+# Third job: compile a list of queries to be performed during each sample
+queries = ("DELETE FROM tokens where timestamp < NOW() - INTERVAL 10 MINUTE;",
+           "UPDATE sessions SET locked = 0, locked_at = NULL WHERE locked_at < NOW() - INTERVAL 1 MINUTE;")
+
+# Fourth job: the query to run as a one-off (the one that triggers the loading of the info for the jobs)
+background_trigger = "SELECT * FROM sessions WHERE locked = 1 AND status = 'pending';"
+
+
+# Define some auxiliary methods
+def background_load(session_id, config, conn):
+    """
+    Method that allows reading a bot's claims in the background.
+    Procedure: gets called through the background job...
+        In the meantime, the web tool will be kept on hold for some time...
+    """
+    bot = wcl.create_from_db(session_id,
+                             config['DB_NAME'],
+                             config,
+                             retrieve_claims=False,
+                             adjust_input_data=False)  # We still need to write stuff to the db, so silent
+    bot.prepare_image_data()  # Load stuff in the background
+    bot.get_commons_claims()
+    bot.get_commons_text()
+    bot.ini_wikidata()
+    # We need to clearly communicate with the db !!!
+    bot.write_to_db(session_id, conn)
+    bot.input_data_to_db(session_id, conn)
+    dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL WHERE session_id=%d" % session_id,
+                     config['DB_NAME'],
+                     connection=connection)
+    print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
+
+
+def clean_db(connection, dbname, queries):
+    # First task: get rid of tokens > 10 minutes old
+    # Second task: release jobs locked for > 5 minutes - sessions table
+    # Third task: at some point, old sessions that ran successfully should also be booted
+    for i in queries:  # Don't bother generating the queries again during each iteration
+        dbutil.adjust_db(i, dbname, connection=connection)
+
+
+# The actual continuous loop
+try:
+    while 1:
+        threading.Thread(target=clean_db,
+                         args=(connection,
+                               config['DB_NAME'],
+                               queries)).start()
+
+        # To do: check if there are any locked jobs pending in the db
+        # If so, launch a thread for each job to start dealing with the Wikidata stuff
+        for i in dbutil.query_db(background_trigger,
+                                 config['DB_NAME'],
+                                 need_all=True,
+                                 connection=connection):
+            threading.Thread(target=background_load,
+                             args=(i[0],
+                                   config,
+                                   connection)).start()  # Launch a background job
+            update_query = "UPDATE sessions SET status = 'processing' WHERE session_id=%d" % i[0]
+            dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
+        time.sleep(0.5)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
+finally:
+    connection.close()  # Close the connection and shutdown everything
+
+# And what to do in the end (we'll just use a finally-construct for this purpose)

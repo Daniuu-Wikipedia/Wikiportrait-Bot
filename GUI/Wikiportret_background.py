@@ -20,10 +20,11 @@ toolforge.set_user_agent('Wikiportret-updater-bg',
 
 # Second job: prepare a connection for the db
 connection = toolforge.toolsdb(config['DB_NAME'])
+connection.autocommit(True)
 
 # Third job: compile a list of queries to be performed during each sample
-queries = (#"DELETE FROM tokens where timestamp < NOW() - INTERVAL 15 MINUTE;",
-           "UPDATE sessions SET locked = 0, locked_at = NULL WHERE locked_at < NOW() - INTERVAL 1 MINUTE;")
+queries = (  #"DELETE FROM tokens where timestamp < NOW() - INTERVAL 15 MINUTE;",
+    "UPDATE sessions SET locked = 0, locked_at = NULL WHERE locked_at < NOW() - INTERVAL 1 MINUTE;")
 
 # Fourth job: the query to run as a one-off (the one that triggers the loading of the info for the jobs)
 background_trigger = "SELECT * FROM sessions WHERE locked = 0 AND status = 'pending';"
@@ -37,6 +38,7 @@ def background_load(session_id, config):
         In the meantime, the web tool will be kept on hold for some time...
     """
     conn = toolforge.toolsdb(config['DB_NAME'])
+    conn.autocommit(True)
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
     try:
         bot = wcl.create_from_db(session_id,
@@ -54,10 +56,11 @@ def background_load(session_id, config):
         success = True
     finally:
         status = 'completed' if success else 'failed'
-        dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL, status = '%s' WHERE session_id=%d" % (status,
-                                                                                                               session_id),
-                         config['DB_NAME'],
-                         connection=conn)
+        dbutil.adjust_db(
+            "UPDATE sessions SET locked = 0, locked_at = NULL, status = '%s' WHERE session_id=%d" % (status,
+                                                                                                     session_id),
+            config['DB_NAME'],
+            connection=conn)
         conn.close()
         print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
 
@@ -65,6 +68,7 @@ def background_load(session_id, config):
 # The actual continuous loop
 try:
     while 1:
+        connection.ping(reconnect=True)  # Avoid having this one open too long
         # To do: check if there are any locked jobs pending in the db
         # If so, launch a thread for each job to start dealing with the Wikidata stuff
         for i in dbutil.query_db(background_trigger,
@@ -76,11 +80,10 @@ try:
                         SET status = 'processing', locked = 1, locked_at = CURRENT_TIMESTAMP 
                         WHERE session_id=%d""" % i[0]
             dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
-            background_load(i[0], config)
-            #threading.Thread(target=background_load,
-            #                 args=(i[0],
-            #                       config)).start()  # Launch a background job
-        time.sleep(0.5)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
+            threading.Thread(target=background_load,
+                             args=(i[0],
+                                   config)).start()  # Launch a background job
+        time.sleep(1)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
 finally:
     connection.close()  # Close the connection and shutdown everything
 

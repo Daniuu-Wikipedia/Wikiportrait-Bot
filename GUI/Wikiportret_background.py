@@ -65,10 +65,6 @@ def background_load(session_id, config):
 # The actual continuous loop
 try:
     while 1:
-        for i in queries:  # Avoid having parallel queries on the db with the same connection...
-            # Should be pretty fast, so let's not worry too much here...
-            dbutil.adjust_db(i, config['DB_NAME'], connection=connection)
-
         # To do: check if there are any locked jobs pending in the db
         # If so, launch a thread for each job to start dealing with the Wikidata stuff
         for i in dbutil.query_db(background_trigger,

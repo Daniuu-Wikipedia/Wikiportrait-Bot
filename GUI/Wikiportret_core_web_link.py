@@ -123,6 +123,8 @@ class WebImage(Image):
             self.claims = value
         elif isinstance(value, str):
             self.claims = json.loads(value)  # Directly load claims from JSON
+            self.date_born()
+            self.date_deceased()
 
     @property
     def commmons_claims(self):

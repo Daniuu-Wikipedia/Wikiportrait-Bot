@@ -71,14 +71,14 @@ try:
                                  config['DB_NAME'],
                                  need_all=True,
                                  connection=connection):
-            threading.Thread(target=background_load,
-                             args=(i[0],
-                                   config)).start()  # Launch a background job
             update_query = """
-            UPDATE sessions 
-            SET status = 'processing', locked = 1, locked_at = CURRENT_TIMESTAMP 
-            WHERE session_id=%d""" % i[0]
+                        UPDATE sessions 
+                        SET status = 'processing', locked = 1, locked_at = CURRENT_TIMESTAMP 
+                        WHERE session_id=%d""" % i[0]
             dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
+            #threading.Thread(target=background_load,
+            #                 args=(i[0],
+            #                       config)).start()  # Launch a background job
         time.sleep(0.5)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
 finally:
     connection.close()  # Close the connection and shutdown everything

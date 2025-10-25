@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const dateInput = document.getElementById("i12");
 
-  // Functie to convert YYYY/MM/DD to DD/MM/YYYY
+  // Function to convert YYYY/MM/DD to DD/MM/YYYY
   function formatDate(dateString) {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");

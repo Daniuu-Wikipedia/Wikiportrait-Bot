@@ -101,6 +101,22 @@ class WebImage(Image):
             self.mc = json.loads(value)
 
 
+# Define custom exception for dealing with incorrect data
+class WikiError(Exception):
+    def __str__(self):
+        return 'Something went wrong while loading the data from the wiki'
+
+
+class BackgroundError(Exception):
+    def __str__(self):
+        return 'The bg job is down!'
+
+
+class TimeError(Exception):
+    def __str__(self):
+        return 'Still processing in the background'
+
+
 def create_from_db(session_number,
                    dbname,
                    config,
@@ -120,6 +136,16 @@ def create_from_db(session_number,
     result = dbut.query_db(query, dbname, connection=connection)  # Get relevant row as a tuple
     operator_id = result[1]  # Operator id, needed further down the road
     page, file = result[2], result[3]  # Make life slightly easier & shorten notation
+    status = result[4]
+
+    # Error handling section
+    match status:
+        case 'failed':
+            raise WikiError('That did not work')
+        case 'processing':
+            raise TimeError('Still processing in the background')
+        case 'pending':
+            raise BackgroundError('BG JOB IS DOWN!!!')
 
     # Third job: all input is there to generate the WebImage desperately needed
     output = WebImage(file, page, config, operator_id)

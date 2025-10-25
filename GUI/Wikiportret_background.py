@@ -36,22 +36,28 @@ def background_load(session_id, config, conn):
     Procedure: gets called through the background job...
         In the meantime, the web tool will be kept on hold for some time...
     """
-    bot = wcl.create_from_db(session_id,
-                             config['DB_NAME'],
-                             config,
-                             retrieve_claims=False,
-                             adjust_input_data=False)  # We still need to write stuff to the db, so silent
-    bot.prepare_image_data()  # Load stuff in the background
-    bot.get_commons_claims()
-    bot.get_commons_text()
-    bot.ini_wikidata()
-    # We need to clearly communicate with the db !!!
-    bot.write_to_db(session_id, conn)
-    bot.input_data_to_db(session_id, conn)
-    dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL WHERE session_id=%d" % session_id,
-                     config['DB_NAME'],
-                     connection=connection)
-    print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
+    success = False  # By default, assume that Daniuu is crap at coding & the bot fails
+    try:
+        bot = wcl.create_from_db(session_id,
+                                 config['DB_NAME'],
+                                 config,
+                                 retrieve_claims=False,
+                                 adjust_input_data=False)  # We still need to write stuff to the db, so silent
+        bot.prepare_image_data()  # Load stuff in the background
+        bot.get_commons_claims()
+        bot.get_commons_text()
+        bot.ini_wikidata()
+        # We need to clearly communicate with the db !!!
+        bot.write_to_db(session_id, conn)
+        bot.input_data_to_db(session_id, conn)
+        success = True
+    finally:
+        status = 'completed' if success else 'failed'
+        dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL, status = %s WHERE session_id=%d" % (status,
+                                                                                                               session_id),
+                         config['DB_NAME'],
+                         connection=connection)
+        print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
 
 
 def clean_db(connection, dbname, queries):

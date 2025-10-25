@@ -120,11 +120,9 @@ class WebImage(Image):
     @wikidata_claims_json.setter
     def wikidata_claims_json(self, value):
         if isinstance(value, dict):
-            self.claims = value
+            self.claims_dict = value
         elif isinstance(value, str):
-            self.claims = json.loads(value)  # Directly load claims from JSON
-        self.date_born()
-        self.date_deceased()
+            self.claims_dict = json.loads(value)  # Directly load claims from JSON
 
     @property
     def commmons_claims(self):

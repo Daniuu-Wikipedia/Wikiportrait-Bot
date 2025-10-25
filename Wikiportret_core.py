@@ -286,6 +286,8 @@ class Image:
                                           microsecond=0,
                                           minute=0,
                                           second=0)
+        elif isinstance(new, str):
+            self._imagedate = dt.date.fromisoformat(new)
         else:
             raise TypeError('Dates must be valid datetimes!')
 

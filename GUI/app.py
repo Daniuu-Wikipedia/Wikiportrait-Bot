@@ -9,6 +9,9 @@ import flask
 # Import Toolforge to update the user agent of the app
 import toolforge
 
+# Some datetime stuff
+import datetime as dt
+
 # Import some auxiliary classes
 import os
 import tomllib
@@ -217,6 +220,7 @@ def review():
 def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
+        update_dict = {}  # Key-value pairs for updating stuff in the db
         bot_object = wcl.create_from_db(flask.session['session_id'],
                                         app.config,
                                         flask.session['username'])  # To do: make adjustments needed
@@ -225,17 +229,48 @@ def submit():
         # But this only happens if some specific checkboxes are checked
         # If a checkbox is checked, it's name will appear in flask.request.form
         if 'checkdate' in flask.request.form:  # Date of image capture is adjusted
-            pass  # This bit of the code was adjusted
+            bot_object.date = flask.request.form['datevalue']
+            update_dict['date'] = bot_object.date
+        if 'checkbirthdate' in flask.request.form:
+            bot_object.birth = flask.request.form['birthdatevalue']
+            update_dict['birth_date'] = bot_object.birth
+        if 'checkdeathdate' in flask.request.form:
+            bot_object.death = flask.request.form['deathdatevalue']
+            update_dict['death_date'] = bot_object.death
         if 'checksummary' in flask.request.form:  # Use custom edit summary
             bot_object.sum = flask.request.form['summaryvalue'].strip()
+            update_dict['edit_summary'] = bot_object.sum
         if 'checkcat' in flask.request.form:  # Custom category name
             bot_object.catname = flask.request.form['catvalue'].strip()  # Call the correct catname
+            update_dict['category_name'] = bot_object.catname
         if 'checkcaption' in flask.request.form:  # Custom caption
             bot_object.caption = flask.request.form['captionvalue'].strip()
+            update_dict['custom_caption'] = bot_object.caption
         if 'checklicence' in flask.request.form:  # Custom license, there is still a bug here...
             bot_object.license = flask.request.form['licencevalue'].strip()
 
-        return 'WORKED!!!'
+        # Overwrite some custom data in the db if needed
+        connection = toolforge.toolsdb(app.config['DB_NAME'])
+        if update_dict:
+            for i, j in update_dict.items():
+                query = """
+                UPDATE input_data
+                SET %s = %r
+                WHERE session_id = %d
+                """ % (i, j, flask.session['session_id'])
+                db_utils.adjust_db(query,
+                                   app.config['DB_NAME'],
+                                   connection=connection)
+
+        # Uploading the stuff to the wiki will be done in the background
+        # Prepare everything for the background job
+        query = """
+        UPDATE sessions
+        SET status = 'ready'
+        WHERE session_id = %d
+        """ % flask.session['session_id']
+        db_utils.adjust_db(query, app.config['DB_NAME'], connection=connection)
+        connection.close()
 
         return flask.render_template('review.html',
                                      bot=bot_object,

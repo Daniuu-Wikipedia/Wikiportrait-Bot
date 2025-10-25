@@ -66,12 +66,12 @@
                 <div class="input-container">
                     <input type="checkbox"
                            id="check13"
-                           name="checkdate"
+                           name="checkdeathdate"
                            class="form-checkbox"
                            unchecked>
                     <input type="date"
                            id="i13"
-                           name="datevalue"
+                           name="deathdatevalue"
                            class="form-input"
                            {% if bot.death %}
                            value="{{ bot.death.year }}-{{ '%02d'|format(bot.death.month) }}-{{ '%02d'|format(bot.death.day) }}"
@@ -84,12 +84,12 @@
                 <div class="input-container">
                     <input type="checkbox"
                            id="check14"
-                           name="checkdate"
+                           name="checkbirthdate"
                            class="form-checkbox"
                            unchecked>
                     <input type="date"
                            id="i14"
-                           name="datevalue"
+                           name="birthdatevalue"
                            class="form-input"
                            {% if bot.birth %}
                            value="{{ bot.birth.year }}-{{ '%02d'|format(bot.birth.month) }}-{{ '%02d'|format(bot.birth.day) }}"
@@ -130,7 +130,11 @@
                            id="i22"
                            name="captionvalue"
                            class="form-input"
+                           {% if bot.date %}
                            value="{{ bot.name }} in {{ bot.date.year }}"
+                           {% else %}
+                           value = " {{ bot.name }}"
+                           {% endif %}
                            disabled>
                 </div>
             </div>

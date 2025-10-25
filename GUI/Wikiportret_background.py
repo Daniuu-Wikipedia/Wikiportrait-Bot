@@ -30,12 +30,13 @@ background_trigger = "SELECT * FROM sessions WHERE locked = 1 AND status = 'pend
 
 
 # Define some auxiliary methods
-def background_load(session_id, config, conn):
+def background_load(session_id, config):
     """
     Method that allows reading a bot's claims in the background.
     Procedure: gets called through the background job...
         In the meantime, the web tool will be kept on hold for some time...
     """
+    conn = toolforge.toolsdb(config['DB_NAME'])
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
     try:
         bot = wcl.create_from_db(session_id,
@@ -45,7 +46,6 @@ def background_load(session_id, config, conn):
                                  adjust_input_data=False)  # We still need to write stuff to the db, so silent
         bot.prepare_image_data()  # Load stuff in the background
         bot.get_commons_claims()
-        bot.get_commons_text()
         bot.ini_wikidata()
         # We need to clearly communicate with the db !!!
         bot.write_to_db(session_id, conn)
@@ -56,25 +56,17 @@ def background_load(session_id, config, conn):
         dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL, status = %s WHERE session_id=%d" % (status,
                                                                                                                session_id),
                          config['DB_NAME'],
-                         connection=connection)
+                         connection=conn)
+        conn.close()
         print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
-
-
-def clean_db(connection, dbname, queries):
-    # First task: get rid of tokens > 10 minutes old
-    # Second task: release jobs locked for > 5 minutes - sessions table
-    # Third task: at some point, old sessions that ran successfully should also be booted
-    for i in queries:  # Don't bother generating the queries again during each iteration
-        dbutil.adjust_db(i, dbname, connection=connection)
 
 
 # The actual continuous loop
 try:
     while 1:
-        threading.Thread(target=clean_db,
-                         args=(connection,
-                               config['DB_NAME'],
-                               queries)).start()
+        for i in queries:  # Avoid having parallel queries on the db with the same connection...
+            # Should be pretty fast, so let's not worry too much here...
+            dbutil.adjust_db(i, config['DB_NAME'], connection=connection)
 
         # To do: check if there are any locked jobs pending in the db
         # If so, launch a thread for each job to start dealing with the Wikidata stuff
@@ -84,8 +76,7 @@ try:
                                  connection=connection):
             threading.Thread(target=background_load,
                              args=(i[0],
-                                   config,
-                                   connection)).start()  # Launch a background job
+                                   config)).start()  # Launch a background job
             update_query = "UPDATE sessions SET status = 'processing' WHERE session_id=%d" % i[0]
             dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
         time.sleep(0.5)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)

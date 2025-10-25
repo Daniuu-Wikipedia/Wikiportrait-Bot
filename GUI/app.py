@@ -235,6 +235,8 @@ def submit():
         if 'checklicence' in flask.request.form:  # Custom license, there is still a bug here...
             bot_object.license = flask.request.form['licencevalue'].strip()
 
+        return 'WORKED!!!'
+
         return flask.render_template('review.html',
                                      bot=bot_object,
                                      license_options=wcl.WebImage.licenses.keys(),

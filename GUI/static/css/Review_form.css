@@ -167,3 +167,10 @@ input[type="submit"]:hover {
     text-overflow: ellipsis;
     display: inline-block;
 }
+
+.date-error {
+    border: 2px solid #e74c3c;       /* Bright red border */
+    background-color: #eb9791;       /* Light red background */
+    color: #333;                     /* Optional: keep text readable */
+    font-style: italic;
+}

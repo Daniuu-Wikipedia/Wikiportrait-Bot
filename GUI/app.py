@@ -126,7 +126,7 @@ def oauth_callback():
     return flask.redirect(flask.url_for('input'))  # After logging in, direct user to login screen
 
 
-@app.route('/logout')
+@app.route('/logout', methods='GET')
 def logout():
     """Log the user out by clearing their session."""
     # To do: remove associated entries from the db (clean up stuff)
@@ -136,7 +136,7 @@ def logout():
 
 
 # Setup up the starting screen
-@app.route('/input')
+@app.route('/input', methods=['GET'])
 def input():
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument

@@ -1,6 +1,7 @@
 """
 A module to couple Wikiportret Core to some very handy Flask utilities
 """
+# import flask
 import toolforge
 
 from Wikiportret_core import Image

@@ -1,26 +1,24 @@
-<!-- Uses the Jinja2 engine to inherit from base.html -->
 {% extends 'base.html' %}
 
 {% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Input_fields.css') }}">
+    <title>Wikiportret - Nieuw Proces</title>
+{% endblock %}
+
+{% block content_title %}
+    <h1>Nieuwe Afbeelding Verwerken</h1>
 {% endblock %}
 
 {% block body %}
-    <!-- Generate the input section -->
-    <div class="inputlayer">
-        <form action="load"
-              method="POST"
-              style="display: flex; flex-direction: column; gap: 1rem;">
-
+    <div class="card" style="max-width: 600px;">
+        <form action="load" method="POST">
             <div class="form-group">
                 <label for="File">Naam v/d afbeelding op Commons</label>
                 <input type="text"
                        id="File"
                        name="File"
                        class="form-input"
-                       style="background-color: rgb(185, 233, 255);"
                        oninput="changeBackgroundColorFile(this.value)"
-                       placeholder="Naam van het bestand">
+                       placeholder="Voorbeeld: File:Daniuuuuuuu.jpg">
             </div>
 
             <div class="form-group">
@@ -30,30 +28,14 @@
                        name="Article"
                        class="form-input"
                        oninput="checkForProhibitedCharacters(this.value)"
-                       style="background-color: rgb(185, 233, 255);"
-                       placeholder="Naam van het artikel">
+                       placeholder="Voorbeeld: Edward Huntington">
             </div>
 
-            <input type="submit"
-                   id="submit-button"
-                   value="VERWERK"
-                   style="font-size: 1.2rem; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer;">
+            <div class="mt-1 text-center">
+                <button type="submit" id="submit-button" class="btn">Afbeelding Verwerken</button>
+            </div>
+            
             <script src="{{ url_for('static', filename='js/text_submit_field_1.js') }}"></script>
         </form>
-    </div>
-    <div class="user-info-container">
-        <div class="user-info-box">
-            {% if user_name %}
-                <span id="user-name">Ingelogd als {{ user_name }}</span>
-                <form action="/logout" method="get">
-                    <button type="submit" class="logout-button">Logout</button>
-                </form>
-            {% else %}
-                <span id="user-name-unknown"><em>Niet aangemeld</em></span>
-                <form action="/login" method="get">
-                    <button type="submit" class="login-button">Aanmelden</button>
-                </form>
-            {% endif %}
-        </div>
     </div>
 {% endblock %}

@@ -1,0 +1,115 @@
+/* style.css - 403 Page Aesthetics */
+
+:root {
+    --bg-color: #1a1e22;
+    --svg-stroke: #2a2e32;
+    --text-dim: #f7f9fc66; /* approx #8c929a */
+    --text-lit: #ffffff;
+    --highlight: #ffffff;
+    --secondary-text: #6a6f75;
+    --link-color: #c9ccd0;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    overflow: hidden;
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--secondary-text);
+}
+
+/* Background 403 SVG Layout */
+.background-403 {
+    position: absolute;
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.bg-text {
+    font-size: 25rem;
+    font-weight: 800;
+    fill: transparent;
+    stroke: var(--svg-stroke);
+    stroke-width: 3px;
+    opacity: 0.8;
+}
+
+/* Foreground Centered Content */
+.content-container {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.padlock-icon {
+    width: 72px;
+    height: 72px;
+}
+
+/* Responsive Type Block */
+.text-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Flashlight Effect Core Styling */
+.main-text {
+    font-size: 2.5rem;
+    font-weight: 400;
+    margin: 0;
+    background: radial-gradient(
+        circle 140px at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+        var(--text-lit) 0%, 
+        var(--text-dim) 100%
+    );
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+/* Explicit override purely for the 'you' */
+.main-text .highlight {
+    color: var(--highlight);
+    -webkit-text-fill-color: var(--highlight);
+    font-weight: 600;
+}
+
+.secondary-text {
+    font-size: 1.1rem;
+    margin: 1.5rem 0 0.5rem 0;
+}
+
+/* Interactive link */
+.contact-link {
+    color: var(--link-color);
+    text-decoration: none;
+    font-size: 1rem;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s ease;
+    padding-bottom: 2px;
+}
+
+.contact-link:hover {
+    color: #ffffff;
+    border-bottom: 1px solid #ffffff;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+}

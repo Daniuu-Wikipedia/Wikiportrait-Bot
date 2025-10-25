@@ -1,32 +1,25 @@
-<!-- Uses the Jinja2 engine to inherit from base.html -->
-<!-- This page will be displayed whenever the program encounters an error -->
 {% extends 'base.html' %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
+    <title>Wikiportret - Foutmelding</title>
+{% endblock %}
+
+{% block content_title %}
+    <h1>Foutmelding</h1>
 {% endblock %}
 
 {% block body %}
-<!-- Just yield a screen that tells the user that they messed up -->
-<div class="errormessage">
-    ERROR - I could not handle your request!
-</div>
-The message I received is:</br>
-{{message}}
-    <div class="user-info-container">
-        <div class="user-info-box">
-            {% if user_name %}
-                <span id="user-name">Ingelogd als {{ user_name }}</span>
-                <form action="/logout" method="post">
-                    <button type="submit" class="logout-button">Logout</button>
-                </form>
-            {% else %}
-                <span id="user-name-unknown"><em>Niet aangemeld</em></span>
-                <form action="/login" method="get">
-                    <button type="submit" class="login-button">Aanmelden</button>
-                </form>
-            {% endif %}
+    <div class="card" style="border-left: 5px solid #d33;">
+        <h2 style="color: #d33;" class="mb-1">Oeps! Er is iets misgegaan.</h2>
+        <p>Helaas konden we uw verzoek niet verwerken.</p>
+        <iframe src="https://klipy.com/gifs/patrick-star-tears/player" width="640" height="528" title="Patrick Star Crying" frameborder="0" allowfullscreen loading="lazy"></iframe>
+        <div class="mt-1" style="background: #fff5f5; padding: 1rem; border-radius: 6px; font-family: monospace;">
+            <strong>Bericht:</strong><br>
+            {{message}}
+        </div>
+
+        <div class="mt-1 text-center">
+            <a href="{{ url_for('input') }}" class="btn">Terug naar Dashboard</a>
         </div>
     </div>
-
 {% endblock %}

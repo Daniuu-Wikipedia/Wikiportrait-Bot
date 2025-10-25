@@ -26,7 +26,7 @@ queries = ("DELETE FROM tokens where timestamp < NOW() - INTERVAL 10 MINUTE;",
            "UPDATE sessions SET locked = 0, locked_at = NULL WHERE locked_at < NOW() - INTERVAL 1 MINUTE;")
 
 # Fourth job: the query to run as a one-off (the one that triggers the loading of the info for the jobs)
-background_trigger = "SELECT * FROM sessions WHERE locked = 1 AND status = 'pending';"
+background_trigger = "SELECT * FROM sessions WHERE locked = 0 AND status = 'pending';"
 
 
 # Define some auxiliary methods
@@ -77,7 +77,7 @@ try:
             threading.Thread(target=background_load,
                              args=(i[0],
                                    config)).start()  # Launch a background job
-            update_query = "UPDATE sessions SET status = 'processing' WHERE session_id=%d" % i[0]
+            update_query = "UPDATE sessions SET status = 'processing', locked = 1 WHERE session_id=%d" % i[0]
             dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
         time.sleep(0.5)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
 finally:

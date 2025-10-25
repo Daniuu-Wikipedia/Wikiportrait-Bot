@@ -62,6 +62,23 @@ class WebImage(Image):
             """ % (self.date, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
 
+        # And now time to add the birth & death date of the subject
+        if self.birth is not None:
+            query = """
+                    UPDATE input_data
+                    SET birth_date = %r
+                    WHERE session_id = %d;
+                    """ % (self.birth, session_number)
+            dbut.adjust_db(query, self.dbname, connection=connection)
+
+        if self.death is not None:
+            query = """
+                    UPDATE death_date
+                    SET birth_date = %r
+                    WHERE session_id = %d;
+                    """ % (self.death, session_number)
+            dbut.adjust_db(query, self.dbname, connection=connection)
+
     # Part 1 of the extension: additional properties for interaction with the session
     @property
     def claims_dict(self):  # Goal of property is to secure the required information

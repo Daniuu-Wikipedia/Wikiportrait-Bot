@@ -73,7 +73,9 @@
                            id="i13"
                            name="datevalue"
                            class="form-input"
-                           value="{{ bot.death.day }}/{{ bot.death.month }}/{{ bot.death.year}}"
+                           {% if bot.death %}
+                           value="{{ bot.death.year }}-{{ '%02d'|format(bot.death.month) }}-{{ '%02d'|format(bot.death.day) }}"
+                           {% endif %}
                            disabled>
                 </div>
             </div>
@@ -89,7 +91,9 @@
                            id="i14"
                            name="datevalue"
                            class="form-input"
-                           value="{{ bot.birth.day }}/{{ bot.birth.month }}/{{ bot.birth.year}}"
+                           {% if bot.birth %}
+                           value="{{ bot.birth.year }}-{{ '%02d'|format(bot.birth.month) }}-{{ '%02d'|format(bot.birth.day) }}"
+                           {% endif %}
                            disabled>
                 </div>
             </div>

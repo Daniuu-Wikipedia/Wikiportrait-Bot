@@ -21,6 +21,8 @@ function validateDates() {
   if (birthDate != null && deathDate != null && imageDate != null) {
       if (birthDate > deathDate || imageDate > deathDate) {
         birthDateInput.classList.add("date-error");
+        deathDateInput.classList.add("date-error");
+        imageDateInput.classList.add("date-error");
       }
   }
 
@@ -28,12 +30,14 @@ function validateDates() {
   if (birthDate != null && imageDate != null) {
       if (birthDate > imageDate) {
       birthDateInput.classList.add("date-error");
+      imageDateInput.classList.add("date-error");
     }
   }
 
   if (imageDate != null && deathDate != null) {
       if (imageDate && deathDate && imageDate > deathDate) {
       imageDateInput.classList.add("date-error");
+      deathDateInput.classList.add("date-error");
     }
   }
 }

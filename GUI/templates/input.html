@@ -45,7 +45,7 @@
         <div class="user-info-box">
             {% if user_name %}
                 <span id="user-name">Ingelogd als {{ user_name }}</span>
-                <form action="/logout" method="post">
+                <form action="/logout" method="get">
                     <button type="submit" class="logout-button">Logout</button>
                 </form>
             {% else %}

@@ -22,7 +22,7 @@ toolforge.set_user_agent('Wikiportret-updater-bg',
 connection = toolforge.toolsdb(config['DB_NAME'])
 
 # Third job: compile a list of queries to be performed during each sample
-queries = ("DELETE FROM tokens where timestamp < NOW() - INTERVAL 10 MINUTE;",
+queries = (#"DELETE FROM tokens where timestamp < NOW() - INTERVAL 15 MINUTE;",
            "UPDATE sessions SET locked = 0, locked_at = NULL WHERE locked_at < NOW() - INTERVAL 1 MINUTE;")
 
 # Fourth job: the query to run as a one-off (the one that triggers the loading of the info for the jobs)

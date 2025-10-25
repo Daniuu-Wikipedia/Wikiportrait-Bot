@@ -134,8 +134,8 @@ class TimeError(Exception):
 
 
 def create_from_db(session_number,
-                   dbname,
                    config,
+                   username=None,  # Username can also be passed, but not worry about it for now
                    retrieve_claims=True,
                    adjust_input_data=True,
                    check_status=True):
@@ -144,6 +144,9 @@ def create_from_db(session_number,
     Method takes two arguments:
         * session number: integer representing a session in the database
     """
+    # To make our life slightly easier...
+    dbname = config['DB_NAME']
+
     # First job: create a connection to the db
     # Since we need to run a few queries, we will just use one steady connection
     connection = toolforge.toolsdb(dbname)

@@ -59,7 +59,24 @@ class WebImage(Image):
             UPDATE input_data
             SET date = %r
             WHERE session_id = %d;
-            """ % (self.date, session_number)
+            """ % (self.date.isoformat(), session_number)
+            dbut.adjust_db(query, self.dbname, connection=connection)
+
+        # And now time to add the birth & death date of the subject
+        if self.birth is not None:
+            query = """
+                    UPDATE input_data
+                    SET birth_date = %r
+                    WHERE session_id = %d;
+                    """ % (self.birth.isoformat(), session_number)
+            dbut.adjust_db(query, self.dbname, connection=connection)
+
+        if self.death is not None:
+            query = """
+                    UPDATE death_date
+                    SET death_date = %r
+                    WHERE session_id = %d;
+                    """ % (self.death.isoformat(), session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
 
         # And now time to add the birth & death date of the subject
@@ -88,6 +105,10 @@ class WebImage(Image):
     def claims_dict(self, value):
         if isinstance(value, dict):
             self.claims = value
+            # Also update the chap's date of birth & date of death
+            # These are not automatically read when an object is reset from the db
+            self.date_born()
+            self.date_deceased()
 
     @property
     def wikidata_claims_json(self):
@@ -205,16 +226,15 @@ def create_from_db(session_number,
             if result[1] is not None:
                 output.caption = result[1]
             if result[2] is not None:
-                if isinstance(result[2], dt.date):  # For now, assume that MySQL will do the job
-                    output.date = result[2]
+                output.date = dt.date.fromisoformat(result[2])
             if result[4] is not None:
                 output.category_name = result[4]
             if result[5] is not None:
                 output.edit_summary = result[5]
             if result[7] is not None:
-                output.birth = result[7]
+                output.birth = dt.date.fromisoformat(result[7])
             if result[8] is not None:
-                output.death = result[8]
+                output.death = dt.date.fromisoformat(result[8])
             # Result 3 = ticket number, we don't need it for now
             # Result 6 = used only for the db and cleanup scripts
     return output

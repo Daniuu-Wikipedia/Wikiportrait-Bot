@@ -196,7 +196,7 @@ def review():
         if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
             return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
         bot_object = wcl.create_from_db(flask.session['session_id'],
-                                        app.config['DB_NAME'],
+                                        app.config,
                                         flask.session['username'])  # To do: continue
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         return flask.render_template('review.html',
@@ -218,7 +218,7 @@ def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
         bot_object = wcl.create_from_db(flask.session['session_id'],
-                                        app.config['DB_NAME'],
+                                        app.config,
                                         flask.session['username'])  # To do: make adjustments needed
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         # First things first: we need to adjust some values

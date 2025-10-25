@@ -49,7 +49,7 @@ def index():
     return flask.redirect(flask.url_for('input'))
 
 
-@app.route('/login')
+@app.route('/login', methods=['GET'])
 def login():
     """Initiate an OAuth login.
 
@@ -126,7 +126,7 @@ def oauth_callback():
     return flask.redirect(flask.url_for('input'))  # After logging in, direct user to login screen
 
 
-@app.route('/logout', methods='GET')
+@app.route('/logout', methods=['GET'])
 def logout():
     """Log the user out by clearing their session."""
     # To do: remove associated entries from the db (clean up stuff)
@@ -136,7 +136,7 @@ def logout():
 
 
 # Setup up the starting screen
-@app.route('/input', methods=['GET'])
+@app.route('/input')
 def input():
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument

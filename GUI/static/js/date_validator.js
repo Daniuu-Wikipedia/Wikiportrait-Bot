@@ -18,11 +18,10 @@ function validateDates() {
   const imageDate = imageDateStr ? new Date(imageDateStr) : null;
 
   // birthDate <= deathDate
-  if (birthDate != null && deathDate != null && imageDate != null) {
-      if (birthDate > deathDate || imageDate > deathDate) {
+  if (birthDate != null && deathDate != null) {
+      if (birthDate > deathDate) {
         birthDateInput.classList.add("date-error");
         deathDateInput.classList.add("date-error");
-        imageDateInput.classList.add("date-error");
       }
   }
 
@@ -34,8 +33,9 @@ function validateDates() {
     }
   }
 
+  // Ideally, no images taken after the chap died
   if (imageDate != null && deathDate != null) {
-      if (imageDate && deathDate && imageDate > deathDate) {
+      if (imageDate > deathDate) {
       imageDateInput.classList.add("date-error");
       deathDateInput.classList.add("date-error");
     }

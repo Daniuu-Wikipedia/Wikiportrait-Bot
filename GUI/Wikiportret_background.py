@@ -43,7 +43,8 @@ def background_load(session_id, config):
                                  config['DB_NAME'],
                                  config,
                                  retrieve_claims=False,
-                                 adjust_input_data=False)  # We still need to write stuff to the db, so silent
+                                 adjust_input_data=False,
+                                 check_status=False)  # We still need to write stuff to the db, so silent
         bot.prepare_image_data()  # Load stuff in the background
         bot.get_commons_claims()
         bot.ini_wikidata()
@@ -53,7 +54,7 @@ def background_load(session_id, config):
         success = True
     finally:
         status = 'completed' if success else 'failed'
-        dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL, status = %s WHERE session_id=%d" % (status,
+        dbutil.adjust_db("UPDATE sessions SET locked = 0, locked_at = NULL, status = '%s' WHERE session_id=%d" % (status,
                                                                                                                session_id),
                          config['DB_NAME'],
                          connection=conn)
@@ -77,7 +78,10 @@ try:
             threading.Thread(target=background_load,
                              args=(i[0],
                                    config)).start()  # Launch a background job
-            update_query = "UPDATE sessions SET status = 'processing', locked = 1 WHERE session_id=%d" % i[0]
+            update_query = """
+            UPDATE sessions 
+            SET status = 'processing', locked = 1, locked_at = CURRENT_TIMESTAMP 
+            WHERE session_id=%d""" % i[0]
             dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
         time.sleep(0.5)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
 finally:

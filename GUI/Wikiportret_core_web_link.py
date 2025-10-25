@@ -121,7 +121,8 @@ def create_from_db(session_number,
                    dbname,
                    config,
                    retrieve_claims=True,
-                   adjust_input_data=True):
+                   adjust_input_data=True,
+                   check_status=True):
     """
     Reads a session number & will then parse all relevant output form the db.
     Method takes two arguments:
@@ -139,13 +140,14 @@ def create_from_db(session_number,
     status = result[4]
 
     # Error handling section
-    match status:
-        case 'failed':
-            raise WikiError('That did not work')
-        case 'processing':
-            raise TimeError('Still processing in the background')
-        case 'pending':
-            raise BackgroundError('BG JOB IS DOWN!!!')
+    if check_status:  # Allow for manually bypassing the status check
+        match status:
+            case 'failed':
+                raise WikiError('That did not work')
+            case 'processing':
+                raise TimeError('Still processing in the background')
+            case 'pending':
+                raise BackgroundError('BG JOB IS DOWN!!!')
 
     # Third job: all input is there to generate the WebImage desperately needed
     output = WebImage(file, page, config, operator_id)

@@ -49,19 +49,10 @@ class WebImage(Image):
 
     def input_data_to_db(self, session_number, connection=None):
         query = f"""
-        insert into input_data (`session_id`, `custom_caption`, `category_name`, `edit_summary`)
-        values ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}');
+        insert into input_data (`session_id`, `custom_caption`, `category_name`, `edit_summary`, `ticket`)
+        values ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}', {self.ticket_number});
         """
         dbut.adjust_db(query, self.dbname, connection=connection)
-
-        # And also check for the ticket number
-        if self.ticket_number is not None:
-            query = """
-            UPDATE input_data
-            SET ticket = %d 
-            WHERE session_id = %d;
-            """ % (self.ticket_number, session_number)
-            dbut.adjust_db(query, self.dbname, connection=connection)
 
         if self.date is not None:
             query = """
@@ -69,6 +60,7 @@ class WebImage(Image):
             SET date = %r
             WHERE session_id = %d;
             """ % (self.date, session_number)
+            dbut.adjust_db(query, self.dbname, connection=connection)
 
     # Part 1 of the extension: additional properties for interaction with the session
     @property

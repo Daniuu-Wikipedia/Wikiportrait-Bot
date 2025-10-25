@@ -19,10 +19,8 @@ import Wikiportret_core_web_link as wcl
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
 
-
 toolforge.set_user_agent('Wikiportret-updater',
                          email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
-
 
 data = SiteSettings()
 
@@ -166,9 +164,9 @@ def load():
         # Handle the POST request
         # In the background, we will start setting up the bot
         bot_object = wcl.WebImage(flask.request.form['File'].strip(),
-                              flask.request.form['Article'].strip(),
-                              app.config,
-                              flask.session['username'])  # Configure a new bot object
+                                  flask.request.form['Article'].strip(),
+                                  app.config,
+                                  flask.session['username'])  # Configure a new bot object
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
 
         # Previous versions of code set stuff to the session (now no longer needed: done via db)
@@ -198,8 +196,8 @@ def review():
         if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
             return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
         bot_object = wcl.create_from_db(flask.session['session_id'],
-                                    app.config['DB_NAME'],
-                                    flask.session['username'])  # To do: continue
+                                        app.config['DB_NAME'],
+                                        flask.session['username'])  # To do: continue
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         return flask.render_template('review.html',
                                      license_options=wcl.WebImage.licenses.keys(),
@@ -220,8 +218,8 @@ def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
         bot_object = wcl.create_from_db(flask.session['session_id'],
-                                    app.config['DB_NAME'],
-                                    flask.session['username'])  # To do: make adjustments needed
+                                        app.config['DB_NAME'],
+                                        flask.session['username'])  # To do: make adjustments needed
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         # First things first: we need to adjust some values
         # But this only happens if some specific checkboxes are checked

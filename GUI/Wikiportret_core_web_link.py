@@ -8,6 +8,7 @@ import Wikiportret_db_utils as dbut
 import datetime as dt
 import json
 
+
 class WebImage(Image):
     def __init__(self, file, name, config, user):
         super().__init__(file, name)
@@ -37,7 +38,7 @@ class WebImage(Image):
             self.get_commons_claims()
         query = f"""
         insert into `claims` (`session_id`, `json_response`, `commons_claims`, `qid`, `mid`, `comm_text`) 
-        values ({session_number},
+        values  ({session_number},
          '{json.dumps(self.claims)}',
           '{json.dumps(self.mc)}',
            '{self.qid}',
@@ -48,10 +49,19 @@ class WebImage(Image):
 
     def input_data_to_db(self, session_number, connection=None):
         query = f"""
-        insert into input_data (`session_id`, `custom_caption`, `date`, `ticket`, `category_name`, `edit_summary`)
-        values ({session_number}, '{self.caption}', {self.date}, {self.mc.get('P6305')}, '{self.catname}', '{self.sum}');
+        insert into input_data (`session_id`, `custom_caption`, `date`, `category_name`, `edit_summary`)
+        values ({session_number}, '{self.caption}', {self.date}, '{self.catname}', '{self.sum}');
         """
         dbut.adjust_db(query, self.dbname, connection=connection)
+
+        # And also check for the ticket number
+        if self.ticket_number is not None:
+            query = """
+            UPDATE input_data
+            SET ticket = %d 
+            WHERE session_id = %d;
+            """ % (self.ticket_number, session_number)
+            dbut.adjust_db(query, self.dbname, connection=connection)
 
     # Part 1 of the extension: additional properties for interaction with the session
     @property
@@ -99,6 +109,13 @@ class WebImage(Image):
             self.mc = value
         elif isinstance(value, str):
             self.mc = json.loads(value)
+
+    @property
+    def ticket_number(self):
+        parent = self.mc.get('P6305', None)
+        if parent is not None:
+            parent = parent[0]
+            return int(parent['mainsnak']['datavalue']['value'])
 
 
 # Define custom exception for dealing with incorrect data

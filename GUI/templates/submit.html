@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Laden...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+{% endblock %}
+
+{% block body %}
+    <div class="loading-container">
+        <h1>Bezig met laden...</h1>
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+        <p id="loading-message">Even geduld, de bot verwerkt de afbeelding.</p>
+    </div>
+    <script src="{{ url_for('static', filename='js/loading_submit.js') }}"></script>
+        <div class="user-info-container">
+        <div class="user-info-box">
+            {% if user_name %}
+                <span id="user-name">Ingelogd als {{ user_name }}</span>
+                <form action="/logout" method="post">
+                    <button type="submit" class="logout-button">Logout</button>
+                </form>
+            {% else %}
+                <span id="user-name-unknown"><em>Niet aangemeld</em></span>
+                <form action="/login" method="get">
+                    <button type="submit" class="login-button">Aanmelden</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+{% endblock %}

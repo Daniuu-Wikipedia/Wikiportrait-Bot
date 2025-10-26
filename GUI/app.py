@@ -272,11 +272,17 @@ def submit():
         db_utils.adjust_db(query, app.config['DB_NAME'], connection=connection)
         connection.close()
 
-        return flask.render_template('review.html',
-                                     bot=bot_object,
-                                     license_options=wcl.WebImage.licenses.keys(),
-                                     selected_license='CC-BY-SA 4.0',
+        return flask.render_template('submit.html',
                                      user_name=flask.session['username'])
+
+
+@app.route('/statussubmit')
+def statussubmit():
+    # Idea: provide the user with an overview of all error messages that were generated
+    # For now: a checklist of things to check also do the job
+    # Also add the "thank you, dear donateur"-message to this screen
+    # Work still in progress
+    return 'Long live Wikimedia!'
 
 
 if __name__ == '__main__':

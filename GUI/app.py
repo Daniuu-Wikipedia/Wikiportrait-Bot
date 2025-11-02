@@ -250,9 +250,8 @@ def submit():
             bot_object.license = flask.request.form['licencevalue'].strip()
 
         # Overwrite some custom data in the db if needed
-        connection = toolforge.toolsdb(app.config['DB_NAME'])
         if update_dict:
-            bot_object.input_data_to_db(flask.session['session_id'], connection)
+            bot_object.input_data_to_db(flask.session['session_id'])
 
         # Uploading the stuff to the wiki will be done in the background
         # Prepare everything for the background job
@@ -261,8 +260,7 @@ def submit():
         SET status = 'ready'
         WHERE session_id = %d
         """ % flask.session['session_id']
-        db_utils.adjust_db(query, app.config['DB_NAME'], connection=connection)
-        connection.close()
+        db_utils.adjust_db(query, app.config['DB_NAME'])
 
         return flask.render_template('submit.html',
                                      user_name=flask.session['username'])

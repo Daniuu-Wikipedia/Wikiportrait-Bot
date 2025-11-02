@@ -31,6 +31,9 @@ class WebImage(Image):
         del secret  # Destroy these immediately for obvious reasons
 
     def write_to_db(self, session_number, connection=None):
+        connection_provided = connection is None
+        if connection is None:
+            connection = toolforge.toolsdb(self.dbname)
         if self.claims is None:
             self.ini_wikidata()
         if self.comtext is None:
@@ -47,11 +50,20 @@ class WebImage(Image):
              '{self.comtext}');
         """
         dbut.adjust_db(query, self.dbname, connection=connection)
+        if connection_provided is True:
+            connection.close()
 
     def input_data_to_db(self, session_number, connection=None):
+        connection_provided = connection is None
+        if connection is None:
+            connection = toolforge.toolsdb(self.dbname)
         query = f"""
-        insert into input_data (`session_id`, `custom_caption`, `category_name`, `edit_summary`, `ticket`)
-        values ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}', {self.ticket_number});
+        INSERT INTO input_data (`session_id`, `custom_caption`, `category_name`, `edit_summary`, `ticket`)
+        VALUES ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}', {self.ticket_number})
+        ON DUPLICATE KEY UPDATE
+        category_name = '{self.catname}',
+        edit_summary = '{self.sum}'
+        ;
         """
         dbut.adjust_db(query, self.dbname, connection=connection)
 
@@ -79,6 +91,8 @@ class WebImage(Image):
                     WHERE session_id = %d;
                     """ % (self.death.year, self.death.month, self.death.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
+        if connection_provided is True:
+            connection.close()
 
     # Part 1 of the extension: additional properties for interaction with the session
     @property

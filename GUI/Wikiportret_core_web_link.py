@@ -58,43 +58,26 @@ class WebImage(Image):
         if self.date is not None:
             query = """
             UPDATE input_data
-            SET date = %r
+            SET date = '%4d-%2d-%2d'
             WHERE session_id = %d;
-            """ % (self.date.isoformat(), session_number)
+            """ % (self.date.year, self.date.month, self.date.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
 
         # And now time to add the birth & death date of the subject
         if self.birth is not None:
             query = """
                     UPDATE input_data
-                    SET birth_date = %r
+                    SET birth_date = '%4d-%2d-%2d'
                     WHERE session_id = %d;
-                    """ % (self.birth.isoformat(), session_number)
+                    """ % (self.birth.year, self.birth.month, self.birth.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
 
         if self.death is not None:
             query = """
                     UPDATE death_date
-                    SET death_date = %r
+                    SET death_date = '%4d-%2d-%2d'
                     WHERE session_id = %d;
-                    """ % (self.death.isoformat(), session_number)
-            dbut.adjust_db(query, self.dbname, connection=connection)
-
-        # And now time to add the birth & death date of the subject
-        if self.birth is not None:
-            query = """
-                    UPDATE input_data
-                    SET birth_date = %r
-                    WHERE session_id = %d;
-                    """ % (self.birth, session_number)
-            dbut.adjust_db(query, self.dbname, connection=connection)
-
-        if self.death is not None:
-            query = """
-                    UPDATE death_date
-                    SET birth_date = %r
-                    WHERE session_id = %d;
-                    """ % (self.death, session_number)
+                    """ % (self.death.year, self.death.month, self.death.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
 
     # Part 1 of the extension: additional properties for interaction with the session

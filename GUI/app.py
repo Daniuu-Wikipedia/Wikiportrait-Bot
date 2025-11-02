@@ -252,15 +252,7 @@ def submit():
         # Overwrite some custom data in the db if needed
         connection = toolforge.toolsdb(app.config['DB_NAME'])
         if update_dict:
-            for i, j in update_dict.items():
-                query = """
-                UPDATE input_data
-                SET %s = %r
-                WHERE session_id = %d
-                """ % (i, j, flask.session['session_id'])
-                db_utils.adjust_db(query,
-                                   app.config['DB_NAME'],
-                                   connection=connection)
+            bot_object.input_data_to_db(flask.session['session_id'], connection)
 
         # Uploading the stuff to the wiki will be done in the background
         # Prepare everything for the background job

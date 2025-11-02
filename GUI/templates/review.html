@@ -43,7 +43,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="i12" class="form-label">Datum <foto></foto> (DD/MM/YYYY)</label>
+                <label for="i12" class="form-label">Datum afbeelding (DD/MM/YYYY)</label>
                 <div class="input-container">
                     <input type="checkbox"
                            id="check12"
@@ -55,9 +55,8 @@
                            name="datevalue"
                            class="form-input"
                            {% if bot.date %}
-                                value="{{ bot.date.year }}-{{ '%02d'|format(bot.date.month) }}-{{ '%02d'|format(bot.date.day) }}"
+                           value="{{ bot.date.year }}-{{ '%02d'|format(bot.date.month) }}-{{ '%02d'|format(bot.date.day) }}"
                            {% endif %}
-                           placeholder="2025-08-17"
                            disabled>
                 </div>
             </div>
@@ -217,6 +216,5 @@
             {% endif %}
         </div>
     </div>
-<script src="{{ url_for('static', filename='js/date_formatter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/date_validator.js') }}"></script>
 {% endblock %}

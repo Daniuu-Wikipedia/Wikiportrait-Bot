@@ -71,7 +71,7 @@ def upload_in_background(session_id, config, username):
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
     conn = toolforge.toolsdb(config['DB_NAME'])
     try:
-        bot = wcl.create_from_db(session_id, config['DB_NAME'], config)
+        bot = wcl.create_from_db(session_id, config)
         _, _, confirmation = bot(True, True, True, True, True, False)  # Make the actual calls to the API
         query = """
         INSERT INTO messages
@@ -118,12 +118,14 @@ try:
             UPDATE sessions
             SET locked = 1, locked_at = CURRENT_TIMESTAMP, status = 'up'
             WHERE session_id = %d;
-            """
+            """ % i[0]
             dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
             threading.Thread(target=upload_in_background,
-                             args=(i[0], config, i[1])).start()
+                             args=(i[0],
+                                   config,
+                                   i[1])).start()
 
-        time.sleep(1)  # Do sampling stuff at a frequency of 2 Hz (ok, slightly less)
+        time.sleep(1)  # Do sampling stuff at a frequency of 1 Hz (ok, slightly less)
 finally:
     connection.close()  # Close the connection and shutdown everything
 

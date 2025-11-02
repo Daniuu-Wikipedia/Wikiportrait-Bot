@@ -281,11 +281,13 @@ class Image:
 
     @date.setter
     def date(self, new):
-        if isinstance(new, (dt.datetime, dt.date)):
+        if isinstance(new, dt.datetime):
             self._imagedate = new.replace(hour=0,
                                           microsecond=0,
                                           minute=0,
                                           second=0)
+        elif isinstance(new, dt.date):
+            self._imagedate = new  # No need to perform the additional replacement
         elif isinstance(new, str):
             self._imagedate = dt.date.fromisoformat(new)
         else:

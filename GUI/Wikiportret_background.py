@@ -110,7 +110,7 @@ try:
                              args=(i[0],
                                    config)).start()  # Launch a background job
 
-        for i in dbutil.query_db(update_query,
+        for i in dbutil.query_db(trigger_upload,
                                  config['DB_NAME'],
                                  need_all=True,
                                  connection=connection):

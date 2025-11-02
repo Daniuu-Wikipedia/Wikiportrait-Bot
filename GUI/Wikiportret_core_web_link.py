@@ -58,7 +58,7 @@ class WebImage(Image):
         if self.date is not None:
             query = """
             UPDATE input_data
-            SET date = '%4d-%2d-%2d'
+            SET date = '%4d-%02d-%02d'
             WHERE session_id = %d;
             """ % (self.date.year, self.date.month, self.date.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
@@ -67,7 +67,7 @@ class WebImage(Image):
         if self.birth is not None:
             query = """
                     UPDATE input_data
-                    SET birth_date = '%4d-%2d-%2d'
+                    SET birth_date = '%4d-%02d-%02d'
                     WHERE session_id = %d;
                     """ % (self.birth.year, self.birth.month, self.birth.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)
@@ -75,7 +75,7 @@ class WebImage(Image):
         if self.death is not None:
             query = """
                     UPDATE death_date
-                    SET death_date = '%4d-%2d-%2d'
+                    SET death_date = '%4d-%02d-%02d'
                     WHERE session_id = %d;
                     """ % (self.death.year, self.death.month, self.death.day, session_number)
             dbut.adjust_db(query, self.dbname, connection=connection)

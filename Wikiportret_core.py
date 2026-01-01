@@ -522,8 +522,13 @@ class Image:
         if claim is not None:  # Make it return None otherwise
             for i in claim:
                 if 'mainsnak' in i:
-                    main = i['mainsnak']['datavalue']['value']['time']
-                    return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0, minute=0, second=0)
+                    try:
+                        main = i['mainsnak']['datavalue']['value']['time']
+                        return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
+                                                                                         minute=0,
+                                                                                         second=0)
+                    except ValueError:
+                        print(f"Parsing of date string {i['mainsnak']['datavalue']['value']['time']} failed!")
 
     def date_born(self):
         """
@@ -538,12 +543,15 @@ class Image:
         if claim is not None:  # Make it return None otherwise
             for i in claim:
                 if 'mainsnak' in i:
-                    main = i['mainsnak']['datavalue']['value']['time']
-                    self._timebirth =  dt.datetime.strptime(main,
-                                                            "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
-                                                                                           minute=0,
-                                                                                           second=0)
-                    return self._timebirth
+                    try:
+                        main = i['mainsnak']['datavalue']['value']['time']
+                        self._timebirth = dt.datetime.strptime(main,
+                                                               "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
+                                                                                              minute=0,
+                                                                                              second=0)
+                        return self._timebirth
+                    except ValueError:
+                        print(f"Parsing of date string {i['mainsnak']['datavalue']['value']['time']} failed!")
 
     def check_person_alive(self, date=None):
         """

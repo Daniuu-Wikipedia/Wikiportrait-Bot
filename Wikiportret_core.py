@@ -17,12 +17,15 @@ Information can be found in Wikiportret ticket 2021021010009189 (VRT access requ
 
 import threading  # Required to speed up dealing with the web interface
 import requests
+import toolforge
 import urllib
 import time
 import datetime as dt
 import os
 import re  # Regex to filter the ticket number
 from requests_oauthlib import OAuth1
+
+toolforge.set_user_agent('wikiportret-uploader', email='wikiportret@wikimedia.org')
 
 
 class MaxlagError(Exception):
@@ -643,7 +646,7 @@ class Image:
                                   'sites': 'commonswiki',
                                   'titles': f'File:{self.file}'})['entities']
         self.mid = next(iter(temp))
-        self.mc = next(iter(temp.values())).get('statements', [])
+        self.mc = next(iter(temp.values())).get('statements', {})  # 20260101: change default value to dict
 
     def get_commons_text(self):
         """This function will get the content of the file page on Commons"""
@@ -1059,7 +1062,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Adrienne Vrisekoop.jpeg', "Adrienne Vrisekoop")
+    a = Image('Joëlle Feijen.JPG', "Joëlle Feijen")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

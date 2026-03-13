@@ -20,25 +20,12 @@ import requests
 import toolforge
 import urllib
 import time
-import logging  # 20260313 - adding logging in a more systematic way
 import datetime as dt
 import os
 import re  # Regex to filter the ticket number
 from requests_oauthlib import OAuth1
 
 toolforge.set_user_agent('wikiportret-uploader', email='wikiportret@wikimedia.org')
-
-# 20260313 - set up logging
-production = False  # Just to make sure that we don't mess up during the debug mode
-if production is False:
-    logging.basicConfig(filename='Logs.txt',
-                        level=logging.INFO,
-                        encoding="utf-8")
-elif production is True:
-    logging.basicConfig(filename='~/logs/Wikiportret.log',
-                        level=logging.ERROR,
-                        encoding="utf-8")
-logger = logging.getLogger(__name__)
 
 
 class MaxlagError(Exception):
@@ -68,7 +55,6 @@ class Bot:
         self._max = Bot.max_edit if m is None else m  # Can be changed if bot bit is granted
         self.testing = False  # By default, set all bots to write to the wiki
         self._testfile = 'General.txt'  # File to which output is written if bot is called in test mode
-        logger.info(f'Bot initialized at {dt.datetime.utcnow()}')
 
     def __str__(self):
         return self.api.copy()
@@ -264,7 +250,6 @@ class Image:
 
         # For safety
         self.configure_bots_for_testing()
-        logger.info(f'Wikiportret instance configured {dt.datetime.utcnow()}')
 
     def __str__(self):
         return f'Processing {self.file}, an image of {self.name}.'
@@ -848,7 +833,6 @@ class Image:
 
         if '#redirect' in low or '#doorverwijzing' in low:
             print('\nYOU REQUESTED TO A REDIRECT PAGE - ABORTING - PLEASE REVIEW THIS MANUALLY')
-            logger.error(f'{self.name} is not a valid article!')
             time.sleep(3)
             return None  # Do not continue with this function
 
@@ -856,7 +840,6 @@ class Image:
         if self.file in content:
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
             time.sleep(3)  # Sleep two seconds before continuing, accentuate the error to the operator
-            logger.warning(f'{self.file} was already at {self.name}, playing Skippy the Bushkangaroo!')
             return None  # File is already on the page, abort the run
         if '{{infobox' in low:  # If possible, we would like to place the image in an infobox
             # An infobox has been detected, initiate process of finding the place where the infobox
@@ -873,7 +856,6 @@ class Image:
                 if len(line.strip().replace(' ',
                                             '')) > 12:  # length of the line > len(|afbeelding=), there is already an image there
                     print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
-                    logger.warning(f'{self.name}: article already contained an image in the infobox, Skipper the penguin!!')
                     time.sleep(3)  # Sleep two seconds before continuing, accentuate the error to the operator
                     return None  # Abort the run
 
@@ -891,7 +873,6 @@ class Image:
                     else:
                         # There is already a caption present, there's no need to add something new
                         print('\nWARNING: there was already a caption present!\n')
-                        logger.warning(f'{self.name} already contains a caption, so check some stuff!')
                         time.sleep(1)
             elif infobox_no_par_match is not None:
                 # Scenario: there is an infobox, but it was not given any parameters
@@ -899,7 +880,6 @@ class Image:
                 # Whenever this happens, add the image & caption as separate
                 # To spot this kind of scenario's a regex is used to detect syntax {{infobox X}}
                 print('WARNING: the infobox only contained no parameters!')
-                logger.warning(f'the infobox on {self.name} did not contain any parameters!')
                 to_change = content[infobox_no_par_match.start():infobox_no_par_match.end()]
                 add_text = f'| afbeelding= {self.file}' + r'}}'
                 content = content.replace(to_change, to_change[:-2] + add_text)
@@ -914,7 +894,6 @@ class Image:
                 add_text = f'| afbeelding{" " * spaces}= {self.file}' + '\n' * (low[append_location - 1] == '\n')
                 content = content[:append_location] + add_text + content[append_location:]
                 print("\nEr ontbraken enkele parameters in de infobox, CHECK DE EDITS VAN DE BOT!")
-                logger.warning(f'{self.name} missed some infobox parameters, bot edits need to be checked!')
                 time.sleep(3)  # Give the operator the time to read the warning
 
         # Third part: no infobox is present - just prepend the new image
@@ -1006,7 +985,7 @@ class Image:
             * Conf: is set to True, the confirmation for VRT will be printed explicitly.
             * Test: if set to True, the bot will be run in its test mode - so not making any edits to the wiki
         """
-        logger.info(f'__call__ method activated on file {self.file} to {self.name}')
+
         # Make sure the bot is set to test mode (and does not make any edits)
         self.testing = test
 
@@ -1015,81 +994,63 @@ class Image:
         # If a disambiguation page is detected, an error will be thrown
         if self.is_dp():
             print('WARNING: the page you passed is a disambiguation page!')
-            logger.error(f'{self.name} is a disambiguation page => bot will be aborted')
             time.sleep(10)
             raise ValueError('Found a disambiguation page - stopping the processing!')
-        logger.info(f'Gecontroleerd: {self.name} is geen dp!')
 
         # Category on Wikimedia Commons
         print('I will now process the image on Commons')
-        logger.info(f'Starting Wikimedia Commons phase for {self.file}')
 
         # Properties that should be set on Commons
         print(
             "I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
         try:
-            logger.info(f'Wikimedia Commons: getting claims for {self.file}')
             # Perform these tasks at all time
             self.get_commons_claims()
-            logger.info(f'Claims obtained for {self.file}')
             self.get_commons_text()
-            logger.info(f'Commons text obtained for {self.file}')
             if commons_perm is True:  # Only perform this task when requested
                 print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
                 self.ticket()
-                logger.info(f'Ticket number added to {self.file}')
                 print('Now adding other information on copyright (P275/P6216)')
                 self.set_licence_properties()
-                logger.info(f'CC-BY-SA 4.0 ingesteld in de structural data')
                 print('Property set, I will need support from Wikidata for the next steps.')
         # noinspection PyBroadException
         except:
-            logger.error(f'COMMONS: error bij {self.file} - check de log entries hierboven om fout te vinden')
             print('Something went wrong while processing the stuff for Commons.')
 
         # Setting the properties on Wikidata
         try:
             # Always perform this task
-            logger.info(f'Starting Wikidata operations for {self.name}')
             print(
                 'Getting claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
             self.ini_wikidata()
-            logger.info(f'Claims obtained for {self.name} - item {self.qid}')
             print(
                 'Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell Commons who is depicted (if you allow me to).')
             if category is True:  # Only perform these edits when the user commands them
                 print(
                     "I'm now making the category on Commons. If an error occurs, it likely means that the category already existed.")
                 self.make_cat()
-                logger.info(f'A new category was made on Commons for {self.name}')
                 print(
                     'The eleventh commandment of the Lord states that we should also check whether the category is attached to the file, so doing that now')
                 self.add_category()
-                logger.info(f'Commons category added to {self.file}')
                 print('I will add the category on Commons to Wikidata.')
                 self.interwiki()
                 self.commons_cat()
-                logger.info(f'Properties connecting Commons & Wikidata have been connected for {self.file}. ')
                 print('The category was placed on Commons and connected to Wikidata.')
             print('I have done all operations that should be done on Commons.')
             if data_connect is True:  # Only connect the image if ordered to do so
                 print('I will now identify the person in the image, as requested.')
                 print('Adding a P180-claim to Commons to list the identity of the depicted person.')
                 self.depicts()
-                logger.info(f'Added P180 statement {self.name} ({self.qid}) to {self.file} at Commons')
                 print('I added the Wikidata item of the depicted person as P180 to the image.')
                 print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
                 self.set_image()
-                logger.info(f'Added {self.file} to Wikidata item {self.qid}')
                 print('The image has been set. I will now look for a date.')
                 # Doing one more Wikidata related thing, cause this needs the claims on Commons
                 print('I proceed with setting the date as a qualifyer for the image.')
                 self.date_meta()
-                logger.info(f'Data setting function executed on {self.qid}')
                 print('The identity of the depicted is now properly listed on Wikidata and Commons.')
 
         except AssertionError:
-            logger.error(f'No Wikidata item found for {self.name}! ABORTING!')
             print(
                 "I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
 
@@ -1097,26 +1058,22 @@ class Image:
         if nlwiki is True:
             print('I will now add the image to the Dutch Wikipedia.')
             self.add_image_to_article()
-            logger.info(f'Afbeelding {self.file} toegevoegd op nlwiki artikel {self.name}')
             print(
                 'I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
 
         # Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('OKay, I will now start to purge the cache of the various items.')
         self.purge()
-        logger.info(f'{self.name} cache geleegd.')
 
         # And now, the short url as final touch
         print('I will now just generate two short url-links, which look nicer in the ticket of the customer.')
         k = self.short_urls()
         print(f'The short url for the Commons file is {k[0]}')
         print(f'The short url for the article on nlwiki is {k[1]}')
-        logger.info(f'Short url for {self.file} & {self.name} generated!')
         confirmation = self.generate_confirmation(k)  # pass the short urls as arguments, reduce the amount of API calls
         print('I generated the confirmation')
         if conf is True:  # Default is False (for interaction with the other parts of the interface)
             print(confirmation)
-        logger.info(f'Confirmation message for {self.name} & {self.file} generated.')
         return self.name, k, confirmation
 
 

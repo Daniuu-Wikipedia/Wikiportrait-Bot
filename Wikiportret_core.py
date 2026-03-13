@@ -35,7 +35,6 @@ class MaxlagError(Exception):
         print('\n')
         print(
             'Maxlag error was spotted. The Wikimedia API is slow. Bot will be terminated, try again in a few minutes!')
-        time.sleep(2)
         return "Maxlag error occured, bot run aborted."
 
 
@@ -833,13 +832,11 @@ class Image:
 
         if '#redirect' in low or '#doorverwijzing' in low:
             print('\nYOU REQUESTED TO A REDIRECT PAGE - ABORTING - PLEASE REVIEW THIS MANUALLY')
-            time.sleep(3)
             return None  # Do not continue with this function
 
         # Check whether an infobox is present on the article (and get the rule with the image)
         if self.file in content:
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
-            time.sleep(3)  # Sleep two seconds before continuing, accentuate the error to the operator
             return None  # File is already on the page, abort the run
         if '{{infobox' in low:  # If possible, we would like to place the image in an infobox
             # An infobox has been detected, initiate process of finding the place where the infobox
@@ -856,7 +853,6 @@ class Image:
                 if len(line.strip().replace(' ',
                                             '')) > 12:  # length of the line > len(|afbeelding=), there is already an image there
                     print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
-                    time.sleep(3)  # Sleep two seconds before continuing, accentuate the error to the operator
                     return None  # Abort the run
 
                 # Continue with the completion
@@ -873,7 +869,6 @@ class Image:
                     else:
                         # There is already a caption present, there's no need to add something new
                         print('\nWARNING: there was already a caption present!\n')
-                        time.sleep(1)
             elif infobox_no_par_match is not None:
                 # Scenario: there is an infobox, but it was not given any parameters
                 # This is one of the scenario's in which the bot typically malfunctions
@@ -894,7 +889,6 @@ class Image:
                 add_text = f'| afbeelding{" " * spaces}= {self.file}' + '\n' * (low[append_location - 1] == '\n')
                 content = content[:append_location] + add_text + content[append_location:]
                 print("\nEr ontbraken enkele parameters in de infobox, CHECK DE EDITS VAN DE BOT!")
-                time.sleep(3)  # Give the operator the time to read the warning
 
         # Third part: no infobox is present - just prepend the new image
         else:
@@ -935,7 +929,6 @@ class Image:
         # If a disambiguation page is detected, an error will be thrown
         if self.is_dp():
             print('ERROR: the page you passed is a disambiguation page!')
-            time.sleep(10)
             raise ValueError('Found a disambiguation page - stopping the processing!')
 
         print('Getting the information (starting with Commons)')
@@ -954,7 +947,6 @@ class Image:
         # First, check whether we are dealing with a dp
         if self.is_dp():
             print('ERROR: the page you passed is a disambiguation page!')
-            time.sleep(10)
             raise ValueError('Found a disambiguation page - stopping the processing!')
         # Vamos!
         # For convenience, add threads to this party
@@ -994,7 +986,6 @@ class Image:
         # If a disambiguation page is detected, an error will be thrown
         if self.is_dp():
             print('WARNING: the page you passed is a disambiguation page!')
-            time.sleep(10)
             raise ValueError('Found a disambiguation page - stopping the processing!')
 
         # Category on Wikimedia Commons

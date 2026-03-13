@@ -67,7 +67,7 @@ def background_load(session_id, config):
         print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
 
 
-def upload_in_background(session_id, config, username):
+def upload_in_background(session_id, config, user_id):
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
     conn, status = toolforge.toolsdb(config['DB_NAME']), None
     try:
@@ -76,15 +76,11 @@ def upload_in_background(session_id, config, username):
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
-        if not isinstance(dbutil.get_user_id(username, config['DB_NAME']), int):
-            status = 'useriderror'
         success = True
         query = """
         INSERT INTO messages
         (session_id, user_id, message) values (%d, %d, %r);""" % (session_id,
-                                                                  dbutil.get_user_id(username,
-                                                                                     config['DB_NAME'],
-                                                                                     conn),
+                                                                  user_id,
                                                                   confirmation)
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
     finally:

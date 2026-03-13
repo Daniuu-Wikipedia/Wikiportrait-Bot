@@ -18,3 +18,4 @@ dist/*
 *.toml
 GUI/Wikiportret_core.py
 /GUI/Wikiportret_core.py
+*.json

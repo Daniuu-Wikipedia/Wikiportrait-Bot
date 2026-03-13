@@ -32,6 +32,8 @@ def query_db(query, dbname, need_all=False, connection=None):
 
 
 def get_user_id(username, dbname, connection=None):
+    if isinstance(username, int):
+        return username  # To avoid getting into trouble again with me messing up usernames & ids again
     data = query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
                     dbname,
                     need_all=False,

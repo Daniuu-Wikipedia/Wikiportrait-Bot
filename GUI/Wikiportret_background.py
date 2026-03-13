@@ -76,7 +76,7 @@ def upload_in_background(session_id, config, username):
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
-        if not isinstance(dbutil.get_user_id(username, config['DB_NAME'], conn)):
+        if not isinstance(dbutil.get_user_id(username, config['DB_NAME']), int):
             status = 'useriderror'
         success = True
         query = """

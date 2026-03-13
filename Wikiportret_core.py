@@ -527,9 +527,17 @@ class Image:
                 if 'mainsnak' in i:
                     try:
                         main = i['mainsnak']['datavalue']['value']['time']
-                        return dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
+                        # 20260313 - HACKATHON: add support for dates with year-only precision
+                        # 20260313 - HACKATHON: fix discrepancy between birth & death dates methods
+                        if '00-00T' in main:
+                            self._timedeath = dt.datetime(year=int(main.split('-')[0][1:]),
+                                                          month=12,
+                                                          day=31,)
+                        else:
+                            self._timedeath = dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
                                                                                          minute=0,
                                                                                          second=0)
+                        return self._timedeath
                     except ValueError:
                         print(f"Parsing of date string {i['mainsnak']['datavalue']['value']['time']} failed!")
 
@@ -548,10 +556,16 @@ class Image:
                 if 'mainsnak' in i:
                     try:
                         main = i['mainsnak']['datavalue']['value']['time']
-                        self._timebirth = dt.datetime.strptime(main,
-                                                               "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
-                                                                                              minute=0,
-                                                                                              second=0)
+                        # 20260313 - Hackathon: add support for dates with year-only precision
+                        if '00-00T' in main:
+                            self._timebirth = dt.datetime(year=int(main.split('-')[0][1:]),
+                                                          month=1,
+                                                          day=1,)
+                        else:
+                            self._timebirth = dt.datetime.strptime(main,
+                                                                   "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
+                                                                                                  minute=0,
+                                                                                                  second=0)
                         return self._timebirth
                     except ValueError:
                         print(f"Parsing of date string {i['mainsnak']['datavalue']['value']['time']} failed!")

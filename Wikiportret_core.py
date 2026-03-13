@@ -20,6 +20,7 @@ import requests
 import toolforge
 import urllib
 import time
+import tomllib
 import logging  # 20260313 - adding logging in a more systematic way
 import datetime as dt
 import os
@@ -35,7 +36,9 @@ if production is False:
                         level=logging.INFO,
                         encoding="utf-8")
 elif production is True:
-    logging.basicConfig(filename='~/logs/Wikiportret.log',
+    with open(os.path.join(os.path.dirname(__file__), 'config.toml'), 'rb') as f:
+        data = tomllib.load(f)
+    logging.basicConfig(filename=os.path.join(data['DIRECTORY'], 'Logs.txt'),
                         level=logging.ERROR,
                         encoding="utf-8")
 logger = logging.getLogger(__name__)

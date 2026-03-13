@@ -246,6 +246,10 @@ class Image:
         self._customcaption = None  # Allow for a manual override of the caption
         self._customcatname = None
 
+        # 20260313 - add check for dates with year-only precision
+        # Two booleans, False is date of birth/death is not accurate to 1 day (or None)
+        self.baccurate, self.daccurate = False, False
+
         # For safety
         self.configure_bots_for_testing()
 
@@ -530,11 +534,16 @@ class Image:
                         if '00-00T' in main:
                             self._timedeath = dt.datetime(year=int(main.split('-')[0][1:]),
                                                           month=12,
-                                                          day=31,)
+                                                          day=31)
+                        elif '-00T' in main:
+                            self._timedeath = dt.datetime(year=int(main.split('-')[0][1:]),
+                                                          month=int(main.split('-')[1][1:]),
+                                                          day=28)
                         else:
                             self._timedeath = dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
                                                                                          minute=0,
                                                                                          second=0)
+                            self.daccurate = True  # Sufficient accuracy (hackathon 20260313)
                         return self._timedeath
                     except ValueError:
                         print(f"Parsing of date string {i['mainsnak']['datavalue']['value']['time']} failed!")
@@ -558,12 +567,18 @@ class Image:
                         if '00-00T' in main:
                             self._timebirth = dt.datetime(year=int(main.split('-')[0][1:]),
                                                           month=1,
-                                                          day=1,)
+                                                          day=1)
+                        elif '-00T' in main:
+                            # 20260313 - for checking only, so arbitrary date can be set
+                            self._timebirth = dt.datetime(year=int(main.split('-')[0][1:]),
+                                                          month=int(main.split('-')[1][1:]),
+                                                          day=1)
                         else:
                             self._timebirth = dt.datetime.strptime(main,
                                                                    "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
                                                                                                   minute=0,
                                                                                                   second=0)
+                            self.baccurate = True  # 20260313 - date of birth is accurate to 1 day
                         return self._timebirth
                     except ValueError:
                         print(f"Parsing of date string {i['mainsnak']['datavalue']['value']['time']} failed!")

@@ -661,6 +661,9 @@ class Image:
                                   'titles': f'File:{self.file}'})['entities']
         self.mid = next(iter(temp))
         self.mc = next(iter(temp.values())).get('statements', {})  # 20260101: change default value to dict
+        # 20260313 - HACKATHON - bugfix: sometimes, no structured data on Commons, avoiding TypeErrors
+        if not isinstance(self.mc, dict):
+            self.mc = {}  # Data is completely missing, same as if it were there and empty
 
     def get_commons_text(self):
         """This function will get the content of the file page on Commons"""

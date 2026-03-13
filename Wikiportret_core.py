@@ -21,7 +21,6 @@ import toolforge
 import urllib
 import time
 import datetime as dt
-import os
 import re  # Regex to filter the ticket number
 from requests_oauthlib import OAuth1
 

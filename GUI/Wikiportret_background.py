@@ -69,10 +69,16 @@ def background_load(session_id, config):
 
 def upload_in_background(session_id, config, username):
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
-    conn = toolforge.toolsdb(config['DB_NAME'])
+    conn, status = toolforge.toolsdb(config['DB_NAME']), None
     try:
         bot = wcl.create_from_db(session_id, config)
         _, _, confirmation = bot(True, True, True, True, True, False)  # Make the actual calls to the API
+        # 20260313 - HACKATHON - improve logging
+        if not isinstance(session_id, int):
+            status = 'sessioniderror'
+        if not isinstance(dbutil.get_user_id(username, config['DB_NAME'], conn)):
+            status = 'useriderror'
+        success = True
         query = """
         INSERT INTO messages
         (session_id, user_id, message) values (%d, %d, %r);""" % (session_id,
@@ -80,9 +86,10 @@ def upload_in_background(session_id, config, username):
                                                                                      config['DB_NAME'],
                                                                                      conn),
                                                                   confirmation)
-        success = True
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
     finally:
-        status = 'uploaded' if success else 'ufail'
+        if status is None:
+            status = 'uploaded' if success else 'ufail'
         query = """
         UPDATE sessions
         SET status = %r, locked = 0, locked_at = NULL

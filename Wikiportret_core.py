@@ -421,7 +421,6 @@ class Image:
         # Extraction of P569 & P570 to occur through other methods (call them by default)
         self.date_deceased()
         self.date_born()
-
         return self.qid, self.claims
 
     def interwiki(self):
@@ -596,6 +595,7 @@ class Image:
         return True
 
     def get_date_from_commons_text(self):
+        # To do (20260314 HACKATHON): check this one
         """Scans the source code of the file page on Commons to determine the date at which the image was made"""
         if self.comtext is None:
             self.get_commons_text()

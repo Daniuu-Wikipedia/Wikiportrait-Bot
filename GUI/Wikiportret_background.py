@@ -69,7 +69,7 @@ def background_load(session_id, config):
 
 def upload_in_background(session_id, config, user_id):
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
-    conn, status = toolforge.toolsdb(config['DB_NAME']), None
+    conn, status, bot = toolforge.toolsdb(config['DB_NAME']), None, None
     try:
         bot = wcl.create_from_db(session_id, config)
         _, _, confirmation = bot(True, True, True, True, True, False)  # Make the actual calls to the API
@@ -95,6 +95,9 @@ def upload_in_background(session_id, config, user_id):
         SET status = %r, locked = 0, locked_at = NULL
         WHERE session_id = %d""" % (status, session_id)
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+        if bot is not None:  # 20260314 - HACKATHON: fix bug that caused categories to be added > 1 time
+            bot.ini_wikidata(session_id, conn)
+            bot.input_data_to_db(session_id, conn)
         conn.close()
 
 

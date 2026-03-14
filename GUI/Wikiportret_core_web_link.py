@@ -49,7 +49,7 @@ class WebImage(Image):
             '{self.mid}',
              '{self.comtext}')
         ON DUPLICATE KEY UPDATE
-        json_response = '{json.dumps(self.claims)}',
+        json_response = '{self.wikidata_claims_json}',
         commons_claims = '{json.dumps(self.mc)}',
         comm_text = '{self.comtext}',
         qid = '{self.qid}'
@@ -162,6 +162,28 @@ class WebImage(Image):
             parent = parent[0]
             return int(parent['mainsnak']['datavalue']['value'])
         return self.ticket(action=False)
+
+    def get_commons_text(self, session=None, connection=None):
+        super().get_commons_text()
+        if session is not None:
+            query = f"""
+            UPDATE claims
+            set comm_text = '{self.comtext}'
+            where session_id = {session};
+            """
+            dbut.adjust_db(query, self.dbname, connection=connection)
+        return self.comtext
+
+    def ini_wikidata(self, session=None, connection=None):
+        super().ini_wikidata()
+        if session is not None:
+            query = f"""
+                        UPDATE claims
+                        set comm_text = '{self.wikidata_claims_json}'
+                        where session_id = {session};
+                        """
+            dbut.adjust_db(query, self.dbname, connection=connection)
+        return self.qid, self.claims
 
 
 # Define custom exception for dealing with incorrect data

@@ -7,7 +7,13 @@ Auxliary functions are listed separately to keep the code of the main app clean
 
 import toolforge
 import json
+import logging
 import Wikiportret_crypto as crypto
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='Database log.log', level=logging.ERROR)
+logger.info('Initializing Database & log')
 
 
 def query_db(query, dbname, need_all=False, connection=None):
@@ -15,7 +21,9 @@ def query_db(query, dbname, need_all=False, connection=None):
     Query information from the database.
     (details on arguments & output to be added)
     """
+    logger.info(f'Executing {query!r} on {dbname!r}')
     if not isinstance(query, str):
+        logger.warning(f'Ignored last query {query!r}, was not a string')
         return None
     connection_passed = connection is not None
     if connection is None:
@@ -29,6 +37,7 @@ def query_db(query, dbname, need_all=False, connection=None):
         cursor.close()
     if connection_passed is False:  # Obviously, we want to keep our connection alive if it is provided
         connection.close()
+    logger.info('Query successfully executed')
     return info  # Return the relevant info & process it elsewhere
 
 
@@ -45,7 +54,9 @@ def get_user_id(username, dbname, connection=None):
 
 
 def adjust_db(query, dbname, retrieve_id=False, connection=None):
+    logger.info(f'Executing {query!r} on {dbname!r}')
     if not isinstance(query, str):
+        logger.warning(f'Ignored invalid query {query!r}')
         return None
     connection_passed = connection is not None
     if connection is None:
@@ -58,6 +69,7 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None):
         cursor.close()
     if connection_passed is False:
         connection.close()  # Keep connection alive if passed externally
+    logging.info('Database got adjusted')
     return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine
 
 

@@ -17,8 +17,8 @@ def _load_keys():
         json_data = json.load(f)
     del config
 
-    keys = {json_data['CURR_KEY']: json_data[f'KEY_{json_data["CURR_KEY"]}'],
-            json_data['PREV_KEY']: json_data[f'KEY_{json_data["PREV_KEY"]}']}
+    keys = {json_data['CURR_KEY']: base64.b64decode(json_data[f'KEY_{json_data["CURR_KEY"]}'].encode("ascii")),
+            json_data['PREV_KEY']: base64.b64encode(json_data[f'KEY_{json_data["PREV_KEY"]}'].encode("ascii"))}
 
     if not keys:
         raise RuntimeError("No encryption keys configured")

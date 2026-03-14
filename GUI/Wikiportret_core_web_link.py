@@ -186,7 +186,6 @@ def date_from_db(string):
 
 def create_from_db(session_number,
                    config,
-                   username=None,  # Username can also be passed, but not worry about it for now
                    retrieve_claims=True,
                    adjust_input_data=True,
                    check_status=True):
@@ -241,9 +240,9 @@ def create_from_db(session_number,
             if result[2] is not None:
                 output.date = date_from_db(result[2])
             if result[4] is not None:
-                output.category_name = result[4]
+                output.catname = result[4]  # 20260314 - HACKATHON: old property name called
             if result[5] is not None:
-                output.edit_summary = result[5]
+                output.sum = result[5]
             if result[7] is not None:
                 output.birth = date_from_db(result[7])
             if result[8] is not None:

@@ -78,7 +78,7 @@ def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend
     # Encrypted stuff is stored in the db (so we need to get some stuff stored in the same table)
     sec = {}
     for i, j in coded.items():
-        query = f"select * from secret_stuff where ciphertext={j}"
+        query = f"select * from secret_stuff where `ciphertext`={j}"
         obtained = query_db(query, dbname, connection=connection)
         sec[i] = crypto.decrypt_token(j, obtained[2], obtained[3])
         del obtained, query  # No longer needed

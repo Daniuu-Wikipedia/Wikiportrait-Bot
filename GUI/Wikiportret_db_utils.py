@@ -7,6 +7,7 @@ Auxliary functions are listed separately to keep the code of the main app clean
 
 import toolforge
 import json
+import Wikiportret_crypto as crypto
 
 
 def query_db(query, dbname, need_all=False, connection=None):
@@ -60,7 +61,7 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None):
     return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine
 
 
-def get_tokens_from_db(dbname, operator_name, connection=None):
+def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend with encryption stuff
     if isinstance(operator_name, str):
         query = f"""
         select * from tokens where operator_id={get_user_id(operator_name, dbname)};
@@ -71,4 +72,14 @@ def get_tokens_from_db(dbname, operator_name, connection=None):
                 """
     else:
         raise TypeError('operator_name must be str or int!')
-    return json.loads(query_db(query, dbname, connection=connection)[1])  # Automatically
+    coded = json.loads(query_db(query, dbname, connection=connection)[1])  # Automatically
+
+    # 20260314 - HACKATHON - decrypt tokens
+    # Encrypted stuff is stored in the db (so we need to get some stuff stored in the same table)
+    sec = {}
+    for i, j in coded.items():
+        query = f"select * from secrets where ciphertext={j}"
+        obtained = query_db(query, dbname, connection=connection)
+        sec[i] = crypto.decrypt_token(j, obtained[2], obtained[3])
+        del obtained, query  # No longer needed
+    return sec  # Be careful with this dictionary!

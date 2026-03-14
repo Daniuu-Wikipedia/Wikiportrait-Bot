@@ -21,6 +21,7 @@ from objects import SiteSettings
 import Wikiportret_core_web_link as wcl
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
+import Wikiportret_crypto as crypto
 
 toolforge.set_user_agent('Wikiportret-updater',
                          email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
@@ -104,20 +105,35 @@ def oauth_callback():
         if user_id is None:
             return flask.redirect(flask.url_for('index'))  # Error, do not continue
         # Store the access_token
-        token_to_store = json.dumps(dict(zip(access_token._fields, access_token)))
+        token_to_store = dict(zip(access_token._fields, access_token))
         # Obtain a valid token from the Wikiportret API
-        wikiportret_key = wpor_api.generate_wikiportret_key()
+        wikiportret_key = wpor_api.generate_wikiportret_key()  # Generated under a bot account
 
         # Write data to the db (tokens table)
         # On duplicate key overwrites tokens if needed
+
+        # 20260314 - stuff moved to separate table
+        sec = {}
+        for i, j in token_to_store.items():
+            information = crypto.encrypt_token(j)
+            sec[i] = information['ciphertext']
+            query = f"""
+            INSERT INTO secret_stuff (ciphertext, nonce, version)
+            VALUE ({sec[i]:r}, {information['nonce']:r} , {information['version']:d})
+            """
+            db_utils.adjust_db(query, app.config['DB_NAME'])
+            del query, information  # Information no longer needed
+        del token_to_store  # Get rid of the raw tokens asap
+
         query = f"""
         INSERT INTO tokens (operator_id, oauth_token, wikiportrait_token)
-        VALUES ({user_id}, '{token_to_store}', '{wikiportret_key}')
+        VALUES ({user_id}, '{json.dumps(sec)}', '{wikiportret_key}')
         ON DUPLICATE KEY UPDATE
-            oauth_token = '{token_to_store}',
+            oauth_token = '{json.dumps(sec)}',
             wikiportrait_token = '{wikiportret_key}',
             `timestamp` = NOW();
         """
+        del sec  # Delete as soon as we don't need it anymore
         # And now, time to push this to the db
         db_utils.adjust_db(query, app.config['DB_NAME'])
 

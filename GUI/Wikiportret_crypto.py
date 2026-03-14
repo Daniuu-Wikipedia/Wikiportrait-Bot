@@ -11,14 +11,16 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 # Job 1: load the keys once
 def _load_keys():
+    if not 'config.toml' in os.listdir():
+        os.chdir(os.path.join(os.getcwd(), 'www/python/src'))
     with open('config.toml', 'rb') as f:
         config = tomllib.load(f)
     with open(config['SECRET_KEY_LOC'], 'r') as f:
         json_data = json.load(f)
     del config
 
-    keys = {json_data['CURR_KEY']: base64.b64decode(json_data[f'KEY_{json_data["CURR_KEY"]}'].encode("ascii")),
-            json_data['PREV_KEY']: base64.b64encode(json_data[f'KEY_{json_data["PREV_KEY"]}'].encode("ascii"))}
+    keys = {json_data['CURR_KEY']: base64.b64decode(json_data[f'KEY_{json_data["CURR_KEY"]}']),
+            json_data['PREV_KEY']: base64.b64decode(json_data[f'KEY_{json_data["PREV_KEY"]}'])}
 
     if not keys:
         raise RuntimeError("No encryption keys configured")
@@ -31,6 +33,9 @@ def _load_keys():
 
 # Store the set of keys as global variables in the memory as soon as possible, will be needed
 KEYS, ACTIVE_KEY_VERSION = _load_keys()  # Load the keys and discard any residual info asap
+
+print(KEYS)
+print([type(i) for i in KEYS.values()])
 
 
 def encrypt_token(token: str) -> dict:

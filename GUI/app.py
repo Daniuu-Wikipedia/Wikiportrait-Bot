@@ -103,7 +103,7 @@ def oauth_callback():
         # Verify that the user is actually authorized
         user_id = db_utils.get_user_id(identity['username'], app.config['DB_NAME'])  # Safety check
         if user_id is None:
-            return flask.redirect(flask.url_for('index'))  # Error, do not continue
+            return flask.abort(403)  # Error, do not continue
         # Store the access_token
         token_to_store = dict(zip(access_token._fields, access_token))
         # Obtain a valid token from the Wikiportret API

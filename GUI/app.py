@@ -148,8 +148,15 @@ def oauth_callback():
 @app.route('/logout', methods=['GET'])
 def logout():
     """Log the user out by clearing their session."""
-    # To do: remove associated entries from the db (clean up stuff)
-    # To do: remove tokens from the db
+    # 20260314 - HACKATHON remove tokens from the db
+    user_id = db_utils.get_user_id(flask.session['username'], app.config['DB_NAME'])
+    query = f'delete from tokens where operator_id = {user_id}'
+    db_utils.adjust_db(query, app.config['DB_NAME'])
+
+    # 20260314 - HACKATHON remove associated entries from the db (clean up stuff)
+    query = f'delete from sessions where operator_id = {user_id}'
+    db_utils.adjust_db(query, app.config['DB_NAME'])
+
     flask.session.clear()
     return flask.redirect(flask.url_for('index'))
 

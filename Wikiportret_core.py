@@ -686,7 +686,7 @@ class Image:
                                               'prop': 'wikitext'})['parse']['wikitext']['*']
         return self.comtext  # Store this one as a variable of the class, will be more pratical
 
-    def ticket(self):
+    def ticket(self, action=True):
         """
         This function will add the ticket number (from the Wikiportrait template) as P6305 on Commons
         """
@@ -714,9 +714,13 @@ class Image:
                   'value': f'"{num}"',
                   'summary': self.sum,
                   'bot': True}
-            self._commons.post(td)
+            if action is True:
+                self._commons.post(td)
+            return num
         else:
             print('The ticket number is already added as a claim.')
+            return self.mc.get('P6305')
+
 
     def get_licence_for_image(self):
         if self.mc is None:

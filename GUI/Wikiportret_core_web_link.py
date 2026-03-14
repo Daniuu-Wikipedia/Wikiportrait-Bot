@@ -57,6 +57,11 @@ class WebImage(Image):
         connection_provided = connection is None
         if connection is None:
             connection = toolforge.toolsdb(self.dbname)
+        assert session_number is not None, 'session_number is required!'
+        assert self.ticket_number is not None, 'ticket_number is required!'
+        assert self.catname is not None, 'catname is required!'
+        assert self.sum is not None, 'sum is required!'
+        assert self.caption is not None, 'caption is required!'
         query = f"""
         INSERT INTO input_data (`session_id`, `custom_caption`, `category_name`, `edit_summary`, `ticket`)
         VALUES ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}', {self.ticket_number})
@@ -149,8 +154,10 @@ class WebImage(Image):
     def ticket_number(self):
         parent = self.mc.get('P6305', None)
         if parent is not None:
+            # noinspection PyUnresolvedReferences
             parent = parent[0]
             return int(parent['mainsnak']['datavalue']['value'])
+        return self.ticket(action=False)
 
 
 # Define custom exception for dealing with incorrect data

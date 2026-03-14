@@ -285,7 +285,10 @@ class Image:
         return self._imagedate
 
     @date.setter
-    def date(self, new):
+    def date(self, new, special_case=False):
+        if special_case is True:
+            y, m, d = new.split('-')
+            self._imagedate = dt.datetime(year=int(y), month=int(m), day=int(d))
         if isinstance(new, dt.datetime):
             self._imagedate = dt.date(new.year, new.month, new.day)
         elif isinstance(new, dt.date):

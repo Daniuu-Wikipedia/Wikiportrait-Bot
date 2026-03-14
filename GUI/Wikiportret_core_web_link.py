@@ -240,7 +240,7 @@ def create_from_db(session_number,
             if result[1] is not None:
                 output.caption = result[1]
             if result[2] is not None:
-                output.date = date_from_db(result[2])
+                output.date = date_from_db(result[2], True)
             if result[4] is not None:
                 output.catname = result[4]  # 20260314 - HACKATHON: old property name called
             if result[5] is not None:

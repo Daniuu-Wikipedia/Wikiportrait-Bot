@@ -68,7 +68,8 @@ class WebImage(Image):
         VALUES ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}', {self.ticket_number})
         ON DUPLICATE KEY UPDATE
         category_name = '{self.catname}',
-        edit_summary = '{self.sum}'
+        edit_summary = '{self.sum}',
+        custom_caption = '{self.caption}'
         ;
         """
         dbut.adjust_db(query, self.dbname, connection=connection)

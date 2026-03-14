@@ -17,9 +17,8 @@ def _load_keys():
         json_data = json.load(f)
     del config
 
-    keys = {}  # Keeping one for legacy purposes
-    keys[json_data['CURR_KEY']] = keys[f'KEY_{json_data["CURR_KEY"]}']
-    keys[json_data['PREV_KEY']] = keys[f'KEY_{json_data["PREV_KEY"]}']
+    keys = {json_data['CURR_KEY']: json_data[f'KEY_{json_data["CURR_KEY"]}'],
+            json_data['PREV_KEY']: json_data[f'KEY_{json_data["PREV_KEY"]}']}
 
     if not keys:
         raise RuntimeError("No encryption keys configured")

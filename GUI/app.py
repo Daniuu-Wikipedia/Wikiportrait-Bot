@@ -119,7 +119,7 @@ def oauth_callback():
             sec[i] = information['ciphertext']
             query = f"""
             INSERT INTO secret_stuff (ciphertext, nonce, version)
-            VALUE ({sec[i]:r}, {information['nonce']:r} , {information['version']:d})
+            VALUE ({sec[i]!r}, {information['nonce']!r} , {information['version']:d})
             """
             db_utils.adjust_db(query, app.config['DB_NAME'])
             del query, information  # Information no longer needed

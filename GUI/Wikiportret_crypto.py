@@ -34,9 +34,6 @@ def _load_keys():
 # Store the set of keys as global variables in the memory as soon as possible, will be needed
 KEYS, ACTIVE_KEY_VERSION = _load_keys()  # Load the keys and discard any residual info asap
 
-print(KEYS)
-print([type(i) for i in KEYS.values()])
-
 
 def encrypt_token(token: str) -> dict:
     """

@@ -393,10 +393,8 @@ class Image:
         self._customcatname = None
 
     # Do a first task - make the category on commons
-    def make_cat(self, custom=None):
+    def make_cat(self):
         """This function will, when triggered, generate an empty category on Wikimedia Commons."""
-        if custom is not None:
-            self.catname = custom  # Type checking will be done in the property setter
         content = r'{{Wikidata Infobox}}'  # Only call this method if there is a valid Wikidata item!
         pars = {'action': 'edit',
                 'title': f'Category:{self.catname}',

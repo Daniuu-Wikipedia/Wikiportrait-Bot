@@ -154,6 +154,8 @@ class WebImage(Image):
 
     @property
     def ticket_number(self):
+        if self.mc is None:
+            self.mc = {}  # If stuff goes wrong
         parent = self.mc.get('P6305', None)
         if parent is not None:
             # noinspection PyUnresolvedReferences

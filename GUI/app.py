@@ -224,6 +224,8 @@ def review():
         bot_object = wcl.create_from_db(flask.session['session_id'],
                                         app.config,
                                         flask.session['username'])  # To do: continue
+        app.logger.info(f'User {flask.session.get("username")} loaded info on {bot_object.name}: birth {bot_object.birth}, death {bot_object.death} & image date {bot_object.date}')
+        app.logger.info(f'User {flask.session.get("username")} loaded bd as {type(bot_object.birth)} and dd as {type(bot_object.death)} & id as {type(bot_object.date)}')
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         return flask.render_template('review.html',
                                      license_options=wcl.WebImage.licenses.keys(),

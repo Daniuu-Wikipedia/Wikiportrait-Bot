@@ -13,7 +13,7 @@ def generate_wikiportret_key():
     payload = {'User': data['WIKIPORTRET_USERNAME'],
                'Pass': data['WIKIPORTRET_PASS'],
                'Authentication': data['WIKIPORTRET_API_KEY']}
-    response = requests.post('https://wikiportret.nl/api/login/',
+    response = requests.post('https://www.wikiportret.nl/api/login/',
                              headers=payload).text
     # Note: API end is written in PHP, so it returns a bytestring
     #

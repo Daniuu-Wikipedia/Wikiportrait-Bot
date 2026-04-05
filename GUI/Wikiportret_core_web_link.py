@@ -273,4 +273,8 @@ def create_from_db(session_number,
                 output.death = date_from_db(result[8])
             # Result 3 = ticket number, we don't need it for now
             # Result 6 = used only for the db and cleanup scripts
+    # 20260405 - addition to fix the bugs with birth dates...
+    output.date_born()
+    output.date_deceased()
+
     return output

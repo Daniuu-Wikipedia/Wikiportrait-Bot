@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
       loadingMessage.textContent = "Voltooid! Doorsturen...";
       setTimeout(function () {
         window.location.href = "/review";
-      }, 1000);
+      }, 1250);
     } else {
       loadingMessage.textContent = "Gegevens laden: " + progress + "%";
       setTimeout(updateProgress, 1250);
@@ -19,5 +19,5 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   setTimeout(function () {
     updateProgress();
-  }, 1000);
+  }, 1250);
 });

@@ -598,7 +598,7 @@ class Image:
         # To do (20260314 HACKATHON): check this one
         # Checked 20260405
         """Scans the source code of the file page on Commons to determine the date at which the image was made"""
-        if self.date is not None:
+        if self.date is None:
             if self.comtext is None:
                 self.get_commons_text()
             date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]'  # Regex to search where the match occurs
@@ -1092,7 +1092,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Joëlle Feijen.JPG', "Joëlle Feijen")
+    a = Image('Ángel Alarcón.JPG', "Ángel Alarcón")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

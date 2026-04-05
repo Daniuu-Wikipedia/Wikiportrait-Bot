@@ -615,17 +615,19 @@ class Image:
         Grabs the point in time at which the image was generated.
         Returns: the point in time at which the image was generated.
         """
-        z = self._commons.get({'action': 'query',
-                               'titles': f'File:{self.file}',
-                               'prop': 'imageinfo',
-                               'iiprop': 'commonmetadata'})
-        q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
-        t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
-        d = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
-        if not d:  # We got an empty list, no valid dates were passed
-            return None  # Abort the execution of the function
-        self.date = dt.datetime.strptime(d[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
-                                                                            second=0)  # Remove the precise timestamp
+        self.get_date_from_commons_text()
+        if self.date is None:
+            z = self._commons.get({'action': 'query',
+                                   'titles': f'File:{self.file}',
+                                   'prop': 'imageinfo',
+                                   'iiprop': 'commonmetadata'})
+            q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
+            t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
+            d = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
+            if not d:  # We got an empty list, no valid dates were passed
+                return None  # Abort the execution of the function
+            self.date = dt.datetime.strptime(d[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
+                                                                                second=0)  # Remove the precise timestamp
         return self.date
 
     def date_meta(self, manual_value=None):

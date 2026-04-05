@@ -276,5 +276,5 @@ def create_from_db(session_number,
     # 20260405 - addition to fix the bugs with birth dates...
     output.date_born()
     output.date_deceased()
-
+    output.get_date_from_commons_text()  # 20260405 - let's give it a try
     return output

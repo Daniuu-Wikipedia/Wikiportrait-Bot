@@ -596,15 +596,19 @@ class Image:
 
     def get_date_from_commons_text(self):
         # To do (20260314 HACKATHON): check this one
+        # Checked 20260405
         """Scans the source code of the file page on Commons to determine the date at which the image was made"""
-        if self.comtext is None:
-            self.get_commons_text()
-        date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]'  # Regex to search where the match occurs
-        date_match = re.search(date_regex, self.comtext)
-        if date_match is None:
-            return None  # No usefull date in the Commons source text
-        date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
-        date_found = date_found.replace(' ', '').replace('|date=', '')
+        if self.date is not None:
+            if self.comtext is None:
+                self.get_commons_text()
+            date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]'  # Regex to search where the match occurs
+            date_match = re.search(date_regex, self.comtext)
+            if date_match is not None:
+                date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
+                date_found = date_found.replace(' ', '').replace('|date=', '')
+                y, m, d = date_found.split('-')
+                self.date = dt.date(int(y), int(m), int(d))
+                return self.date
 
     def get_image_date(self):
         """

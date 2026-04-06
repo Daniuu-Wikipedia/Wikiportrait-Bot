@@ -11,13 +11,13 @@ document.addEventListener("DOMContentLoaded", function () {
       loadingMessage.textContent = "Voltooid! Doorsturen...";
       setTimeout(function () {
         window.location.href = "/statussubmit";
-      }, 1000);
+      }, 2000);
     } else {
       loadingMessage.textContent = "Gegevens laden: " + progress + "%";
-      setTimeout(updateProgress, 1250);
+      setTimeout(updateProgress, 2000);
     }
   }
   setTimeout(function () {
     updateProgress();
-  }, 1000);
+  }, 2000);
 });

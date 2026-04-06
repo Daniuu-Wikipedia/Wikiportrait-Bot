@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/uploaddone.css') }}">
+{% endblock %}
+
+{% block body %}
+
+<div class="upload-container">
+
+    <!-- Success Status Bar -->
+    <div class="status-bar">
+        Afbeelding is met succes verwerkt !
+    </div>
+
+    <!-- Message Box -->
+    <div class="message-box">
+        <button class="copy-button" onclick="copyText()">Copy</button>
+        <textarea id="copyText" readonly>
+            {{ message }}
+        </textarea>
+    </div>
+
+    <div class="action-box">
+        <h2>Action Buttons</h2>
+
+        <div class="button-row">
+            <form action="/input">
+                <input type="submit" value="New upload">
+            </form>
+
+            <form action="/listuploads">
+                <input type="submit" value="Oplijsten">
+            </form>
+
+            <form action="/logout">
+                <input type="submit" value="Afmelden">
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div class="user-info-container">
+    <div class="user-info-box">
+        {% if user_name %}
+            <span id="user-name">Ingelogd als {{ user_name }}</span>
+            <form action="/logout" method="post">
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
+        {% else %}
+            <span id="user-name-unknown"><em>Niet aangemeld</em></span>
+            <form action="/login" method="get">
+                <button type="submit" class="login-button">Aanmelden</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/copy_button.js') }}"></script>
+
+{% endblock %}

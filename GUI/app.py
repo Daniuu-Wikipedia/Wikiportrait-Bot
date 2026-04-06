@@ -303,6 +303,18 @@ def statussubmit():
     return str(message_data)  # Debugging only
 
 
+@app.route('/uploaddone')
+def uploaddone():
+    return flask.render_template('uploaddone.html', message='lalalallalalla')
+
+
+@app.route('/uploadfailed')
+def uploadfailed():
+    pass
+
+
+
+
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON
     app.run(debug=False)

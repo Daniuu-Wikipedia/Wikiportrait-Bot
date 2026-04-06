@@ -1,0 +1,121 @@
+/* Full-page centering */
+.upload-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   /* vertical centering */
+    align-items: center;       /* horizontal centering */
+    height: 100vh;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+/* Green success bar */
+.status-bar {
+    width: 100%;
+    background-color: #28a745;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    font-size: 1.4rem;
+    font-weight: bold;
+    border-radius: 6px;
+    margin-bottom: 30px;
+}
+
+/* Message box (copy-friendly) */
+.message-box {
+    width: 100%;
+    max-width: 700px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 20px;
+    border-radius: 6px;
+    font-size: 1rem;
+    line-height: 1.6;
+    white-space: pre-wrap; /* helps copying cleanly */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+input[type="submit"] {
+    background-color: #009933;
+    color: white;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: block;
+    margin: 2rem auto;
+    transition: background-color 0.3s ease;
+}
+
+input[type="submit"]:hover {
+    background-color: #007729;
+}
+
+/* Message box width = 75% of window */
+.message-box {
+    width: 75vw;              /* 75% of viewport width */
+    max-width: 75vw;        /* optional limit so it doesn't get huge */
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    position: relative;       /* Needed for button positioning */
+}
+
+/* Text area */
+.message-box textarea {
+    width: 100%;
+    height: 200px;
+    border: none;
+    background: transparent;
+    resize: none;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 1rem;
+    padding-top: 10px;
+}
+
+/* Copy button in top right */
+.copy-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 6px 14px;
+    border-radius: 15px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+/* Action buttons box */
+.action-box {
+    width: 75vw;
+    max-width: 75vw;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.action-box h2 {
+    margin-bottom: 10px;
+}
+
+/* Button row layout */
+.button-row {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* Prevent forms from taking full width */
+.button-row form {
+    margin: 0;
+}

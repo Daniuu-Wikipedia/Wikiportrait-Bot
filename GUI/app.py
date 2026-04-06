@@ -224,8 +224,6 @@ def review():
         bot_object = wcl.create_from_db(flask.session['session_id'],
                                         app.config,
                                         flask.session['username'])  # To do: continue
-        app.logger.info(f'User {flask.session.get("username")} loaded info on {bot_object.name}: birth {bot_object.birth}, death {bot_object.death} & image date {bot_object.date}')
-        app.logger.info(f'User {flask.session.get("username")} loaded bd as {type(bot_object.birth)} and dd as {type(bot_object.death)} & id as {type(bot_object.date)}')
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         return flask.render_template('review.html',
                                      license_options=wcl.WebImage.licenses.keys(),
@@ -297,7 +295,12 @@ def statussubmit():
     # For now: a checklist of things to check also do the job
     # Also add the "thank you, dear donateur"-message to this screen
     # Work still in progress
-    return 'Long live Wikimedia!'
+    query = """
+    SELECT * FROM messages
+    where session_id = %d 
+    """ % flask.session['session_id']
+    message_data = db_utils.query_db(query, app.config['DB_NAME'])
+    return str(message_data)  # Debugging only
 
 
 if __name__ == '__main__':

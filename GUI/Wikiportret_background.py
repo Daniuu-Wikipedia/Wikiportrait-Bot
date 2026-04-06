@@ -68,11 +68,12 @@ def background_load(session_id, config):
 
 
 def upload_in_background(session_id, config, user_id):
+    # 20260406 - extended to also store short urls in the messages db
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
     conn, status, bot = toolforge.toolsdb(config['DB_NAME']), None, None
     try:
         bot = wcl.create_from_db(session_id, config)
-        _, _, confirmation = bot(True, True, True, True, True, False)  # Make the actual calls to the API
+        _, shorts, confirmation = bot(True, True, True, True, True, False)  # Make the actual calls to the API
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
@@ -80,9 +81,12 @@ def upload_in_background(session_id, config, user_id):
         # Also store the upload messages => to make life easier for the operator
         query = """
         INSERT INTO messages
-        (session_id, user_id, message) values (%d, %d, %r);""" % (session_id,
-                                                                  user_id,
-                                                                  confirmation)
+        (session_id, user_id, message, file_url, wiki_url, qid) values (%d, %d, %r, %r, %r, %r);""" % (session_id,
+                                                                                                       user_id,
+                                                                                                       confirmation,
+                                                                                                       shorts[0],
+                                                                                                       shorts[1],
+                                                                                                       bot.qid)
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
         # 20250314 - HACKATHON - succesfull upload => add to the list of user uploads in the db
         query = f"insert into user_uploads (operator_id, file_uploaded) values ({user_id:d}, {bot.file!r});"

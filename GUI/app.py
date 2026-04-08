@@ -300,19 +300,24 @@ def statussubmit():
     where session_id = %d 
     """ % flask.session['session_id']
     message_data = db_utils.query_db(query, app.config['DB_NAME'])
-    return str(message_data)  # Debugging only
+    if message_data[4] == 'uploaded':
+        return flask.redirect(flask.url_for('uploaddone'))
+    # To do: change this, but for alpha testing, just keep as is...
+    return 'Warn Daniuu, something might have gone wrong in session %d' % (flask.session['session_id'])
 
 
 @app.route('/uploaddone')
 def uploaddone():
-    return flask.render_template('uploaddone.html', message='lalalallalalla')
+    query = """
+    SELECT * FROM messages
+    WHERE session_id = %d""" % (flask.session['session_id'])
+    message_from_db = db_utils.query_db(query, app.config['DB_NAME'])
+    return flask.render_template('uploaddone.html', message=message_from_db[2])
 
 
 @app.route('/uploadfailed')
 def uploadfailed():
     pass
-
-
 
 
 if __name__ == '__main__':

@@ -62,7 +62,7 @@ input[type="submit"]:hover {
     border: 1px solid #ddd;
     padding: 10px;
     border-radius: 12px;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
     position: relative;       /* Needed for button positioning */
 }
 

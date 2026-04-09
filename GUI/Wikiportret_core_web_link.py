@@ -164,7 +164,7 @@ class WebImage(Image):
         return self.ticket(action=False)
 
     def get_commons_text(self, session=None, connection=None):
-        super().get_commons_text()
+        super().get_commons_text(True)
         if session is not None:
             query = f"""
             UPDATE claims
@@ -179,7 +179,7 @@ class WebImage(Image):
         if session is not None:
             query = f"""
                         UPDATE claims
-                        set comm_text = '{self.wikidata_claims_json}'
+                        set json_response = '{self.wikidata_claims_json}'
                         where session_id = {session};
                         """
             dbut.adjust_db(query, self.dbname, connection=connection)

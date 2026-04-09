@@ -682,9 +682,9 @@ class Image:
         if not isinstance(self.mc, dict):
             self.mc = {}  # Data is completely missing, same as if it were there and empty
 
-    def get_commons_text(self):
+    def get_commons_text(self, force_update=False):
         """This function will get the content of the file page on Commons"""
-        if self.comtext is None:
+        if self.comtext is None or force_update is True:
             self.comtext = self._commons.get({'action': 'parse',
                                               'page': f'File:{self.file}',
                                               'prop': 'wikitext'})['parse']['wikitext']['*']

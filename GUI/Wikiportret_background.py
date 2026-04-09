@@ -88,6 +88,12 @@ def upload_in_background(session_id, config, user_id):
                                                                                                        shorts[1],
                                                                                                        bot.qid)
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+        # 20260409 - explicitly set uploaded status in time
+        query = f"""
+                UPDATE sessions
+                SET status = 'uploaded' where session_id = {session_id:d};
+                """
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
         # 20250314 - HACKATHON - succesfull upload => add to the list of user uploads in the db
         query = f"insert into user_uploads (operator_id, file_uploaded) values ({user_id:d}, {bot.file!r});"
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)

@@ -20,6 +20,7 @@ def query_db(query, dbname, need_all=False, connection=None):
     connection_passed = connection is not None
     if connection is None:
         connection = toolforge.toolsdb(dbname)
+    connection.autocommit(True)
     with connection.cursor() as cursor:
         cursor.execute(query)
         if need_all is True:
@@ -50,6 +51,7 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None):
     connection_passed = connection is not None
     if connection is None:
         connection = toolforge.toolsdb(dbname)
+    connection.autocommit(True)  # Force autocommit
     with connection.cursor() as cursor:
         cursor.execute(query)
         connection.commit()

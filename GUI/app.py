@@ -186,6 +186,8 @@ def load():
         return 'You can only POST to this page!'
     elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
+    elif '.' not in flask.request.form['File'].strip():
+        return flask.redirect(flask.url_for('input'))
     else:
         # Handle the POST request
         # In the background, we will start setting up the bot

@@ -16,9 +16,7 @@
     <!-- Message Box -->
     <div class="message-box">
         <button class="copy-button" onclick="copyText()">Copy</button>
-        <textarea id="copyText" readonly>
-            {{ message }}
-        </textarea>
+        <textarea id="copyText" readonly>{{ message.strip() }}</textarea>
     </div>
 
     <div class="action-box">

@@ -601,12 +601,23 @@ class Image:
         if self.date is None:
             if self.comtext is None:
                 self.get_commons_text()
-            date_regex = r'\|\s*[Dd]ate\s*=.+?[\}\|\n]'  # Regex to search where the match occurs
+            # 20260409: updated regex to fix exceptions being thrown by weird date formats
+            date_regex = r'\|\s*[Dd]ate\s*=\s*\d{4}\s*-\s*\d{1,2}\s*-\s*\d{1,2}\b'
             date_match = re.search(date_regex, self.comtext)
             if date_match is not None:
                 date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
                 date_found = date_found.replace(' ', '').replace('|date=', '')
                 y, m, d = date_found.split('-')
+                self.date = dt.date(int(y), int(m), int(d))
+                return self.date
+            # 20260409: common issue with Wikiportret: date passed in DD-MM-YYYY format
+            # Until mitigation is in place, also parse that format
+            date_regex = r'\|\s*[Dd]ate\s*=\s*\d{1,2}\s*-\s*\d{1,2}\s*-\s*\d{4}\b'
+            date_match = re.search(date_regex, self.comtext)
+            if date_match is not None:
+                date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
+                date_found = date_found.replace(' ', '').replace('|date=', '')
+                d, m, y = date_found.split('-')
                 self.date = dt.date(int(y), int(m), int(d))
                 return self.date
 
@@ -1092,7 +1103,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Ángel Alarcón.JPG', "Ángel Alarcón")
+    a = Image('Jordan Bos.JPG', "Jordan Bos")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

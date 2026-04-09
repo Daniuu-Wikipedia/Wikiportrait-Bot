@@ -167,6 +167,8 @@ def input():
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument
     # Perform these actions if a POST request is sent (submitted via the form)
+    if 'session_id' in flask.session:
+        del flask.session['session_id']
     if flask.request.method == 'POST':
         raise NotImplementedError('API-based loading is not yet supported!')  # Perform actions to initialize the form
     elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:

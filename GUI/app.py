@@ -298,11 +298,11 @@ def statussubmit():
     # Also add the "thank you, dear donateur"-message to this screen
     # Work still in progress
     query = """
-    SELECT * FROM messages
+    SELECT status FROM sessions
     where session_id = %d 
     """ % flask.session['session_id']
     message_data = db_utils.query_db(query, app.config['DB_NAME'])
-    if message_data[4] == 'uploaded':
+    if message_data[0] == 'uploaded':
         return flask.redirect(flask.url_for('uploaddone'))
     # To do: change this, but for alpha testing, just keep as is...
     return 'Warn Daniuu, something might have gone wrong in session %d' % (flask.session['session_id'])

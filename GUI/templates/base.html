@@ -1,28 +1,75 @@
-<!-- Main template for all pages (master for all other pages) -->
-<!-- All changes to the page require the Jinja2 templating language -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width-device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Input_fields.css') }}">
     <script src="{{ url_for('static', filename='js/bg_input_field.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bg_input_validator.js') }}"></script>
-
-
-    <!-- End of the lay-out section -->
-    <!-- Place shape bar -->
-    <div class="wikiportret">
-        Wikiportret
-    </div>
-   {% block head %}{% endblock %}
+    {% block head %}{% endblock %}
 </head>
 <body>
-<div class="content">
-    {% block body %}
-    {% endblock %}
-</div>
+    <div class="app-container">
+        <!-- Top Navbar -->
+        <header class="navbar">
+            <div class="navbar-brand">
+                <a href="{{ url_for('input') }}" style="color: inherit; text-decoration: none;">
+                    <i class="fa-brands fa-wikipedia-w" style="margin-right: 8px;"></i>Wikiportret
+                </a>
+            </div>
+            
+            <div class="navbar-end">
+                {% if user_name or username %}
+                <nav class="navbar-nav">
+                    <a href="{{ url_for('input') }}" class="nav-item">
+                        <i class="fa-solid fa-cloud-arrow-up" style="margin-right: 6px;"></i>Upload
+                    </a>
+                </nav>
+                
+                <div class="dropdown">
+                    <button class="dropdown-trigger">
+                        <i class="fa-solid fa-circle-user" style="margin-right: 6px; font-size: 1.1em;"></i>{{ user_name or username }} <i class="fa-solid fa-chevron-down" style="font-size: 0.8em; margin-left: 4px;"></i>
+                    </button>
+                    <div class="dropdown-content">
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fa-solid fa-arrow-right-from-bracket" style="margin-right: 8px;"></i>Uitloggen
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="nav-item">
+                    <i class="fa-solid fa-right-to-bracket" style="margin-right: 6px;"></i>Inloggen
+                </a>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="main-wrapper">
+            <main class="main-content">
+                <header class="content-header">
+                    {% block content_title %}<h1>Overzicht</h1>{% endblock %}
+                </header>
+                
+                <section class="content">
+                    {% block body %}
+                    {% endblock %}
+                </section>
+            </main>
+
+            <!-- Copyright Footer -->
+            <footer class="footer">
+                <div class="footer-content">
+                    &copy; 2026 Wikiportrait-Bot &bull; Alle rechten voorbehouden
+                </div>
+            </footer>
+        </div>
+    </div>
 </body>
 </html>

@@ -44,6 +44,10 @@ with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
 
 @app.route('/')
 def index():
+    if app.config.get('LOCAL_DEV'):
+        flask.session['username'] = "TestGebruiker"
+        return flask.redirect(flask.url_for('input'))
+    
     username = flask.session.get('username', None)
     # For development purposes only: manually override the username
     if username is None:
@@ -174,7 +178,7 @@ def input():
     elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     return flask.render_template('input.html',
-                                 user_name=flask.session['username'])
+                                 user_name=flask.session.get('username', 'TestGebruiker'))
 
 
 # Create a page to be displayed while the bot is getting the initial data
@@ -191,6 +195,11 @@ def load():
     elif '.' not in flask.request.form['File'].strip():
         return flask.redirect(flask.url_for('input'))
     else:
+        if app.config.get('LOCAL_DEV'):
+            flask.session['session_id'] = 999
+            return flask.render_template('loading.html',
+                                         user_name=flask.session['username'])
+
         # Handle the POST request
         # In the background, we will start setting up the bot
         bot_object = wcl.WebImage(flask.request.form['File'].strip(),
@@ -223,11 +232,26 @@ def review():
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
     try:
-        if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
-            return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
-        bot_object = wcl.create_from_db(flask.session['session_id'],
-                                        app.config,
-                                        flask.session['username'])  # To do: continue
+        if app.config.get('LOCAL_DEV'):
+            class MockBot:
+                def __init__(self):
+                    self.file = "VuilTestertje.jpg"
+                    self.name = "Henk Appelsien"
+                    self.date = dt.date(2023, 5, 12)
+                    self.birth = dt.date(1990, 1, 1)
+                    self.death = None
+                    self.caption = "Een dummy bijschrift voor testdoeleinden."
+                    self.sum = "Test upload via lokale development mode."
+                    self.catname = "People from Mock City"
+                def input_data_to_db(self, sid): pass
+
+            bot_object = MockBot()
+        else:
+            if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
+                return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
+            bot_object = wcl.create_from_db(flask.session['session_id'],
+                                            app.config,
+                                            flask.session['username'])  # To do: continue
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         return flask.render_template('review.html',
                                      license_options=wcl.WebImage.licenses.keys(),
@@ -247,6 +271,10 @@ def review():
 def submit():
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
+        if app.config.get('LOCAL_DEV'):
+            return flask.render_template('submit.html',
+                                         user_name=flask.session.get('username', 'TestGebruiker'))
+
         update_dict = {}  # Key-value pairs for updating stuff in the db
         bot_object = wcl.create_from_db(flask.session['session_id'],
                                         app.config,
@@ -323,7 +351,14 @@ def uploaddone():
 def uploadfailed():
     pass
 
+@app.route('/403')
+def forbidden_test():
+    return flask.render_template('403.html')
+
+@app.errorhandler(403)
+def forbidden(e):
+    return flask.render_template('403.html'), 403
 
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON
-    app.run(debug=False)
+    app.run(debug=True, port=5001)

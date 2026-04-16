@@ -235,7 +235,7 @@ def review():
         if app.config.get('LOCAL_DEV'):
             class MockBot:
                 def __init__(self):
-                    self.file = "File:VuilTestertje.jpg"
+                    self.file = "VuilTestertje.jpg"
                     self.name = "Henk Appelsien"
                     self.date = dt.date(2023, 5, 12)
                     self.birth = dt.date(1990, 1, 1)

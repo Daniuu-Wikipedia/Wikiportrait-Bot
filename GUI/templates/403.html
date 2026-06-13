@@ -1,4 +1,35 @@
-<!doctype html>
-<title>Access denied</title>
-<h1>Access denied</h1>
-<p>You don’t have permission to use this tool yet. Please contact the tool administrator!</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 Forbidden</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/403.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-403" aria-hidden="true">
+        <svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="bg-text">403</text>
+        </svg>
+    </div>
+
+    <main class="content-container">
+        
+        <svg class="padlock-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-hidden="true">
+            <path fill="#9ba1a6" d="M8 8V4h8v4h-2V6h-4v2H8z"/>
+            <path fill="#e86c19" d="M5 8h14v12H5z"/>
+            <path fill="#1a1e22" d="M11 13h2v3h-2z"/>
+        </svg>
+
+        <div class="text-block">
+            <h1 class="main-text">can't let <span class="highlight">you</span> in.</h1>
+            <p class="secondary-text">unexpected?</p>
+            <a href="https://meta.wikimedia.org/wiki/User:Daniuu" class="contact-link">contact Daniuu</a>
+        </div>
+
+    </main>
+
+    <script src="{{ url_for('static', filename='js/403.js') }}"></script>
+</body>
+</html>

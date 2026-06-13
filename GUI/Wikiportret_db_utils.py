@@ -8,6 +8,18 @@ Auxliary functions are listed separately to keep the code of the main app clean
 import toolforge
 import json
 import Wikiportret_crypto as crypto
+import tomllib
+import os
+
+# Load config for local dev check
+__dir__ = os.path.dirname(__file__)
+try:
+    with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
+        config = tomllib.load(f)
+except:
+    config = {}
+
+LOCAL_DEV = config.get('LOCAL_DEV', False)
 
 
 def query_db(query, dbname, need_all=False, connection=None):
@@ -15,6 +27,15 @@ def query_db(query, dbname, need_all=False, connection=None):
     Query information from the database.
     (details on arguments & output to be added)
     """
+    if LOCAL_DEV:
+        if "SELECT status FROM sessions" in query:
+            return ("uploaded",)
+        if "SELECT * FROM messages" in query:
+            return (0, 0, "Als je dit leest, zit je op de pagina /uploaddone ")
+        if "SELECT `user_id`" in query:
+            return (1,)
+        return None
+
     if not isinstance(query, str):
         return None
     connection_passed = connection is not None
@@ -34,6 +55,8 @@ def query_db(query, dbname, need_all=False, connection=None):
 
 
 def get_user_id(username, dbname, connection=None):
+    if LOCAL_DEV:
+        return 1
     if isinstance(username, int):
         return username  # To avoid getting into trouble again with me messing up usernames & ids again
     data = query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
@@ -46,6 +69,8 @@ def get_user_id(username, dbname, connection=None):
 
 
 def adjust_db(query, dbname, retrieve_id=False, connection=None):
+    if LOCAL_DEV:
+        return 1 if retrieve_id else True
     if not isinstance(query, str):
         return None
     connection_passed = connection is not None

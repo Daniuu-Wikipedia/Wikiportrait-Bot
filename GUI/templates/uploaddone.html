@@ -1,59 +1,58 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/uploaddone.css') }}">
+    <title>Wikiportret - Upload Voltooid</title>
+    <style>
+        .message-box {
+            position: relative;
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        #copyText {
+            width: 100%;
+            height: 120px;
+            border: none;
+            background: transparent;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content_title %}
+    <h1>Upload Voltooid</h1>
 {% endblock %}
 
 {% block body %}
+    <div class="card" style="max-width: 700px;">
+        <div style="background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-weight: 600;">
+            Succes! De afbeelding is met succes verwerkt en geüpload.
+        </div>
 
-<div class="upload-container">
+        <p class="text-secondary">Kopieer de volgende tekst voor uw administratie:</p>
+        
+        <div class="message-box">
+            <button class="btn btn-secondary copy-button" onclick="copyText()">Kopieer Tekst</button>
+            <textarea id="copyText" readonly>{{ message.strip() }}</textarea>
+        </div>
 
-    <!-- Success Status Bar -->
-    <div class="status-bar">
-        Afbeelding is met succes verwerkt !
-    </div>
-
-    <!-- Message Box -->
-    <div class="message-box">
-        <button class="copy-button" onclick="copyText()">Copy</button>
-        <textarea id="copyText" readonly>{{ message.strip() }}</textarea>
-    </div>
-
-    <div class="action-box">
-        <h2>Action Buttons</h2>
-
-        <div class="button-row">
-            <form action="/input">
-                <input type="submit" value="New upload">
-            </form>
-
-            <form action="/listuploads">
-                <input type="submit" value="Oplijsten">
-            </form>
-
-            <form action="/logout">
-                <input type="submit" value="Afmelden">
-            </form>
+        <div class="mt-1" style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="{{ url_for('input') }}" class="btn">Nieuwe Afbeelding Verwerken</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary">Uitloggen</a>
         </div>
     </div>
-</div>
 
-
-<div class="user-info-container">
-    <div class="user-info-box">
-        {% if user_name %}
-            <span id="user-name">Ingelogd als {{ user_name }}</span>
-            <form action="/logout" method="post">
-                <button type="submit" class="logout-button">Logout</button>
-            </form>
-        {% else %}
-            <span id="user-name-unknown"><em>Niet aangemeld</em></span>
-            <form action="/login" method="get">
-                <button type="submit" class="login-button">Aanmelden</button>
-            </form>
-        {% endif %}
-    </div>
-</div>
-<script src="{{ url_for('static', filename='js/copy_button.js') }}"></script>
-
+    <script src="{{ url_for('static', filename='js/copy_button.js') }}"></script>
 {% endblock %}

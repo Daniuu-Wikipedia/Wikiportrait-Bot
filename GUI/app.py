@@ -42,6 +42,29 @@ with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
     app.config.update(tomllib.load(f))
 
 
+# General utility
+def check_login_data(origin=None):
+    """
+    Method to perform some checks concerning the loading of data, user identity & session id.
+
+    Method is designed to replace some repeated checks that need to be performed while loading.
+
+    Argument origin contains the page that is being loaded (to avoid getting circular redirects
+    """
+    if app.config.get('LOCAL_DEV'):
+        return  # Bypass restriction locally
+    if origin not in {'login', 'logout', 'oauth-callback'}:
+        now = dt.datetime.utcnow()
+        from_session = dt.datetime.fromisoformat(flask.session.get('token_expiry'))
+        if 'token_expiry' not in flask.session or now > from_session:
+            return flask.redirect(flask.url_for('login'))  # Force the user to login
+        if origin not in {'input'}:
+            if 'session_id' not in flask.session:
+                return flask.redirect(flask.url_for('input'))
+    return  # Return None, nothing to do here...
+    
+
+
 @app.route('/')
 def index():
     if app.config.get('LOCAL_DEV'):
@@ -146,6 +169,11 @@ def oauth_callback():
         # Even though flask.session has some security built in to prevent tampering with the session cookie
         flask.session['username'] = identity['username']
 
+        # 20260409 - extension to avoid login issues (tokens automatically removed after some time)
+        expiry = dt.datetime.utcnow() + dt.timedelta(hours=1)
+        flask.session['token_expiry'] = expiry.isoformat()
+        del expiry
+
     return flask.redirect(flask.url_for('input'))  # After logging in, direct user to login screen
 
 
@@ -161,7 +189,7 @@ def logout():
     query = f'delete from sessions where operator_id = {user_id}'
     db_utils.adjust_db(query, app.config['DB_NAME'])
 
-    flask.session.clear()
+    flask.session.clear()  # Clears session_id, username & token_expiry
     return flask.redirect(flask.url_for('index'))
 
 
@@ -171,6 +199,9 @@ def input():
     # Landing page
     # The template is stored internally in the templates-folder, there is no need to mention this in the argument
     # Perform these actions if a POST request is sent (submitted via the form)
+
+    # 20260613 - check if all credentials are present
+    check_login_data('input')
     if 'session_id' in flask.session:
         del flask.session['session_id']
     if flask.request.method == 'POST':
@@ -184,6 +215,9 @@ def input():
 # Create a page to be displayed while the bot is getting the initial data
 @app.route('/load', methods=['POST', 'GET'])
 def load():
+    # 20260613 - check whether all relevant login credentials are present
+    check_login_data('load')
+
     # This page is designed to facilitate loading relevant data in the background
     # This page must be called by the index page
     if flask.request.method == 'GET':
@@ -196,7 +230,7 @@ def load():
         return flask.redirect(flask.url_for('input'))
     else:
         if app.config.get('LOCAL_DEV'):
-            flask.session['session_id'] = 999
+            flask.session['session_id'] = 999  # Just set a dummy value for reference in the local development db
             return flask.render_template('loading.html',
                                          user_name=flask.session['username'])
 
@@ -229,6 +263,8 @@ def load():
 # Define the routing towards the review section
 @app.route('/review', methods=['POST', 'GET'])
 def review():
+    # 20260613 - check login credentials of the user
+    check_login_data('review')
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
     try:
@@ -269,6 +305,9 @@ def review():
 # The page the users will see whenever they submit an image for posting
 @app.route('/submit', methods=['POST', 'GET'])
 def submit():
+    # 20260613 - check login data
+    check_login_data('submit')
+
     # To do: clear the global object (all required stuff is dumped in the session anyway)
     if flask.request.method == 'POST':
         if app.config.get('LOCAL_DEV'):
@@ -323,6 +362,7 @@ def submit():
 
 @app.route('/statussubmit')
 def statussubmit():
+    check_login_data('statussubmit')
     # Idea: provide the user with an overview of all error messages that were generated
     # For now: a checklist of things to check also do the job
     # Also add the "thank you, dear donateur"-message to this screen
@@ -340,6 +380,7 @@ def statussubmit():
 
 @app.route('/uploaddone')
 def uploaddone():
+    check_login_data('uploaddone')
     query = """
     SELECT * FROM messages
     WHERE session_id = %d""" % (flask.session['session_id'])
@@ -349,16 +390,19 @@ def uploaddone():
 
 @app.route('/uploadfailed')
 def uploadfailed():
+    check_login_data('uploadfailed')
     pass
 
 @app.route('/403')
 def forbidden_test():
+    check_login_data('forbidden_test')
     return flask.render_template('403.html')
 
 @app.errorhandler(403)
 def forbidden(e):
+    check_login_data('forbidden_test')
     return flask.render_template('403.html'), 403
 
 if __name__ == '__main__':
     # NEVER RUN THE SERVICE ON TOOLFORGE WITH DEBUGGING SWITCHED ON
-    app.run(debug=True, port=5001)
+    app.run(debug=False)

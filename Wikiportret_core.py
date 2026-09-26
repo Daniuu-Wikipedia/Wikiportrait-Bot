@@ -860,6 +860,26 @@ class Image:
         if cat in self.comtext:
             print('The category was already in the text')
             return None
+
+        # 20260926 - also check if the author has their own category (example: Photographs by Hans Reefman)
+        author_match = re.search(
+            r"^\s*\|\s*Author\s*=\s*(.+?)\s*$",
+            self.comtext,
+            re.MULTILINE | re.IGNORECASE
+        )
+        if author_match:
+            author = author_match.group(1).strip()
+            photographer_cat = f"Photographs by {author}"
+            params = {
+                "action": "query",
+                "list": "categorymembers",
+                "cmtitle": f"Category:{photographer_cat}",
+                "cmlimit": 1,
+                "cmtype": "file"  # excludes subcats
+            }
+            if 'error' not in self._commons.get(params):
+                cat += f'\n[[Category:{photographer_cat}]]'
+
         dic = {'action': 'edit',
                'bot': True,
                'title': f'File:{self.file}',
@@ -867,6 +887,8 @@ class Image:
                'nocreate': True,
                'appendtext': '\n' * (not self.comtext.endswith('\n')) + cat + '\n'}
         self._commons.post(dic)
+        # 20260926 - obviously, internal bookkeeping needs to be updated as well
+        self.comtext += '\n' * (not self.comtext.endswith('\n')) + cat + '\n'
         print('Category has been added.')
 
     def depicts(self):
@@ -1161,7 +1183,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Ruud Nijstad.JPG', "Ruud Nijstad")
+    a = Image('Esmir Bajraktarević.JPG', "Esmir Bajraktarević")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

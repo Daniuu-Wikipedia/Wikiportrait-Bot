@@ -5,4 +5,4 @@ toolforge>=6.0.0
 mwparserfromhell
 mwcomposerfromhell
 pytz
-pywikibot
+pywikibot>=11.3.0

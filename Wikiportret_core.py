@@ -660,7 +660,7 @@ class Image:
             'action': 'edit',
             'title': f'File:{self.file}',
             'text': new_text,
-            'summary': self.sum,
+            'summary': f'{self.sum}: fixing date format',
             'bot': True,
             'nocreate': True
         }
@@ -942,7 +942,9 @@ class Image:
                 if len(line.strip().replace(' ',
                                             '')) > 12:  # length of the line > len(|afbeelding=), there is already an image there
                     print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
-                    return None  # Abort the run
+                    # 20260926 - raise a custom exception if an image is already present
+                    raise ImageAlreadyError(f'File:{self.file} is already present on page "{self.name}".')
+                    # return None  # Abort the run
 
                 # Continue with the completion
                 content = content.replace(line, line.rstrip() + f' {self.file}\n')
@@ -1159,7 +1161,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Sava-Arangel Čestić.JPG', "Sava-Arangel Čestić")
+    a = Image('Owen Panneflek.JPG', "Owen Panneflek")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

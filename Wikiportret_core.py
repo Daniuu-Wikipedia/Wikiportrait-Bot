@@ -598,7 +598,6 @@ class Image:
         # To do (20260314 HACKATHON): check this one
         # Checked 20260405
         """Scans the source code of the file page on Commons to determine the date at which the image was made"""
-        print('CHECKING DATE IN COMMONS TEXT')
         if self.date is None:
             if self.comtext is None:
                 self.get_commons_text()
@@ -644,7 +643,6 @@ class Image:
             return None
 
         new_date_text = f'|date={self.date.year:d}-{self.date.month:02d}-{self.date.day:02d}'
-        print(old_date_text, old_date_text in self.comtext)
         new_text = self.comtext.replace(old_date_text, new_date_text, 1)
 
         if new_text == self.comtext:

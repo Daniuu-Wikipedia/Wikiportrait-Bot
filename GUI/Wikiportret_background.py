@@ -8,7 +8,7 @@ import time
 import os
 import Wikiportret_core_web_link as wcl  # Dealing with the db & getting info from the UI
 import Wikiportret_db_utils as dbutil
-from Wikiportret_core import ImageAlreadyError
+from Wikiportret_core import ImageAlreadyError, MaxlagError
 
 # First job: read config of the app
 __dir__ = os.path.dirname(__file__)
@@ -70,7 +70,8 @@ def background_load(session_id, config):
 
 def upload_in_background(session_id, config, user_id):
     # 20260406 - extended to also store short urls in the messages db
-    success, image_al_there = False, False  # By default, assume that Daniuu is crap at coding & the bot fails
+    # 20260926 - extend possible statusses in db: also allow for "althere" and "maxlag", depending on error
+    success, status = False, 'ufail'  # By default, assume that Daniuu is crap at coding & the bot fails
     conn, status, bot = toolforge.toolsdb(config['DB_NAME']), None, None
     try:
         bot = wcl.create_from_db(session_id, config)
@@ -99,13 +100,14 @@ def upload_in_background(session_id, config, user_id):
         query = f"insert into user_uploads (operator_id, file_uploaded) values ({user_id:d}, {bot.file!r});"
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
     except ImageAlreadyError:
-        image_al_there = True
+        # 20260926 - separate handling of attempts to overwrite existing files
+        status = 'althere'
+    except MaxlagError:
+        # 20260926 - separate handling of maxlag errors
+        status = 'maxlag'
     finally:
-        if status is None:
-            status = 'uploaded' if success else 'ufail'
-        if image_al_there is True:
-            # 20260926 - separate handling of attempts to overwrite existing files
-            status = 'althere'  # Set status to althere => additional safeguard for the system
+        if success is True:
+            status = 'uploaded'
         query = """
         UPDATE sessions
         SET status = %r, locked = 0, locked_at = NULL

@@ -372,10 +372,13 @@ def statussubmit():
     where session_id = %d 
     """ % flask.session['session_id']
     message_data = db_utils.query_db(query, app.config['DB_NAME'])
-    if message_data[0] == 'uploaded':
-        return flask.redirect(flask.url_for('uploaddone'))
-    elif message_data[0] == 'althere':
-        return 'That image was already there, check the wiki page manually!'
+    match message_data[0]:
+        case 'uplaoded':
+            pass
+        case 'althere':
+            return 'That image was already there, check the wiki page manually!'  # Evidently, replace later
+        case 'maxlag':
+            return 'MAXLAG, try again later'  # To be replaced with a proper HTML page
     # To do: change this, but for alpha testing, just keep as is...
     return 'Warn Daniuu, something might have gone wrong in session %d' % (flask.session['session_id'])
 

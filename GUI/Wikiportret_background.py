@@ -70,7 +70,7 @@ def background_load(session_id, config):
 
 def upload_in_background(session_id, config, user_id):
     # 20260406 - extended to also store short urls in the messages db
-    success = False  # By default, assume that Daniuu is crap at coding & the bot fails
+    success, image_al_there = False, False  # By default, assume that Daniuu is crap at coding & the bot fails
     conn, status, bot = toolforge.toolsdb(config['DB_NAME']), None, None
     try:
         bot = wcl.create_from_db(session_id, config)
@@ -78,7 +78,7 @@ def upload_in_background(session_id, config, user_id):
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
-        success, image_al_there = True, False  # Flag upload as success
+        success = True  # Flag upload as success
         # Also store the upload messages => to make life easier for the operator
         query = """
         INSERT INTO messages

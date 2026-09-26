@@ -37,6 +37,14 @@ class MaxlagError(Exception):
         return "Maxlag error occured, bot run aborted."
 
 
+class ImageAlreadyError(Exception):
+    """Raised when an attempt is made to add an image to a page that already contains one."""
+
+    def __str__(self):
+        return ("The target page already contains an image. "
+                "Automatic image insertion was aborted.")
+
+
 class Bot:
     """
     This class is designed to facilitate all interactions with Wikipedia
@@ -898,6 +906,7 @@ class Image:
         return self.name
 
     def add_image_to_article(self):
+        # noinspection DuplicatedCode
         """This function is designed to add the image to the article in an automated fashion"""
         # Get the current Wikitext
         parsedic = {'action': 'parse',
@@ -915,7 +924,9 @@ class Image:
         # Check whether an infobox is present on the article (and get the rule with the image)
         if self.file in content:
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
-            return None  # File is already on the page, abort the run
+            # 20260926 - add custom exception for our beloved bot
+            raise ImageAlreadyError(f'File:{self.file} is already present on page "{self.name}".')
+            # return None  # File is already on the page, abort the run
         if '{{infobox' in low:  # If possible, we would like to place the image in an infobox
             # An infobox has been detected, initiate process of finding the place where the infobox
             pattern1 = r'\|\s*afbeelding\s*=[^\|]+'  # Regex pattern to find out where the image is located

@@ -374,6 +374,8 @@ def statussubmit():
     message_data = db_utils.query_db(query, app.config['DB_NAME'])
     if message_data[0] == 'uploaded':
         return flask.redirect(flask.url_for('uploaddone'))
+    elif message_data[0] == 'althere':
+        return 'That image was already there, check the wiki page manually!'
     # To do: change this, but for alpha testing, just keep as is...
     return 'Warn Daniuu, something might have gone wrong in session %d' % (flask.session['session_id'])
 

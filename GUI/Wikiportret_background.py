@@ -8,6 +8,7 @@ import time
 import os
 import Wikiportret_core_web_link as wcl  # Dealing with the db & getting info from the UI
 import Wikiportret_db_utils as dbutil
+from Wikiportret_core import ImageAlreadyError
 
 # First job: read config of the app
 __dir__ = os.path.dirname(__file__)
@@ -77,7 +78,7 @@ def upload_in_background(session_id, config, user_id):
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
-        success = True  # Flag upload as success
+        success, image_al_there = True, False  # Flag upload as success
         # Also store the upload messages => to make life easier for the operator
         query = """
         INSERT INTO messages
@@ -97,9 +98,14 @@ def upload_in_background(session_id, config, user_id):
         # 20250314 - HACKATHON - succesfull upload => add to the list of user uploads in the db
         query = f"insert into user_uploads (operator_id, file_uploaded) values ({user_id:d}, {bot.file!r});"
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+    except ImageAlreadyError:
+        image_al_there = True
     finally:
         if status is None:
             status = 'uploaded' if success else 'ufail'
+        if image_al_there is True:
+            # 20260926 - separate handling of attempts to overwrite existing files
+            status = 'althere'  # Set status to althere => additional safeguard for the system
         query = """
         UPDATE sessions
         SET status = %r, locked = 0, locked_at = NULL

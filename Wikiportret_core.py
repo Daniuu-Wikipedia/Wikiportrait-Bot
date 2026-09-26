@@ -598,6 +598,7 @@ class Image:
         # To do (20260314 HACKATHON): check this one
         # Checked 20260405
         """Scans the source code of the file page on Commons to determine the date at which the image was made"""
+        print('CHECKING DATE IN COMMONS TEXT')
         if self.date is None:
             if self.comtext is None:
                 self.get_commons_text()
@@ -605,21 +606,67 @@ class Image:
             date_regex = r'\|\s*[Dd]ate\s*=\s*\d{4}\s*-\s*\d{1,2}\s*-\s*\d{1,2}\b'
             date_match = re.search(date_regex, self.comtext)
             if date_match is not None:
-                date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
-                date_found = date_found.replace(' ', '').replace('|date=', '')
-                y, m, d = date_found.split('-')
+                date_found = self.comtext[date_match.start():date_match.end()]
+                # 20260926 - adding new method to fix date in Commons automatically
+                date_found_processed = date_found.strip().lower().replace(' ', '').replace('|date=', '')
+                y, m, d = date_found_processed.split('-')
                 self.date = dt.date(int(y), int(m), int(d))
+                self.fix_commons_date_format(date_found)
                 return self.date
             # 20260409: common issue with Wikiportret: date passed in DD-MM-YYYY format
             # Until mitigation is in place, also parse that format
             date_regex = r'\|\s*[Dd]ate\s*=\s*\d{1,2}\s*-\s*\d{1,2}\s*-\s*\d{4}\b'
             date_match = re.search(date_regex, self.comtext)
             if date_match is not None:
-                date_found = self.comtext[date_match.start():date_match.end()].strip().lower()
-                date_found = date_found.replace(' ', '').replace('|date=', '')
-                d, m, y = date_found.split('-')
+                date_found = self.comtext[date_match.start():date_match.end()]
+                # 20260926 - adding new method to fix date in Commons automatically
+                date_found_processed = date_found.strip().lower().replace(' ', '').replace('|date=', '')
+                d, m, y = date_found_processed.split('-')
                 self.date = dt.date(int(y), int(m), int(d))
+                self.fix_commons_date_format(date_found)
                 return self.date
+
+    def fix_commons_date_format(self, old_date_text):
+        # 20260926 - Vibe coded
+        """
+        Replaces a non-standard Commons date field with a properly
+        formatted YYYY-MM-DD date field.
+
+        Parameters
+        ----------
+        old_date_text : str
+            The exact text matched by the regex that was used to detect
+            the malformed date field.
+        """
+
+        if self.date is None or self.comtext is None:
+            # Abort the method
+            return None
+
+        new_date_text = f'|date={self.date.year:d}-{self.date.month:02d}-{self.date.day:02d}'
+        print(old_date_text, old_date_text in self.comtext)
+        new_text = self.comtext.replace(old_date_text, new_date_text, 1)
+
+        if new_text == self.comtext:
+            return None
+
+        editdic = {
+            'action': 'edit',
+            'title': f'File:{self.file}',
+            'text': new_text,
+            'summary': self.sum,
+            'bot': True,
+            'nocreate': True
+        }
+
+        result = self._commons.post(editdic)
+        if 'error' in result:
+            return None
+
+        # Keep local cache synchronized
+        self.comtext = new_text
+
+        return result
 
     def get_image_date(self):
         """
@@ -1103,7 +1150,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Jordan Bos.JPG', "Jordan Bos")
+    a = Image('Sava-Arangel Čestić.JPG', "Sava-Arangel Čestić")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

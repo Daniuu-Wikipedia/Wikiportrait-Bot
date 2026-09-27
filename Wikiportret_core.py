@@ -878,7 +878,7 @@ class Image:
                 "cmtype": "file"  # excludes subcats
             }
             response = self._commons.get(params)
-            if response.get('query') is None or not response['query']['categorymembers']:
+            if response.get('query') is not None and response['query']['categorymembers']:
                 cat += f'\n[[Category:{photographer_cat}]]'
 
         dic = {'action': 'edit',

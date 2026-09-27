@@ -877,7 +877,8 @@ class Image:
                 "cmlimit": 1,
                 "cmtype": "file"  # excludes subcats
             }
-            if 'error' not in self._commons.get(params):
+            response = self._commons.get(params)
+            if response.get('query') is None or not response['query']['categorymembers']:
                 cat += f'\n[[Category:{photographer_cat}]]'
 
         dic = {'action': 'edit',

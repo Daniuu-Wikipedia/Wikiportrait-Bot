@@ -186,7 +186,12 @@ def logout():
     db_utils.adjust_db(query, app.config['DB_NAME'])
 
     # 20260314 - HACKATHON remove associated entries from the db (clean up stuff)
-    query = f'delete from sessions where operator_id = {user_id}'
+    # 20260927 - keep the stuff that was not properly handled inside the db!
+    query = (
+        "DELETE FROM sessions "
+        f"WHERE operator_id = {user_id} "  # User id is set through the browser itself
+        "AND status = 'uploaded'"
+    )
     db_utils.adjust_db(query, app.config['DB_NAME'])
 
     flask.session.clear()  # Clears session_id, username & token_expiry

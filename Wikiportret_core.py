@@ -1122,6 +1122,14 @@ class Image:
         except:
             print('Something went wrong while processing the stuff for Commons.')
 
+        # Last bit: add image to the Dutch Wikipedia (manually, to trigger watchlists)
+        # 20260929 - repeated maxlag-related issues => swapping order of operations
+        if nlwiki is True:
+            print('I will now add the image to the Dutch Wikipedia.')
+            self.add_image_to_article()
+            print(
+                'I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
+
         # Setting the properties on Wikidata
         try:
             # Always perform this task
@@ -1159,13 +1167,6 @@ class Image:
             print(
                 "I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
 
-        # Last bit: add image to the Dutch Wikipedia (manually, to trigger watchlists)
-        if nlwiki is True:
-            print('I will now add the image to the Dutch Wikipedia.')
-            self.add_image_to_article()
-            print(
-                'I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
-
         # Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('OKay, I will now start to purge the cache of the various items.')
         self.purge()
@@ -1184,7 +1185,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Esmir Bajraktarević.JPG', "Esmir Bajraktarević")
+    a = Image('Levi van Veluw.jpg', "Levi van Veluw")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()

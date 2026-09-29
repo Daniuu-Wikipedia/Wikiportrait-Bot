@@ -68,7 +68,7 @@ def background_load(session_id, config):
         print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
 
 
-def upload_in_background(session_id, config, user_id):
+def upload_in_background(session_id, config, user_id, from_maxlag=False):
     # 20260406 - extended to also store short urls in the messages db
     # 20260926 - extend possible statusses in db: also allow for "althere" and "maxlag", depending on error
     success, status = False, 'ufail'  # By default, assume that Daniuu is crap at coding & the bot fails
@@ -101,10 +101,21 @@ def upload_in_background(session_id, config, user_id):
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
     except ImageAlreadyError:
         # 20260926 - separate handling of attempts to overwrite existing files
-        status = 'althere'
+        # 20260929 - watch out for runs that previously came from maxlag
+        # Assumption: operator previously inserted the image manually into the article
+        status = 'althere' if from_maxlag is False else True
+
     except MaxlagError:
         # 20260926 - separate handling of maxlag errors
         status = 'maxlag'
+        # 20290929 - still force the image to be added to the Dutch Wikipedia
+        # Don't force again if this was checked before (althere error will be triggered by default)
+        # Desired behaviour: connect image to Wikidata anyway...
+        if from_maxlag is False:
+            try:
+                bot(commons_perm=True, category=False, data_connect=False, nlwiki=True, conf=False, test=False)
+            except ImageAlreadyError:
+                status = 'althere'  # Force image already there
     finally:
         if success is True:
             status = 'uploaded'

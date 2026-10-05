@@ -36,8 +36,11 @@ for i in dbutil.query_db(query_select, dbname, need_all=True, connection=connect
         # Status updates are dealt with in the background module
         bg.upload_in_background(i[0], config, i[1], True)
     except MaxlagError:
+        # Stop the script
+        # API is overloaded, no point in trying more
         break
     except ImageAlreadyError:
+        # No need to throw an error, just logging is completely fine
         print(f'Image {i[2]!s} already uploaded to {i[3]!s}')
 
 del i, config, dbname, query_select  # Delete variables that are no longer needed

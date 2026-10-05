@@ -34,6 +34,13 @@ for i in dbutil.query_db(query_select, dbname, need_all=True, connection=connect
     # session, operator, page, file, status, created, locked, locked_at
     try:  # Try to restart the background processing - see whether it gets through this time
         # Status updates are dealt with in the background module
+        update_query = """
+                    UPDATE sessions
+                    SET locked = 1, locked_at = CURRENT_TIMESTAMP, status = 'up'
+                    WHERE session_id = %d;
+                    """ % i[0]
+        dbutil.adjust_db(update_query, dbname, connection=connection)
+        print(f'Processing maxlagged image {i[3]!r} to {i[2]!r}')
         bg.upload_in_background(i[0], config, i[1], True)
     except MaxlagError:
         # Stop the script
@@ -41,7 +48,7 @@ for i in dbutil.query_db(query_select, dbname, need_all=True, connection=connect
         break
     except ImageAlreadyError:
         # No need to throw an error, just logging is completely fine
-        print(f'Image {i[2]!s} already uploaded to {i[3]!s}')
+        print(f'Image {i[3]!r} already uploaded to {i[2]!r}')
 
 del i, config, dbname, query_select  # Delete variables that are no longer needed
 connection.close()  # Close connection by default

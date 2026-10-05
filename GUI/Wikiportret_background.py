@@ -112,9 +112,8 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
         status = 'althere' if from_maxlag is False else True
 
     except MaxlagError:
-        if from_maxlag is True:
-            return  # Abort, try again later
         # 20260926 - separate handling of maxlag errors
+        # 20261005 - continue running, query will confirm the status later (but force unlocking anyway)
         status = 'maxlag'
     finally:
         if success is True:

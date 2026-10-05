@@ -75,7 +75,13 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
     conn, status, bot = toolforge.toolsdb(config['DB_NAME']), None, None
     try:
         bot = wcl.create_from_db(session_id, config)
-        _, shorts, confirmation = bot(True, True, True, True, True, False)  # Make the actual calls to the API
+        # Arguments for the bot: commons_perm, category, data_connect, nlwiki, conf, test
+        _, shorts, confirmation = bot(True,  # Commons permission properties
+                                      True,  # Set category
+                                      True,  # Make all connections to Wikidata
+                                      not from_maxlag,  # Place image on nlwiki
+                                      False,  # Print confirmation to the terminal (not used in webservice)
+                                      False)  # Make the actual calls to the API
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
@@ -106,16 +112,10 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
         status = 'althere' if from_maxlag is False else True
 
     except MaxlagError:
+        if from_maxlag is True:
+            return  # Abort, try again later
         # 20260926 - separate handling of maxlag errors
         status = 'maxlag'
-        # 20290929 - still force the image to be added to the Dutch Wikipedia
-        # Don't force again if this was checked before (althere error will be triggered by default)
-        # Desired behaviour: connect image to Wikidata anyway...
-        if from_maxlag is False:
-            try:
-                bot(commons_perm=True, category=False, data_connect=False, nlwiki=True, conf=False, test=False)
-            except ImageAlreadyError:
-                status = 'althere'  # Force image already there
     finally:
         if success is True:
             status = 'uploaded'

@@ -491,13 +491,14 @@ class Image:
                     'forcerecursivelinkupdate': True}
         self._commons.post(purgedic)
         p2d = purgedic.copy()
+        p3d = purgedic.copy()  # Also do the Dutch Wikipedia
+        p3d['titles'] = self.name
+        # 20260929 - Wikidata is more prone to maxlag / API overload
+        self._nl.post(p3d)
         print('Clearing the cache on Wikidata now.')  # Preparing to go to Wikidata
         p2d['titles'] = self.qid
         self._wikidata.post(p2d)
         print('Preparing to empty the cache on the Dutch Wikipedia')
-        p3d = purgedic.copy()  # Also do the Dutch Wikipedia
-        p3d['titles'] = self.name
-        self._nl.post(p3d)
 
     # Generate a shortened URL to the image on Commons
     def short_url_commons(self):
@@ -1122,20 +1123,34 @@ class Image:
         except:
             print('Something went wrong while processing the stuff for Commons.')
 
-        # Setting the properties on Wikidata
+        # Add image to the Dutch Wikipedia (manually, to trigger watchlists)
+        # 20260929 - repeated maxlag-related issues => swapping order of operations
+        # Swapping orders + changing argument in background script ==> problem of repeating errors solved!
+        if nlwiki is True:
+            print('I will now add the image to the Dutch Wikipedia.')
+            self.add_image_to_article()
+            print(
+                'I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and '
+                'hope to see you again!')
+
+        # Setting the properties on Wikidata (API is tricky)
         try:
             # Always perform this task
             print(
-                'Getting claims and other data from Wikidata before starting to work on that item & its associated stuff on Commons.')
+                'Getting claims and other data from Wikidata before starting to work on that item & its associated '
+                'stuff on Commons.')
             self.ini_wikidata()
             print(
-                'Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell Commons who is depicted (if you allow me to).')
+                'Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell '
+                'Commons who is depicted (if you allow me to).')
             if category is True:  # Only perform these edits when the user commands them
                 print(
-                    "I'm now making the category on Commons. If an error occurs, it likely means that the category already existed.")
+                    "I'm now making the category on Commons. If an error occurs, it likely means that the category "
+                    "already existed.")
                 self.make_cat()
                 print(
-                    'The eleventh commandment of the Lord states that we should also check whether the category is attached to the file, so doing that now')
+                    'The eleventh commandment of the Lord states that we should also check whether the category is '
+                    'attached to the file, so doing that now')
                 self.add_category()
                 print('I will add the category on Commons to Wikidata.')
                 self.interwiki()
@@ -1157,15 +1172,8 @@ class Image:
 
         except AssertionError:
             print(
-                "I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might have to manually create the item.")
-
-        # Last bit: add image to the Dutch Wikipedia (manually, to trigger watchlists)
-        # 20260929 - repeated maxlag-related issues => swapping order of operations
-        if nlwiki is True:
-            print('I will now add the image to the Dutch Wikipedia.')
-            self.add_image_to_article()
-            print(
-                'I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and hope to see you again!')
+                "I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might "
+                "have to manually create the item.")
 
         # Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('OKay, I will now start to purge the cache of the various items.')

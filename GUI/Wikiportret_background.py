@@ -128,43 +128,44 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
             bot.input_data_to_db(session_id, conn)
         conn.close()
 
+# 20261010 - protection to allow importing this script without entering a perpetual loop
+if __name__ == '__main__':
+    # The actual continuous loop
+    try:
+        while 1:
+            connection.ping(reconnect=True)  # Avoid having this one open too long
+            # To do: check if there are any locked jobs pending in the db
+            # If so, launch a thread for each job to start dealing with the Wikidata stuff
+            for i in dbutil.query_db(background_trigger,
+                                     config['DB_NAME'],
+                                     need_all=True,
+                                     connection=connection):
+                update_query = """
+                            UPDATE sessions 
+                            SET status = 'processing', locked = 1, locked_at = CURRENT_TIMESTAMP 
+                            WHERE session_id=%d;""" % i[0]
+                dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
+                threading.Thread(target=background_load,
+                                 args=(i[0],
+                                       config)).start()  # Launch a background job
 
-# The actual continuous loop
-try:
-    while 1:
-        connection.ping(reconnect=True)  # Avoid having this one open too long
-        # To do: check if there are any locked jobs pending in the db
-        # If so, launch a thread for each job to start dealing with the Wikidata stuff
-        for i in dbutil.query_db(background_trigger,
-                                 config['DB_NAME'],
-                                 need_all=True,
-                                 connection=connection):
-            update_query = """
-                        UPDATE sessions 
-                        SET status = 'processing', locked = 1, locked_at = CURRENT_TIMESTAMP 
-                        WHERE session_id=%d;""" % i[0]
-            dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
-            threading.Thread(target=background_load,
-                             args=(i[0],
-                                   config)).start()  # Launch a background job
+            for i in dbutil.query_db(trigger_upload,
+                                     config['DB_NAME'],
+                                     need_all=True,
+                                     connection=connection):
+                update_query = """
+                UPDATE sessions
+                SET locked = 1, locked_at = CURRENT_TIMESTAMP, status = 'up'
+                WHERE session_id = %d;
+                """ % i[0]
+                dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
+                threading.Thread(target=upload_in_background,
+                                 args=(i[0],
+                                       config,
+                                       i[1])).start()
 
-        for i in dbutil.query_db(trigger_upload,
-                                 config['DB_NAME'],
-                                 need_all=True,
-                                 connection=connection):
-            update_query = """
-            UPDATE sessions
-            SET locked = 1, locked_at = CURRENT_TIMESTAMP, status = 'up'
-            WHERE session_id = %d;
-            """ % i[0]
-            dbutil.adjust_db(update_query, config['DB_NAME'], connection=connection)
-            threading.Thread(target=upload_in_background,
-                             args=(i[0],
-                                   config,
-                                   i[1])).start()
+            time.sleep(1)  # Do sampling stuff at a frequency of 1 Hz (ok, slightly less)
+    finally:
+        connection.close()  # Close the connection and shutdown everything
 
-        time.sleep(1)  # Do sampling stuff at a frequency of 1 Hz (ok, slightly less)
-finally:
-    connection.close()  # Close the connection and shutdown everything
-
-# And what to do in the end (we'll just use a finally-construct for this purpose)
+    # And what to do in the end (we'll just use a finally-construct for this purpose)

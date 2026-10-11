@@ -128,6 +128,7 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
             bot.input_data_to_db(session_id, conn)
         conn.close()
 
+
 # 20261010 - protection to allow importing this script without entering a perpetual loop
 if __name__ == '__main__':
     # The actual continuous loop

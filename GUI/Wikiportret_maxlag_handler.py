@@ -7,7 +7,7 @@ import toolforge
 import os
 import tomllib
 import Wikiportret_db_utils as dbutil
-import Wikiportret_background as bg
+from Wikiportret_background import upload_in_background
 from Wikiportret_core import MaxlagError, ImageAlreadyError
 
 
@@ -29,7 +29,10 @@ dbname = config['DB_NAME']
 # Script is supposed to be connected to the internal database
 query_select = """SELECT * from sessions where status='maxlag';"""
 
+# Not ideal, but printing debug statements is only working tool rn
+print('Starting main loop')
 for i in dbutil.query_db(query_select, dbname, need_all=True, connection=connection):
+    print(i)
     # Structure of sessions table
     # session, operator, page, file, status, created, locked, locked_at
     try:  # Try to restart the background processing - see whether it gets through this time
@@ -39,9 +42,10 @@ for i in dbutil.query_db(query_select, dbname, need_all=True, connection=connect
                     SET locked = 1, locked_at = CURRENT_TIMESTAMP, status = 'up'
                     WHERE session_id = %d;
                     """ % i[0]
+        print(update_query)
         dbutil.adjust_db(update_query, dbname, connection=connection)
         print(f'Processing maxlagged image {i[3]!r} to {i[2]!r}')
-        bg.upload_in_background(i[0], config, i[1], True)
+        upload_in_background(i[0], config, i[1], True)
     except MaxlagError:
         # Stop the script
         # API is overloaded, no point in trying more
@@ -52,3 +56,4 @@ for i in dbutil.query_db(query_select, dbname, need_all=True, connection=connect
 
 del i, config, dbname, query_select  # Delete variables that are no longer needed
 connection.close()  # Close connection by default
+print('DONE')

@@ -22,10 +22,11 @@ except:
 LOCAL_DEV = config.get('LOCAL_DEV', False)
 
 
-def query_db(query, dbname, need_all=False, connection=None):
+def query_db(query, dbname, need_all=False, connection=None, params=None):
     """
     Query information from the database.
-    (details on arguments & output to be added)
+    Values should be passed through params (with %s placeholders in the query), never formatted into the query,
+    so pymysql escapes them (names like "Jeanne d'Arc" would otherwise break the query).
     """
     if LOCAL_DEV:
         if "SELECT status FROM sessions" in query:
@@ -43,7 +44,7 @@ def query_db(query, dbname, need_all=False, connection=None):
         connection = toolforge.toolsdb(dbname)
     connection.autocommit(True)
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(query, params)
         if need_all is True:
             info = cursor.fetchall()
         else:
@@ -59,16 +60,17 @@ def get_user_id(username, dbname, connection=None):
         return 1
     if isinstance(username, int):
         return username  # To avoid getting into trouble again with me messing up usernames & ids again
-    data = query_db(f"SELECT `user_id` from `users` where `username`='{username}'",
+    data = query_db("SELECT `user_id` from `users` where `username`=%s",
                     dbname,
                     need_all=False,
-                    connection=connection)  # '' are required to get a proper query
+                    connection=connection,
+                    params=(username,))
     if isinstance(data, tuple):
         return data[0]
     return None  # No valid user
 
 
-def adjust_db(query, dbname, retrieve_id=False, connection=None):
+def adjust_db(query, dbname, retrieve_id=False, connection=None, params=None):
     if LOCAL_DEV:
         return 1 if retrieve_id else True
     if not isinstance(query, str):
@@ -78,7 +80,7 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None):
         connection = toolforge.toolsdb(dbname)
     connection.autocommit(True)  # Force autocommit
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(query, params)
         connection.commit()
         if retrieve_id is True:
             new_row_id = cursor.lastrowid
@@ -89,24 +91,18 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None):
 
 
 def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend with encryption stuff
-    if isinstance(operator_name, str):
-        query = f"""
-        select * from tokens where operator_id={get_user_id(operator_name, dbname)};
-        """
-    elif isinstance(operator_name, int):
-        query = f"""
-                select * from tokens where operator_id={operator_name};
-                """
-    else:
+    if not isinstance(operator_name, (str, int)):
         raise TypeError('operator_name must be str or int!')
-    coded = json.loads(query_db(query, dbname, connection=connection)[1])  # Automatically
+    query = "select * from tokens where operator_id=%s;"
+    coded = json.loads(query_db(query, dbname, connection=connection,
+                                params=(get_user_id(operator_name, dbname, connection),))[1])  # Automatically
 
     # 20260314 - HACKATHON - decrypt tokens
     # Encrypted stuff is stored in the db (so we need to get some stuff stored in the same table)
     sec = {}
     for i, j in coded.items():
-        query = f"select * from secret_stuff where `ciphertext`={j!r}"
-        obtained = query_db(query, dbname, connection=connection)
+        query = "select * from secret_stuff where `ciphertext`=%s"
+        obtained = query_db(query, dbname, connection=connection, params=(j,))
         sec[i] = crypto.decrypt_token(j, obtained[2], obtained[3])
         del obtained, query  # No longer needed
     return sec  # Be careful with this dictionary!

@@ -40,22 +40,19 @@ class WebImage(Image):
             self.get_commons_text()
         if self.mc is None:
             self.get_commons_claims()
-        query = f"""
-        insert into `claims` (`session_id`, `json_response`, `commons_claims`, `qid`, `mid`, `comm_text`) 
-        values  ({session_number},
-         '{json.dumps(self.claims)}',
-          '{json.dumps(self.mc)}',
-           '{self.qid}',
-            '{self.mid}',
-             '{self.comtext}')
+        query = """
+        insert into `claims` (`session_id`, `json_response`, `commons_claims`, `qid`, `mid`, `comm_text`)
+        values  (%s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
-        json_response = '{self.wikidata_claims_json}',
-        commons_claims = '{json.dumps(self.mc)}',
-        comm_text = '{self.comtext}',
-        qid = '{self.qid}'
+        json_response = VALUES(json_response),
+        commons_claims = VALUES(commons_claims),
+        comm_text = VALUES(comm_text),
+        qid = VALUES(qid)
         ;
         """
-        dbut.adjust_db(query, self.dbname, connection=connection)
+        dbut.adjust_db(query, self.dbname, connection=connection,
+                       params=(session_number, self.wikidata_claims_json, json.dumps(self.mc),
+                               self.qid, self.mid, self.comtext))
         if connection_provided is True:
             connection.close()
 
@@ -63,41 +60,48 @@ class WebImage(Image):
         connection_provided = connection is None
         if connection is None:
             connection = toolforge.toolsdb(self.dbname)
-        query = f"""
+        query = """
         INSERT INTO input_data (`session_id`, `custom_caption`, `category_name`, `edit_summary`, `ticket`)
-        VALUES ({session_number}, '{self.caption}', '{self.catname}', '{self.sum}', {self.ticket_number})
+        VALUES (%s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
-        category_name = '{self.catname}',
-        edit_summary = '{self.sum}',
-        custom_caption = '{self.caption}'
+        category_name = VALUES(category_name),
+        edit_summary = VALUES(edit_summary),
+        custom_caption = VALUES(custom_caption)
         ;
         """
-        dbut.adjust_db(query, self.dbname, connection=connection)
+        dbut.adjust_db(query, self.dbname, connection=connection,
+                       params=(session_number, self.caption, self.catname, self.sum, self.ticket_number))
 
         if self.date is not None:
             query = """
             UPDATE input_data
-            SET date = '%4d-%02d-%02d'
-            WHERE session_id = %d;
-            """ % (self.date.year, self.date.month, self.date.day, session_number)
-            dbut.adjust_db(query, self.dbname, connection=connection)
+            SET date = %s
+            WHERE session_id = %s;
+            """
+            dbut.adjust_db(query, self.dbname, connection=connection,
+                           params=('%4d-%02d-%02d' % (self.date.year, self.date.month, self.date.day),
+                                   session_number))
 
         # And now time to add the birth & death date of the subject
         if self.birth is not None:
             query = """
                     UPDATE input_data
-                    SET birth_date = '%4d-%02d-%02d'
-                    WHERE session_id = %d;
-                    """ % (self.birth.year, self.birth.month, self.birth.day, session_number)
-            dbut.adjust_db(query, self.dbname, connection=connection)
+                    SET birth_date = %s
+                    WHERE session_id = %s;
+                    """
+            dbut.adjust_db(query, self.dbname, connection=connection,
+                           params=('%4d-%02d-%02d' % (self.birth.year, self.birth.month, self.birth.day),
+                                   session_number))
 
         if self.death is not None:
             query = """
-                    UPDATE death_date
-                    SET death_date = '%4d-%02d-%02d'
-                    WHERE session_id = %d;
-                    """ % (self.death.year, self.death.month, self.death.day, session_number)
-            dbut.adjust_db(query, self.dbname, connection=connection)
+                    UPDATE input_data
+                    SET death_date = %s
+                    WHERE session_id = %s;
+                    """
+            dbut.adjust_db(query, self.dbname, connection=connection,
+                           params=('%4d-%02d-%02d' % (self.death.year, self.death.month, self.death.day),
+                                   session_number))
         if connection_provided is True:
             connection.close()
 
@@ -166,23 +170,24 @@ class WebImage(Image):
     def get_commons_text(self, session=None, connection=None):
         super().get_commons_text(True)
         if session is not None:
-            query = f"""
+            query = """
             UPDATE claims
-            set comm_text = '{self.comtext}'
-            where session_id = {session};
+            set comm_text = %s
+            where session_id = %s;
             """
-            dbut.adjust_db(query, self.dbname, connection=connection)
+            dbut.adjust_db(query, self.dbname, connection=connection, params=(self.comtext, session))
         return self.comtext
 
     def ini_wikidata(self, session=None, connection=None):
         super().ini_wikidata()
         if session is not None:
-            query = f"""
+            query = """
                         UPDATE claims
-                        set json_response = '{self.wikidata_claims_json}'
-                        where session_id = {session};
+                        set json_response = %s
+                        where session_id = %s;
                         """
-            dbut.adjust_db(query, self.dbname, connection=connection)
+            dbut.adjust_db(query, self.dbname, connection=connection,
+                           params=(self.wikidata_claims_json, session))
         return self.qid, self.claims
 
 
@@ -226,8 +231,9 @@ def create_from_db(session_number,
     connection = toolforge.toolsdb(dbname)
 
     # Second job: check in the db what file & nlwiki page the user wishes to process
-    query = "SELECT * FROM sessions WHERE session_id=%d;" % session_number
-    result = dbut.query_db(query, dbname, connection=connection)  # Get relevant row as a tuple
+    query = "SELECT * FROM sessions WHERE session_id=%s;"
+    result = dbut.query_db(query, dbname, connection=connection,
+                           params=(session_number,))  # Get relevant row as a tuple
     operator_id = result[1]  # Operator id, needed further down the road
     page, file = result[2], result[3]  # Make life slightly easier & shorten notation
     status = result[4]
@@ -247,8 +253,8 @@ def create_from_db(session_number,
 
     # Fourth job: obtain the relevant parameters from the db
     if retrieve_claims is True:
-        query = "SELECT * FROM claims WHERE session_id=%d;" % session_number
-        result = dbut.query_db(query, dbname, connection=connection)
+        query = "SELECT * FROM claims WHERE session_id=%s;"
+        result = dbut.query_db(query, dbname, connection=connection, params=(session_number,))
         output.qid, output.mid = result[3], result[4]
         output.wikidata_claims_json = result[1]  # JSON loading is done through the property
         output.commons_claims_json = result[2]
@@ -256,8 +262,8 @@ def create_from_db(session_number,
 
         # Fifth job: if there is already some customized input data, get it
         if adjust_input_data is True:
-            query = "SELECT * FROM input_data WHERE session_id=%d;" % session_number
-            result = dbut.query_db(query, dbname, connection=connection)
+            query = "SELECT * FROM input_data WHERE session_id=%s;"
+            result = dbut.query_db(query, dbname, connection=connection, params=(session_number,))
             # Now set the relevant properties
             if result[1] is not None:
                 output.caption = result[1]

@@ -36,11 +36,6 @@ __dir__ = os.path.dirname(__file__)
 with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
     app.config.update(tomllib.load(f))
 
-# Load configuration from TOML file
-__dir__ = os.path.dirname(__file__)
-with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
-    app.config.update(tomllib.load(f))
-
 
 # General utility
 def check_login_data(origin=None):
@@ -50,19 +45,21 @@ def check_login_data(origin=None):
     Method is designed to replace some repeated checks that need to be performed while loading.
 
     Argument origin contains the page that is being loaded (to avoid getting circular redirects
+
+    If a check fails, the redirect is raised through flask.abort, so the calling route stops immediately
+    (a returned redirect would just be ignored by the caller).
     """
     if app.config.get('LOCAL_DEV'):
         return  # Bypass restriction locally
     if origin not in {'login', 'logout', 'oauth-callback'}:
-        now = dt.datetime.utcnow()
-        from_session = dt.datetime.fromisoformat(flask.session.get('token_expiry'))
-        if 'token_expiry' not in flask.session or now > from_session:
-            return flask.redirect(flask.url_for('login'))  # Force the user to login
+        expiry = flask.session.get('token_expiry')
+        if expiry is None or dt.datetime.utcnow() > dt.datetime.fromisoformat(expiry):
+            flask.abort(flask.redirect(flask.url_for('login')))  # Force the user to login
         if origin not in {'input'}:
             if 'session_id' not in flask.session:
-                return flask.redirect(flask.url_for('input'))
+                flask.abort(flask.redirect(flask.url_for('input')))
     return  # Return None, nothing to do here...
-    
+
 
 
 @app.route('/')
@@ -144,25 +141,27 @@ def oauth_callback():
         for i, j in token_to_store.items():
             information = crypto.encrypt_token(j)
             sec[i] = information['ciphertext']
-            query = f"""
+            query = """
             INSERT INTO secret_stuff (ciphertext, nonce, version)
-            VALUE ({sec[i]!r}, {information['nonce']!r} , {information['version']:d})
+            VALUE (%s, %s, %s)
             """
-            db_utils.adjust_db(query, app.config['DB_NAME'])
+            db_utils.adjust_db(query, app.config['DB_NAME'],
+                               params=(sec[i], information['nonce'], information['version']))
             del query, information  # Information no longer needed
         del token_to_store  # Get rid of the raw tokens asap
 
-        query = f"""
+        query = """
         INSERT INTO tokens (operator_id, oauth_token, wikiportrait_token)
-        VALUES ({user_id}, '{json.dumps(sec)}', '{wikiportret_key}')
+        VALUES (%s, %s, %s)
         ON DUPLICATE KEY UPDATE
-            oauth_token = '{json.dumps(sec)}',
-            wikiportrait_token = '{wikiportret_key}',
+            oauth_token = VALUES(oauth_token),
+            wikiportrait_token = VALUES(wikiportrait_token),
             `timestamp` = NOW();
         """
-        del sec  # Delete as soon as we don't need it anymore
         # And now, time to push this to the db
-        db_utils.adjust_db(query, app.config['DB_NAME'])
+        db_utils.adjust_db(query, app.config['DB_NAME'],
+                           params=(user_id, json.dumps(sec), wikiportret_key))
+        del sec  # Delete as soon as we don't need it anymore
 
         # Store the username in the session (just making my life slightly easier)
         # For security reasons, the underlying keys are never shown to the user
@@ -181,18 +180,21 @@ def oauth_callback():
 def logout():
     """Log the user out by clearing their session."""
     # 20260314 - HACKATHON remove tokens from the db
-    user_id = db_utils.get_user_id(flask.session['username'], app.config['DB_NAME'])
-    query = f'delete from tokens where operator_id = {user_id}'
-    db_utils.adjust_db(query, app.config['DB_NAME'])
+    # Nobody logged in (e.g. session cookie expired): nothing to clean up in the db
+    username = flask.session.get('username')
+    user_id = db_utils.get_user_id(username, app.config['DB_NAME']) if username is not None else None
+    if user_id is not None:
+        query = 'delete from tokens where operator_id = %s'
+        db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
 
-    # 20260314 - HACKATHON remove associated entries from the db (clean up stuff)
-    # 20260927 - keep the stuff that was not properly handled inside the db!
-    query = (
-        "DELETE FROM sessions "
-        f"WHERE operator_id = {user_id} "  # User id is set through the browser itself
-        "AND status = 'uploaded'"
-    )
-    db_utils.adjust_db(query, app.config['DB_NAME'])
+        # 20260314 - HACKATHON remove associated entries from the db (clean up stuff)
+        # 20260927 - keep the stuff that was not properly handled inside the db!
+        query = (
+            "DELETE FROM sessions "
+            "WHERE operator_id = %s "  # User id is set through the browser itself
+            "AND status = 'uploaded'"
+        )
+        db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
 
     flask.session.clear()  # Clears session_id, username & token_expiry
     return flask.redirect(flask.url_for('index'))
@@ -249,14 +251,17 @@ def load():
 
         # Previous versions of code set stuff to the session (now no longer needed: done via db)
         # Set stuff to the database - this goes into the sessions table
-        query = f"""
-        insert into `sessions` (`operator_id`, `page`, `file`) 
-        values ('{db_utils.get_user_id(flask.session['username'], app.config['DB_NAME'])}',
-         '{bot_object.name}', '{bot_object.file}');
+        query = """
+        insert into `sessions` (`operator_id`, `page`, `file`)
+        values (%s, %s, %s);
         """
         flask.session['session_id'] = db_utils.adjust_db(query,
                                                          app.config['DB_NAME'],
-                                                         retrieve_id=True)
+                                                         retrieve_id=True,
+                                                         params=(db_utils.get_user_id(flask.session['username'],
+                                                                                      app.config['DB_NAME']),
+                                                                 bot_object.name,
+                                                                 bot_object.file))
 
         # Background load is truly done in the background, by the continuous bg job
 
@@ -357,9 +362,9 @@ def submit():
         query = """
         UPDATE sessions
         SET status = 'ready'
-        WHERE session_id = %d
-        """ % flask.session['session_id']
-        db_utils.adjust_db(query, app.config['DB_NAME'])
+        WHERE session_id = %s
+        """
+        db_utils.adjust_db(query, app.config['DB_NAME'], params=(flask.session['session_id'],))
 
         return flask.render_template('submit.html',
                                      user_name=flask.session['username'])
@@ -374,12 +379,12 @@ def statussubmit():
     # Work still in progress
     query = """
     SELECT status FROM sessions
-    where session_id = %d 
-    """ % flask.session['session_id']
-    message_data = db_utils.query_db(query, app.config['DB_NAME'])
+    where session_id = %s
+    """
+    message_data = db_utils.query_db(query, app.config['DB_NAME'], params=(flask.session['session_id'],))
     match message_data[0]:
-        case 'uplaoded':
-            pass
+        case 'uploaded':
+            return flask.redirect(flask.url_for('uploaddone'))
         case 'althere':
             return 'That image was already there, check the wiki page manually!'  # Evidently, replace later
         case 'maxlag':
@@ -393,8 +398,8 @@ def uploaddone():
     check_login_data('uploaddone')
     query = """
     SELECT * FROM messages
-    WHERE session_id = %d""" % (flask.session['session_id'])
-    message_from_db = db_utils.query_db(query, app.config['DB_NAME'])
+    WHERE session_id = %s"""
+    message_from_db = db_utils.query_db(query, app.config['DB_NAME'], params=(flask.session['session_id'],))
     return flask.render_template('uploaddone.html', message=message_from_db[2])
 
 
@@ -410,7 +415,7 @@ def forbidden_test():
 
 @app.errorhandler(403)
 def forbidden(e):
-    check_login_data('forbidden_test')
+    # No login check here: unauthorised users (no token_expiry yet) must see this page, not loop back to login
     return flask.render_template('403.html'), 403
 
 if __name__ == '__main__':

@@ -60,10 +60,10 @@ def background_load(session_id, config):
     finally:
         status = 'completed' if success else 'failed'
         dbutil.adjust_db(
-            "UPDATE sessions SET locked = 0, locked_at = NULL, status = '%s' WHERE session_id=%d" % (status,
-                                                                                                     session_id),
+            "UPDATE sessions SET locked = 0, locked_at = NULL, status = %s WHERE session_id=%s",
             config['DB_NAME'],
-            connection=conn)
+            connection=conn,
+            params=(status, session_id))
         conn.close()
         print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
 
@@ -72,7 +72,7 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
     # 20260406 - extended to also store short urls in the messages db
     # 20260926 - extend possible statusses in db: also allow for "althere" and "maxlag", depending on error
     success, status = False, 'ufail'  # By default, assume that Daniuu is crap at coding & the bot fails
-    conn, status, bot = toolforge.toolsdb(config['DB_NAME']), None, None
+    conn, bot = toolforge.toolsdb(config['DB_NAME']), None
     try:
         bot = wcl.create_from_db(session_id, config)
         # Arguments for the bot: commons_perm, category, data_connect, nlwiki, conf, test
@@ -89,27 +89,24 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
         # Also store the upload messages => to make life easier for the operator
         query = """
         INSERT INTO messages
-        (session_id, user_id, message, file_url, wiki_url, qid) values (%d, %d, %r, %r, %r, %r);""" % (session_id,
-                                                                                                       user_id,
-                                                                                                       confirmation,
-                                                                                                       shorts[0],
-                                                                                                       shorts[1],
-                                                                                                       bot.qid)
-        dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+        (session_id, user_id, message, file_url, wiki_url, qid) values (%s, %s, %s, %s, %s, %s);"""
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn,
+                         params=(session_id, user_id, confirmation, shorts[0], shorts[1], bot.qid))
         # 20260409 - explicitly set uploaded status in time
-        query = f"""
+        query = """
                 UPDATE sessions
-                SET status = 'uploaded' where session_id = {session_id:d};
+                SET status = 'uploaded' where session_id = %s;
                 """
-        dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn, params=(session_id,))
         # 20250314 - HACKATHON - succesfull upload => add to the list of user uploads in the db
-        query = f"insert into user_uploads (operator_id, file_uploaded) values ({user_id:d}, {bot.file!r});"
-        dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+        query = "insert into user_uploads (operator_id, file_uploaded) values (%s, %s);"
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn, params=(user_id, bot.file))
     except ImageAlreadyError:
         # 20260926 - separate handling of attempts to overwrite existing files
         # 20260929 - watch out for runs that previously came from maxlag
         # Assumption: operator previously inserted the image manually into the article
-        status = 'althere' if from_maxlag is False else True
+        # 20261024 - always 'althere' (writing True stored enum index 1 = 'pending' & restarted the whole session)
+        status = 'althere'
 
     except MaxlagError:
         # 20260926 - separate handling of maxlag errors
@@ -120,9 +117,9 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
             status = 'uploaded'
         query = """
         UPDATE sessions
-        SET status = %r, locked = 0, locked_at = NULL
-        WHERE session_id = %d""" % (status, session_id)
-        dbutil.adjust_db(query, config['DB_NAME'], connection=conn)
+        SET status = %s, locked = 0, locked_at = NULL
+        WHERE session_id = %s"""
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn, params=(status, session_id))
         if bot is not None:  # 20260314 - HACKATHON: fix bug that caused categories to be added > 1 time
             bot.ini_wikidata(session_id, conn)
             bot.input_data_to_db(session_id, conn)

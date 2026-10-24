@@ -157,7 +157,7 @@ def login():
 def oauth_callback():
     """OAuth handshake callback."""
     if 'request_token' not in flask.session:
-        flask.flash(u'OAuth callback failed. Are cookies disabled?')
+        flask.flash('De OAuth-callback is mislukt. Staan cookies mogelijk uitgeschakeld?')
         return flask.redirect(flask.url_for('index'))
 
     consumer_token = mwoauth.ConsumerToken(
@@ -341,9 +341,7 @@ def input():
     check_login_data('input')
     if 'session_id' in flask.session:
         del flask.session['session_id']
-    if flask.request.method == 'POST':
-        raise NotImplementedError('API-based loading is not yet supported!')  # Perform actions to initialize the form
-    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
+    if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
                               cache=flask.session) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     return flask.render_template('input.html',
@@ -359,9 +357,9 @@ def load():
     # This page is designed to facilitate loading relevant data in the background
     # This page must be called by the index page
     if flask.request.method == 'GET':
-        return 'This page cannot be loaded directly!'
+        return 'Deze pagina kan niet rechtstreeks geladen worden.'
     elif flask.request.method != 'POST':
-        return 'You can only POST to this page!'
+        return 'Naar deze pagina kan alleen met POST verzonden worden.'
     elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
                               cache=flask.session) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
@@ -409,40 +407,34 @@ def review():
     check_login_data('review')
     # We rendered some data - now load the template just before reviewing
     # To add: this template can only be loaded if the verification procedure has been performed!
-    try:
-        if app.config.get('LOCAL_DEV'):
-            class MockBot:
-                def __init__(self):
-                    self.file = "VuilTestertje.jpg"
-                    self.name = "Henk Appelsien"
-                    self.date = dt.date(2023, 5, 12)
-                    self.birth = dt.date(1990, 1, 1)
-                    self.death = None
-                    self.caption = "Een dummy bijschrift voor testdoeleinden."
-                    self.sum = "Test upload via lokale development mode."
-                    self.catname = "People from Mock City"
-                def input_data_to_db(self, sid): pass
+    # Sessions that are not ready raise WikiError/BackgroundError/TimeError: the error handlers show the "loading failed" page
+    if app.config.get('LOCAL_DEV'):
+        class MockBot:
+            def __init__(self):
+                self.file = "VuilTestertje.jpg"
+                self.name = "Henk Appelsien"
+                self.date = dt.date(2023, 5, 12)
+                self.birth = dt.date(1990, 1, 1)
+                self.death = None
+                self.caption = "Een dummy bijschrift voor testdoeleinden."
+                self.sum = "Test upload via lokale development mode."
+                self.catname = "People from Mock City"
+            def input_data_to_db(self, sid): pass
 
-            bot_object = MockBot()
-        else:
-            if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
-                                    cache=flask.session) is None:
-                return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
-            bot_object = wcl.create_from_db(flask.session['session_id'],
-                                            app.config,
-                                            user=flask.session['username'])  # Raises a 403 for foreign sessions
-        # bot_object.verify_OAuth(app.config, user=flask.session['username'])
-        return flask.render_template('review.html',
-                                     license_options=wcl.WebImage.licenses.keys(),
-                                     selected_license='CC-BY-SA 4.0',
-                                     bot=bot_object,
-                                     user_name=flask.session['username'])
-    except wcl.WikiError:
-        raise NotImplementedError  # Still need to work on this - will go to sep page
-    except wcl.BackgroundError:
-        raise NotImplementedError
-    except wcl.TimeError:
-        raise NotImplementedError
+        bot_object = MockBot()
+    else:
+        if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
+                                cache=flask.session) is None:
+            return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
+        bot_object = wcl.create_from_db(flask.session['session_id'],
+                                        app.config,
+                                        user=flask.session['username'])  # Raises a 403 for foreign sessions
+    # bot_object.verify_OAuth(app.config, user=flask.session['username'])
+    return flask.render_template('review.html',
+                                 license_options=wcl.WebImage.licenses.keys(),
+                                 selected_license='CC-BY-SA 4.0',
+                                 bot=bot_object,
+                                 user_name=flask.session['username'])
 
 
 # The page the users will see whenever they submit an image for posting
@@ -539,7 +531,7 @@ def statussubmit():
         case 'uploaded':
             return flask.redirect(flask.url_for('uploaddone'))
         case 'althere':
-            return 'That image was already there, check the wiki page manually!'  # Evidently, replace later
+            return 'De afbeelding stond er al: de wikipagina moet handmatig gecontroleerd worden.'  # Evidently, replace later
         case 'maxlag':
             message_from_db = db_utils.query_db(MESSAGE_QUERY, app.config['DB_NAME'],
                                                 params=(flask.session['session_id'], flask.session['username']))
@@ -547,7 +539,7 @@ def statussubmit():
                                          message=message_from_db[2] if message_from_db else '',
                                          user_name=flask.session['username'])
     # To do: change this, but for alpha testing, just keep as is...
-    return 'Warn Daniuu, something might have gone wrong in session %d' % (flask.session['session_id'])
+    return 'Daniuu moet gewaarschuwd worden: er is mogelijk iets misgegaan met deze upload.'
 
 
 @app.route('/uploaddone')
@@ -602,6 +594,20 @@ def uploadfailed():
 def forbidden_test():
     check_login_data('forbidden_test')
     return flask.render_template('403.html')
+
+@app.errorhandler(wcl.WikiError)  # Raised for sessions with status 'failed': loading the data in the background failed
+def load_failed(e):
+    # Raised from every route that loads a session (review, submit), so it is handled in one place
+    return flask.render_template('loadfailed.html',
+                                 user_name=flask.session.get('username')), 500
+
+
+@app.errorhandler(wcl.TimeError)  # Status 'processing': the data is not there (yet)
+@app.errorhandler(wcl.BackgroundError)  # Status still 'pending': the background job never picked the session up
+def load_not_started(e):
+    return flask.render_template('loadfailed.html', pending=True,
+                                 user_name=flask.session.get('username')), 500
+
 
 @app.errorhandler(wcl.SessionAccessError)  # Someone else's session: same page as a regular 403
 @app.errorhandler(403)

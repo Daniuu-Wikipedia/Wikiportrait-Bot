@@ -76,6 +76,19 @@ def check_csrf_token():
 
 
 # General utility
+def credentials_valid():
+    """
+    True if the logged in user can still work: the login is less than an hour old (token_expiry in the session
+    cookie) AND the db still holds their tokens. The db removes tokens older than an hour on its own schedule, so
+    the two can be out of sync for a little while: both have to be checked.
+    """
+    expiry = flask.session.get('token_expiry')
+    if expiry is None or dt.datetime.utcnow() > dt.datetime.fromisoformat(expiry):
+        return False
+    user_id = db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'], cache=flask.session)
+    return user_id is not None and db_utils.has_tokens(user_id, app.config['DB_NAME'])
+
+
 def check_login_data(origin=None):
     """
     Method to perform some checks concerning the loading of data, user identity & session id.
@@ -89,10 +102,12 @@ def check_login_data(origin=None):
     """
     if app.config.get('LOCAL_DEV'):
         return  # Bypass restriction locally
-    if origin not in {'login', 'logout', 'oauth-callback'}:
-        expiry = flask.session.get('token_expiry')
-        if expiry is None or dt.datetime.utcnow() > dt.datetime.fromisoformat(expiry):
-            flask.abort(flask.redirect(flask.url_for('login')))  # Force the user to login
+    if origin not in {'login', 'logout', 'oauth-callback', 'renew'}:
+        if flask.session.get('username') is None:
+            flask.abort(flask.redirect(flask.url_for('login')))  # Never logged in (or cookie gone): just log in
+        if not credentials_valid():
+            # 20261024 - logged in before, but the credentials expired or were removed from the db (after an hour)
+            flask.abort(flask.redirect(flask.url_for('renew')))
         # These pages do not belong to a running session ('load' is where a new session gets created)
         if origin not in {'input', 'load', 'uploads'}:
             if 'session_id' not in flask.session:
@@ -218,6 +233,37 @@ def oauth_callback():
     return flask.redirect(flask.url_for('input'))  # After logging in, direct user to login screen
 
 
+
+# Jobs that were not submitted yet: dropped when the login of their operator expired (see renew)
+# Submitted jobs ('ready' and later) are kept: the background job or the bot account finishes them without the user
+UNSUBMITTED_STATUSES = ('pending', 'processing', 'completed', 'failed')
+
+
+def discard_unsubmitted_session():
+    """
+    Removes the job the user was working on (flask.session['session_id']) if it was not submitted yet.
+    Returns True if a job was removed. Never raises: the renew page must always be shown.
+    """
+    session_id = flask.session.pop('session_id', None)
+    user_id = flask.session.get('user_id')
+    if session_id is None or user_id is None:
+        return False
+    try:
+        dbname = app.config['DB_NAME']
+        row = db_utils.query_db("SELECT status FROM sessions WHERE session_id=%s AND operator_id=%s;", dbname,
+                                params=(session_id, user_id))
+        if row is None or row[0] not in UNSUBMITTED_STATUSES:
+            return False
+        # claims & messages follow through ON DELETE CASCADE; input_data has no foreign key, so it goes separately
+        db_utils.adjust_db("DELETE FROM input_data WHERE session_id=%s;", dbname, params=(session_id,))
+        db_utils.adjust_db("DELETE FROM sessions WHERE session_id=%s AND operator_id=%s AND status IN %s;", dbname,
+                           params=(session_id, user_id, UNSUBMITTED_STATUSES))
+        return True
+    except Exception:
+        app.logger.exception('Could not remove session %r after the login expired', session_id)
+        return False
+
+
 @app.route('/logout', methods=['GET', 'POST'])
 def logout():
     """Log the user out by clearing their session."""
@@ -227,28 +273,61 @@ def logout():
         return flask.redirect(flask.url_for('index'))
     # 20260314 - HACKATHON remove tokens from the db
     # Nobody logged in (e.g. session cookie expired): nothing to clean up in the db
+    # 20261024 - the tokens may already be gone (removed by the db after an hour): every step below works without
+    # them, and logging out must always succeed, so a failing cleanup is only logged
     username = flask.session.get('username')
-    user_id = (db_utils.get_user_id(username, app.config['DB_NAME'], cache=flask.session)
-               if username is not None else None)
-    if user_id is not None:
-        # Once the tokens are gone, the bot account may have to finish this user's open jobs: first make sure that
-        # the edit summaries of those jobs say who requested them
-        wcl.attribute_open_jobs(app.config, user_id, username)
+    try:
+        user_id = (db_utils.get_user_id(username, app.config['DB_NAME'], cache=flask.session)
+                   if username is not None else None)
+        if user_id is not None:
+            # Once the tokens are gone, the bot account may have to finish this user's open jobs: first make sure that
+            # the edit summaries of those jobs say who requested them
+            wcl.attribute_open_jobs(app.config, user_id, username)
 
-        query = 'delete from tokens where operator_id = %s'
-        db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
+            query = 'delete from tokens where operator_id = %s'  # Removes nothing if the db already did
+            db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
 
-        # 20260314 - HACKATHON remove associated entries from the db (clean up stuff)
-        # 20260927 - keep the stuff that was not properly handled inside the db!
-        query = (
-            "DELETE FROM sessions "
-            "WHERE operator_id = %s "  # User id is set through the browser itself
-            "AND status = 'uploaded'"
-        )
-        db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
+            # 20260314 - HACKATHON remove associated entries from the db (clean up stuff)
+            # 20260927 - keep the stuff that was not properly handled inside the db!
+            query = (
+                "DELETE FROM sessions "
+                "WHERE operator_id = %s "  # User id is set through the browser itself
+                "AND status = 'uploaded'"
+            )
+            db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
+
+            # The job that the user was working on is dropped if it was never submitted (submitted jobs, including
+            # postponed ones ('maxlag'), are kept: see UNSUBMITTED_STATUSES)
+            discard_unsubmitted_session()
+    except Exception:
+        app.logger.exception('Cleanup at logout failed for %r', username)
 
     flask.session.clear()  # Clears session_id, username & token_expiry
     return flask.redirect(flask.url_for('index'))
+
+
+@app.route('/renew')
+def renew():
+    """
+    Shown when the credentials of a logged in user expired or were removed from the db (automatically, after an
+    hour). The job they were working on is dropped if it was not submitted yet, and they can log in again (which
+    brings them back to the input form) or log out.
+    """
+    if app.config.get('LOCAL_DEV'):
+        return flask.redirect(flask.url_for('input'))
+    if flask.session.get('username') is None:
+        return flask.redirect(flask.url_for('index'))  # Not logged in at all: the start page has the login button
+    if credentials_valid():
+        return flask.redirect(flask.url_for('input'))  # Nothing to renew (and no reason to drop any job)
+    return flask.render_template('renew.html',
+                                 job_removed=discard_unsubmitted_session(),
+                                 user_name=flask.session['username'])
+
+
+# Race: the db removed the tokens between check_login_data and their use (e.g. while building the WebImage)
+@app.errorhandler(db_utils.TokensMissingError)
+def tokens_missing(e):
+    return flask.redirect(flask.url_for('renew'))
 
 
 # Setup up the starting screen

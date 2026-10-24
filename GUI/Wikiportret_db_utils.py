@@ -102,6 +102,21 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None, params=None):
     return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine
 
 
+class TokensMissingError(LookupError):
+    """
+    The OAuth tokens of an operator are not (or no longer completely) in the db. The db removes them automatically
+    after an hour, and at logout. The web app sends the user to the 'renew your login' page when this is raised.
+    """
+
+
+def has_tokens(operator_id, dbname, connection=None):
+    """True if tokens are stored for this operator (cheap check, nothing is decrypted)"""
+    if LOCAL_DEV:
+        return True
+    return query_db("SELECT 1 FROM tokens WHERE operator_id=%s;", dbname, connection=connection,
+                    params=(operator_id,)) is not None
+
+
 def store_secret(value, dbname, connection=None):
     """
     Encrypts value (fresh random nonce for every call, see Wikiportret_crypto) and stores it in secret_stuff.
@@ -159,7 +174,7 @@ def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend
                  "WHERE u.username=%s;")
     row = query_db(query, dbname, connection=connection, params=(operator_name,))
     if row is None:
-        raise LookupError('No tokens stored for this user')
+        raise TokensMissingError('No tokens stored for this user')
     coded = json.loads(row[0])
 
     # 20260314 - HACKATHON - decrypt tokens
@@ -174,7 +189,7 @@ def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend
     sec = {}
     for i, j in coded.items():
         if j not in obtained:
-            raise LookupError('Stored tokens are incomplete')
+            raise TokensMissingError('Stored tokens are incomplete')
         _, nonce, version = obtained[j]
         sec[i] = crypto.decrypt_token(j, nonce, version)
     return sec  # Be careful with this dictionary!

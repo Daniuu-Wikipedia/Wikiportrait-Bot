@@ -76,78 +76,29 @@ body {
     background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Dropdown Menu */
-.dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.dropdown-trigger {
+/* Button in the navbar (the logout button, top right). It is a button in a form (POST), styled like the links */
+.nav-button {
     background: none;
-    border: none;
     color: white;
-    padding: 0.5rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    padding: 0.45rem 1rem;
+    font-family: inherit;
     font-size: 0.95rem;
     font-weight: 600;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: var(--transition);
-}
-
-.dropdown:hover .dropdown-trigger {
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    background-color: white;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
     border-radius: 6px;
-    overflow: hidden;
-    margin-top: 5px;
-}
-
-.dropdown-content a,
-.dropdown-content button {
-    color: var(--text-color);
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-    font-size: 0.9rem;
+    cursor: pointer;
     transition: var(--transition);
 }
 
-/* The logout entry is a button in a form (POST), styled like the links around it */
-.dropdown-content button {
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    font-family: inherit;
-    cursor: pointer;
-}
-
-.dropdown-content a:hover,
-.dropdown-content button:hover {
-    background-color: #f1f1f1;
+.nav-button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: white;
 }
 
 /* Forms that only hold a button (e.g. logout) sit inline, like the links they replace */
 .inline-form {
     display: inline;
     margin: 0;
-}
-
-.dropdown-content .inline-form {
-    display: block;
-}
-
-.dropdown:hover .dropdown-content {
-    display: block;
 }
 
 /* Main Content Area */

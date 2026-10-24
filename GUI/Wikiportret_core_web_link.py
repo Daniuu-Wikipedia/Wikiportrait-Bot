@@ -288,29 +288,53 @@ def attribute_open_jobs(config, user_id, username):
     first, and only a job that was properly signed gets a new signature: re-signing a job that has been tampered
     with would approve the tampering. Summary and signature change in one statement, so a run of the maxlag handler
     can never see the one without the other. Problems are only printed: logging out must never be blocked.
+
+    20261024 - works on the db only: no WebImage is built, so the tokens of the operator are not needed (they may
+    already have been removed by the db, after an hour). The signed fields are read from the same columns that
+    _create_from_db loads them from, so the signature is checked against exactly what the bot account will see.
+    The update only applies while the job is still open with the signature that was checked: if the background job
+    picked it up in the meantime ('up'), or the row changed, nothing is written.
     """
     if dbut.LOCAL_DEV:
         return
     dbname = config['DB_NAME']
     connection = toolforge.toolsdb(dbname)
     try:
-        jobs = dbut.query_db("SELECT session_id FROM sessions WHERE operator_id=%s AND status IN ('ready', 'maxlag')",
-                             dbname, need_all=True, connection=connection, params=(user_id,))
-        for (session_id,) in jobs:
+        jobs = dbut.query_db(OPEN_JOBS_QUERY, dbname, need_all=True, connection=connection, params=(user_id,))
+        for session_id, page, file, signature, qid, mid, caption, category, summary in jobs:
             try:
-                job = create_from_db(session_id, config, check_status=False, user=user_id, connection=connection)
-                was_signed = job_signature.verify_job(config, job.signature, **job.job_fields(session_id, user_id))
-                job.sum = attributed_summary(job.sum, username)
-                signature = (job_signature.sign_job(config, **job.job_fields(session_id, user_id))
-                             if was_signed else job.signature)
+                if caption is None:
+                    # The job object would generate a caption (from the date): that cannot be redone from the db alone
+                    print(f'Session {session_id}: no caption stored, summary left as is')
+                    continue
+                fields = {'session_id': session_id, 'operator_id': user_id, 'page': page, 'file': file,
+                          'qid': qid, 'mid': mid, 'caption': caption,
+                          # Same defaults as Image.catname & Image.sum when nothing is stored
+                          'category': page if category is None else category,
+                          'summary': f'Processing image of {page}' if summary is None else summary}
+                was_signed = job_signature.verify_job(config, signature, **fields)
+                fields['summary'] = attributed_summary(fields['summary'], username)
+                new_signature = job_signature.sign_job(config, **fields) if was_signed else signature
+                # <=> is MySQL's NULL-safe equality: also matches a job that has no signature (NULL)
                 dbut.adjust_db("UPDATE input_data i JOIN sessions s ON s.session_id = i.session_id "
                                "SET i.edit_summary = %s, s.signature = %s "
-                               "WHERE i.session_id = %s AND s.operator_id = %s",
-                               dbname, connection=connection, params=(job.sum, signature, session_id, user_id))
+                               "WHERE i.session_id = %s AND s.operator_id = %s "
+                               "AND s.status IN ('ready', 'maxlag') AND s.signature <=> %s",
+                               dbname, connection=connection,
+                               params=(fields['summary'], new_signature, session_id, user_id, signature))
             except Exception as error:
                 print(f'Could not adjust the summary of session {session_id}: {error!r}')
     finally:
         connection.close()
+
+
+# The open jobs of an operator with all signed fields, from the columns _create_from_db reads them from
+OPEN_JOBS_QUERY = """
+SELECT s.session_id, s.page, s.file, s.signature, c.qid, c.mid, i.custom_caption, i.category_name, i.edit_summary
+FROM sessions s
+JOIN claims c ON c.session_id = s.session_id
+JOIN input_data i ON i.session_id = s.session_id
+WHERE s.operator_id = %s AND s.status IN ('ready', 'maxlag')"""
 
 
 FAILED_JOBS_PAGE = 'Gebruiker:Daniuu/Failed_jobs'  # Page on nlwiki where failed jobs of the bot account are listed

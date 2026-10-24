@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% import 'forms.html' as forms %}
+
+{% block head %}
+    <title>Wikiportret - Login Verlopen</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/message.css') }}">
+{% endblock %}
+
+{% block content_title %}
+    <h1>Login Verlopen</h1>
+{% endblock %}
+
+{% block body %}
+    <div class="card" style="max-width: 700px;">
+        <div class="notice notice-warning">
+            <strong><i class="fa-solid fa-clock-rotate-left"></i> Uw login moet vernieuwd worden</strong>
+            Om veiligheidsredenen worden uw inloggegevens na een uur automatisch verwijderd.
+            Log opnieuw in om verder te werken.
+        </div>
+
+        {% if job_removed %}
+        <p class="text-secondary">
+            De afbeelding waaraan u werkte was nog niet ingediend en is daarom verwijderd.
+            Na het inloggen kunt u die opnieuw starten.
+        </p>
+        {% endif %}
+
+        <div class="button-row">
+            <a href="{{ url_for('login') }}" class="btn">Opnieuw inloggen</a>
+            {{ forms.logout_button() }}
+        </div>
+    </div>
+{% endblock %}

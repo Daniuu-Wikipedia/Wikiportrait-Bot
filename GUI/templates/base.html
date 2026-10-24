@@ -34,15 +34,8 @@
                         <i class="fa-solid fa-images" style="margin-right: 6px;"></i>Mijn uploads
                     </a>
                 </nav>
-                
-                <div class="dropdown">
-                    <button class="dropdown-trigger">
-                        <i class="fa-solid fa-circle-user" style="margin-right: 6px; font-size: 1.1em;"></i>{{ user_name or username }} <i class="fa-solid fa-chevron-down" style="font-size: 0.8em; margin-left: 4px;"></i>
-                    </button>
-                    <div class="dropdown-content">
-                        {{ forms.logout_button('dropdown-item', icon=True) }}
-                    </div>
-                </div>
+
+                {{ forms.logout_button('nav-button', icon=True) }}
                 {% else %}
                 <a href="{{ url_for('login') }}" class="nav-item">
                     <i class="fa-solid fa-right-to-bracket" style="margin-right: 6px;"></i>Inloggen

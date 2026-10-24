@@ -285,6 +285,10 @@ class Image:
         # instead of requesting them from Wikidata again
         self.reuse_claims = False
 
+        # True if a human is following along in a terminal (command line interface) and can answer questions
+        # The web interface (WebImage) sets this to False: nobody can answer there, so doubtful cases are skipped
+        self.interactive = True
+
         # For safety
         self.configure_bots_for_testing()
 
@@ -862,9 +866,15 @@ class Image:
             if self.comtext is None:
                 self.get_commons_text()
             if re.search(r'\bpd\b|public domain', self.comtext.lower()):
-                # No questions can be asked in the web service: when in doubt, leave P6216 for a human to set
-                print('I found a potential indication that the file could be in the public domain: not setting P6216')
-                return None
+                print('I found a potential indication that the file could be in the public domain!')
+                if not self.interactive:
+                    # No questions can be asked in the web service: when in doubt, leave P6216 for a human to set
+                    print('Not setting P6216')
+                    return None
+                a = input('\nIs this an incorrect indication? [y/n] ').lower().strip()
+                if a == 'n':
+                    print('Terminating the process of P6216 setting')
+                    return None
             val = '"entity-type": "item", "numeric-id": 50423863,"id": "Q50423863"'
             dic = {'action': 'wbcreateclaim',
                    'summary': self.sum,

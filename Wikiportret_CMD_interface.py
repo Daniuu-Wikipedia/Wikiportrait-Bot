@@ -34,13 +34,24 @@ class Interface:
                 'wished to enter\n')
             sleep(5)  # Give the user a 5 second time period to rethink their input
             name = input("Please enter the corresponding name of the article on the Dutch Wikipedia. ").strip()
-        # try:
-        _, _, confmes = Image(file, name)()  # Discard filename and short urls, the confirmation message will be printed
-        #except:
-        #    print('\nBOT ERROR! Please check output above\n')
-        #    sleep(5)
-        #    exit()
-        self.print_confirmation_message(confmes)
+        image = Image(file, name)
+        confmes = None
+        # Known problems only stop this file, not the whole interface (anything else still shows its traceback)
+        try:
+            _, _, confmes = image()  # Discard filename and short urls, the confirmation message will be printed
+        except ImageAlreadyError as error:
+            # Raised while editing the article: the Commons category, P180 & everything on Wikidata were not done yet
+            print(f'\n{error}')
+            answer = input('Continue with the remaining Commons & Wikidata steps, without the article? [y/n] ')
+            if answer.lower().strip() == 'y':
+                image.depicts()  # P180 comes right after the article in phase 1, so it was skipped as well
+                _, _, confmes = image(operator_steps=False)
+        except MaxlagError:
+            print('\nWikidata is overloaded (maxlag). Please process this file again in a few minutes.\n')
+        except ValueError as error:  # E.g. a disambiguation page
+            print(f'\nBOT ERROR: {error}\n')
+        if confmes is not None:
+            self.print_confirmation_message(confmes)
         del name, file  # Remove these variables from memory, we don't need them any longer
         print(
             'I will now restart the cyle, simply close this window to stop. No computers will be harmed in due course.')

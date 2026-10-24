@@ -30,6 +30,7 @@ class WebImage(Image):
 
     def __init__(self, file, name, config, user, connection=None, bot_credentials=None):
         super().__init__(file, name)
+        self.interactive = False  # Runs in the web service & background jobs: nobody can answer questions there
         self.dbname = config['DB_NAME']
         self.acting_as_bot = False  # True if the edits are made by the bot account instead of the user
         try:

@@ -93,7 +93,8 @@ def check_login_data(origin=None):
         expiry = flask.session.get('token_expiry')
         if expiry is None or dt.datetime.utcnow() > dt.datetime.fromisoformat(expiry):
             flask.abort(flask.redirect(flask.url_for('login')))  # Force the user to login
-        if origin not in {'input', 'uploads'}:  # These pages do not belong to a running session
+        # These pages do not belong to a running session ('load' is where a new session gets created)
+        if origin not in {'input', 'load', 'uploads'}:
             if 'session_id' not in flask.session:
                 flask.abort(flask.redirect(flask.url_for('input')))
     return  # Return None, nothing to do here...

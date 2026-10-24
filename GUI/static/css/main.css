@@ -76,6 +76,13 @@ body {
     background-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Name of the logged in user (next to the logout button): text only, not clickable */
+.nav-user {
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
 /* Button in the navbar (the logout button, top right). It is a button in a form (POST), styled like the links */
 .nav-button {
     background: none;

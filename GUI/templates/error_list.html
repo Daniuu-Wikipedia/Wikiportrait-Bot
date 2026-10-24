@@ -1,0 +1,14 @@
+{# The problems logged for this session (see session_errors in app.py). Use with {% include 'error_list.html' %} #}
+{% if errors %}
+    <div class="mt-1 mb-1" style="background: #fff5f5; border-left: 4px solid #d33; padding: 1rem; border-radius: 6px;">
+        <strong>Problemen tijdens de verwerking</strong> (vermeld de code als u hierover contact opneemt):
+        <ul style="margin: 0.5rem 0 0 1.25rem;">
+            {% for error in errors %}
+            <li>
+                <strong>Code {{ error.code }}</strong>: {{ error.message }}
+                {% if error.details %}<br><small class="text-secondary">{{ error.details }}</small>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

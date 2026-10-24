@@ -16,6 +16,8 @@
             <p><strong>Wikipedia Artikel:</strong> {{ bot.name }}</p>
         </div>
 
+        {% include 'error_list.html' %}
+
         <form action="submit" method="POST">
             {{ forms.csrf_field() }}
             <div class="review-grid">

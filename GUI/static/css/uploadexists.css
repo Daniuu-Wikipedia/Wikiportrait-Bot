@@ -1,0 +1,108 @@
+/* Page shown when the article already had an image (templates/uploadexists.html) */
+.image-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.image-compare.single {
+    grid-template-columns: minmax(0, 360px);
+    justify-content: center;
+}
+
+.image-tile {
+    margin: 0;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    text-align: center;
+}
+
+.image-tile-current {
+    border-color: #ffe69c;
+    background: #fffbeb;
+}
+
+.image-tile img {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    margin: 0 auto;
+    border-radius: 6px;
+    object-fit: contain;
+}
+
+.image-tile figcaption {
+    margin-top: 0.75rem;
+}
+
+.image-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+
+.image-name {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere; /* Long file names must not stretch the page */
+}
+
+/* What the job did before it stopped */
+.steps-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.05rem;
+}
+
+.steps {
+    list-style: none;
+    margin: 0 0 1.5rem 0;
+    padding: 0;
+}
+
+.step {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.step:last-child {
+    border-bottom: none;
+}
+
+.step-done i { color: #2e7d32; }
+.step-failed i { color: #d33; }
+.step-skipped i { color: #a2a9b1; }
+
+/* Links to check & finish the job by hand */
+.link-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.link-grid .btn {
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+}
+
+.link-grid .btn i {
+    margin-right: 0.35rem;
+}
+
+@media (max-width: 600px) {
+    .image-compare {
+        grid-template-columns: 1fr;
+    }
+}

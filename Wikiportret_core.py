@@ -30,7 +30,6 @@ WHO MAKES WHICH EDIT
 Information can be found in Wikiportret ticket 2021021010009189 (VRT access required)
 """
 
-import threading  # Required to speed up dealing with the web interface
 import requests
 import toolforge
 import urllib
@@ -57,12 +56,64 @@ class MaxlagError(Exception):
         return "Maxlag error occured, bot run aborted."
 
 
-class ImageAlreadyError(Exception):
-    """Raised when an attempt is made to add an image to a page that already contains one."""
+# Everything that can go wrong while processing an image, with a code that is shown to the operator (and stored by
+# the web interface, see Wikiportret_core_web_link), so they can understand (and often fix) the problem themselves
+# 1xx: the input (file & article), 2xx: the article, 3xx: Commons, Wikidata & Meta, 4xx: the APIs, 500: anything else
+# Some of these stop the processing (ProcessingError), others are only kept as a warning (Image.warn)
+ERROR_MESSAGES = {
+    101: 'The file does not exist on Wikimedia Commons. Check the file name (capitals and the extension count) and '
+         'enter it without "File:" in front.',
+    102: 'The article does not exist on the Dutch Wikipedia. Check the spelling of the title.',
+    103: 'The title of the article contains characters that are not allowed in a title (such as # < > [ ] | { }).',
+    104: 'The article is a disambiguation page. Enter the title of the article about the person on the image.',
+    105: 'The title is a redirect. Enter the title of the article it redirects to.',
+    106: 'The page is not an article (but, for example, a user page or a talk page).',
+    107: 'No Wikidata item is connected to the article. Connect the article to an item on Wikidata (or create one) '
+         'and try again.',
+    201: 'The image is already in the article. The article was not changed.',
+    202: 'The infobox of the article already contains an image. The article was not changed: check it, and replace '
+         'the image manually if needed.',
+    203: 'The layout of the infobox was not recognised, so the image could not be placed in it. Place the image in '
+         'the article manually.',
+    204: 'The article could not be edited (for example because it is protected, or an edit filter stopped the edit).',
+    301: 'Adding the structured data (VRT ticket, licence) to the file on Commons failed. Check the file on Commons.',
+    302: 'The licence of the file was not recognised, so it was not added to the structured data on Commons. Add it '
+         'manually.',
+    303: 'No VRT ticket number was found on the file page on Commons, so it was not added to the structured data.',
+    304: 'Commons refused one of the edits to the file or the category. Check them on Commons.',
+    305: 'Wikidata refused one of the edits to the item. Check the item on Wikidata.',
+    306: 'The image could not be added to the Wikidata item.',
+    307: 'The image was not found on the Wikidata item, so the date of the image was not added to it.',
+    308: 'The date on the file page on Commons is not a valid date, so it was not used. Enter the correct date '
+         'yourself (and fix it on Commons).',
+    309: 'The edits were made, but the short links for the confirmation message could not be created.',
+    401: 'Wikipedia, Commons or Wikidata could not be reached. Try again in a few minutes.',
+    402: 'Wikipedia, Commons or Wikidata gave an unexpected answer. Try again in a few minutes.',
+    403: 'No permission to edit (no edit token). Log in again and retry.',
+    500: 'Something unexpected went wrong. Contact Daniuu, and mention the code.',
+}
+
+
+class ProcessingError(ValueError):
+    """
+    A problem that stops the processing of an image. code: see ERROR_MESSAGES, detail: what exactly went wrong (e.g.
+    the answer of the API), for the log. A ValueError, so the command line interface (which catches those) shows it.
+    """
+
+    def __init__(self, code, detail=None):
+        super().__init__(code, detail)
+        self.code, self.detail = code, detail
+
+    @property
+    def message(self):
+        return ERROR_MESSAGES.get(self.code, ERROR_MESSAGES[500])
 
     def __str__(self):
-        return ("The target page already contains an image. "
-                "Automatic image insertion was aborted.")
+        return f'Error {self.code}: {self.message}' + (f' ({self.detail})' if self.detail else '')
+
+
+class ImageAlreadyError(ProcessingError):
+    """Raised when an attempt is made to add an image to a page that already contains one (code 201 or 202)."""
 
 
 class Bot:
@@ -121,7 +172,14 @@ class Bot:
         """This function will provide functionality that does all the get requests"""
         self.verify_OAuth()
         payload['format'] = 'json'  # Set the output format to json
-        return requests.get(self.api, params=payload, auth=self._auth).json()
+        return self._request(requests.get, params=payload)
+
+    def _request(self, method, **kwargs):
+        """Sends the request (requests.get or requests.post). The wiki not answering (properly) is error 401"""
+        try:
+            return method(self.api, auth=self._auth, **kwargs).json()
+        except (requests.RequestException, ValueError) as error:  # ValueError: an error page instead of json
+            raise ProcessingError(401, f'{self.api}: {error!r}') from error
 
     def get_token(self, t='csrf', n=0, store=True):
         """This function will get a token"""
@@ -137,7 +195,8 @@ class Bot:
             else:
                 return self._token[0]  # Just return the token
         except KeyError:
-            assert n <= 1, 'Cannot generate the requested token'
+            if n > 1:  # E.g. the OAuth tokens of the user were revoked or expired
+                raise ProcessingError(403, f'{self.api}: {z[0].get("error")}')
             return self.get_token(t, n + 1)
 
     def post(self, params):
@@ -174,7 +233,7 @@ class Bot:
         params['format'] = 'json'
         params['maxlag'] = 5  # Using the standard that's implemented in PyWikiBot
         self.ti.append(float(time.time()))
-        k = requests.post(self.api, data=params, auth=self._auth).json()
+        k = self._request(requests.post, data=params)
         if 'error' in k:
             print('An error occured somewhere')  # We found an error
             if 'code' in k['error'] and 'maxlag' in k['error']['code']:
@@ -204,7 +263,7 @@ class MetaBot(Bot):
     def short(self, params):
         """This function can be used to create a short url (without generating a token first)"""
         params['format'] = 'json'
-        return requests.post(self.api, data=params, auth=self._auth).json()
+        return self._request(requests.post, data=params)
 
 
 class NlBot(Bot):
@@ -293,11 +352,49 @@ class Image:
         # The web interface (WebImage) sets this to False: nobody can answer there, so doubtful cases are skipped
         self.interactive = True
 
+        # Problems that did not stop the processing (ProcessingErrors, see warn), so the operator can still be told
+        self.warnings = []
+
         # For safety
         self.configure_bots_for_testing()
 
     def __str__(self):
         return f'Processing {self.file}, an image of {self.name}.'
+
+    def warn(self, code, detail=None):
+        """A problem (code: see ERROR_MESSAGES) that does not stop the processing: printed & kept in self.warnings"""
+        warning = ProcessingError(code, detail)
+        print(f'WARNING: {warning}')
+        self.warnings.append(warning)
+
+    def warn_if_refused(self, response, code):
+        """Keeps a warning (code) if the API refused an edit that the processing can do without"""
+        if 'error' in response:
+            self.warn(code, response['error'].get('info', response['error']))
+        return response
+
+    def check_article(self):
+        """
+        Stops the processing (ProcessingError) if the article cannot be used: it does not exist, is a redirect, a
+        disambiguation page or no article at all, or no Wikidata item is connected to it.
+        """
+        query = self._nl.get({'action': 'query', 'titles': self.name, 'redirects': True, 'prop': 'info|pageprops',
+                              'ppprop': 'disambiguation|wikibase_item'}).get('query', {})
+        page = next(iter(query.get('pages', {}).values()), None)
+        if page is None:
+            raise ProcessingError(402, f'No page information for {self.name!r}')
+        if 'invalid' in page:
+            raise ProcessingError(103, page.get('invalidreason'))
+        if query.get('redirects'):
+            raise ProcessingError(105, f'{self.name} redirects to {query["redirects"][0]["to"]}')
+        if 'missing' in page:
+            raise ProcessingError(102, self.name)
+        if page.get('ns') != 0:
+            raise ProcessingError(106, self.name)
+        if 'disambiguation' in page.get('pageprops', {}):
+            raise ProcessingError(104, self.name)
+        if 'wikibase_item' not in page.get('pageprops', {}):
+            raise ProcessingError(107, self.name)
 
     # Properties controlling the test mode of the bot
     @property
@@ -456,10 +553,14 @@ class Image:
                 'titles': self.name,
                 'sites': 'nlwiki',
                 'props': 'claims'}
-        q = self._wikidata.get(pars)['entities']
-        self.qid = next(iter(q.keys()))
-        assert self.qid != '-1', 'I could not find a valid Wikidata item!'
-        self.claims = q[self.qid]['claims']
+        response = self._wikidata.get(pars)
+        if 'entities' not in response:
+            raise ProcessingError(402, f'Wikidata: {response.get("error")}')
+        qid = next(iter(response['entities']))
+        if qid.startswith('-'):  # '-1': no item for this article
+            raise ProcessingError(107, self.name)
+        self.qid = qid
+        self.claims = response['entities'][qid].get('claims', {})
 
         # Extraction of P569 & P570 to occur through other methods (call them by default)
         self.date_deceased()
@@ -477,7 +578,7 @@ class Image:
                'summary': self.sum,
                'linksite': 'commonswiki',
                'linktitle': f'Category:{self.catname}'}
-        return self._wikidata.post(iwd)
+        return self.warn_if_refused(self._wikidata.post(iwd), 305)
 
     def set_image(self):
         """This function will modify the P18-property of the selected item (which inserts the image at commons)"""
@@ -497,7 +598,10 @@ class Image:
                 'entity': self.qid,
                 'value': f'"{self.file}"'}
         k = self._wikidata.post(p18d)
-        self.claims['P18'] = self.claims.get('P18', []) + [k['claim']]
+        if 'error' in k:
+            raise ProcessingError(306, k['error'].get('info', k['error']))
+        if 'claim' in k:  # Not in test mode
+            self.claims['P18'] = self.claims.get('P18', []) + [k['claim']]
         return k
 
     def commons_cat(self):
@@ -515,7 +619,7 @@ class Image:
                 'summary': self.sum,
                 'entity': self.qid,
                 'value': f'"{self.catname}"'}  # Set a new P373 claim
-        return self._wikidata.post(p18d)
+        return self.warn_if_refused(self._wikidata.post(p18d), 305)
 
     def purge(self):
         """This function will purge the cache of the corresponding page on Commons and the Wikidata-item"""
@@ -542,6 +646,8 @@ class Image:
             f'commons.wikimedia.org/wiki/File:{self.file}')  # https:// added in front of the parser
         z = self._meta.short({'action': 'shortenurl',
                               'url': url})
+        if 'shortenurl' not in z:
+            raise ProcessingError(309, f'Commons: {z.get("error")}')
         return z['shortenurl']['shorturl']
 
     def short_url_nlwiki(self):
@@ -550,6 +656,8 @@ class Image:
             f'nl.wikipedia.org/wiki/{self.name}')  # https:// added in front of the parser
         z = self._meta.short({'action': 'shortenurl',
                               'url': url})
+        if 'shortenurl' not in z:
+            raise ProcessingError(309, f'Wikipedia: {z.get("error")}')
         return z['shortenurl']['shorturl']
 
     def short_urls(self):
@@ -656,7 +764,11 @@ class Image:
                 # 20260926 - adding new method to fix date in Commons automatically
                 date_found_processed = date_found.strip().lower().replace(' ', '').replace('|date=', '')
                 y, m, d = date_found_processed.split('-')
-                self.date = dt.date(int(y), int(m), int(d))
+                try:
+                    self.date = dt.date(int(y), int(m), int(d))
+                except ValueError:  # E.g. 2020-02-30: the date stays empty, so the operator can enter it
+                    self.warn(308, date_found.strip())
+                    return None
                 self.fix_commons_date_format(date_found)
                 return self.date
             # 20260409: common issue with Wikiportret: date passed in DD-MM-YYYY format
@@ -668,7 +780,11 @@ class Image:
                 # 20260926 - adding new method to fix date in Commons automatically
                 date_found_processed = date_found.strip().lower().replace(' ', '').replace('|date=', '')
                 d, m, y = date_found_processed.split('-')
-                self.date = dt.date(int(y), int(m), int(d))
+                try:
+                    self.date = dt.date(int(y), int(m), int(d))
+                except ValueError:
+                    self.warn(308, date_found.strip())
+                    return None
                 self.fix_commons_date_format(date_found)
                 return self.date
 
@@ -724,13 +840,19 @@ class Image:
                                    'titles': f'File:{self.file}',
                                    'prop': 'imageinfo',
                                    'iiprop': 'commonmetadata'})
-            q = next(iter(z['query']['pages'].values()))['imageinfo'][0]['commonmetadata']
+            # No (readable) metadata is no error: the date simply stays empty, the operator can still enter it
+            page = next(iter(z.get('query', {}).get('pages', {}).values()), {})
+            q = (page.get('imageinfo') or [{}])[0].get('commonmetadata') or []
             t = [i['value'] for i in q if 'datetime' in i['name'].lower().strip()]
-            d = sorted((i for i in t if i.count(':') == 4))  # Filter the correct format
+            d = sorted((i for i in t if isinstance(i, str) and i.count(':') == 4))  # Filter the correct format
             if not d:  # We got an empty list, no valid dates were passed
                 return None  # Abort the execution of the function
-            self.date = dt.datetime.strptime(d[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
-                                                                                second=0)  # Remove the precise timestamp
+            try:
+                self.date = dt.datetime.strptime(d[0], "%Y:%m:%d %H:%M:%S").replace(hour=0, minute=0,
+                                                                                    second=0)  # Remove the precise timestamp
+            except ValueError:
+                print(f'The date in the metadata of the file ({d[0]!r}) could not be read')
+                return None
         return self.date
 
     def date_meta(self, manual_value=None):
@@ -746,15 +868,15 @@ class Image:
 
             # This part of the code: adds the date as a qualifier to the image
             # The code must first figure out where the image is being stored first
-            cl = self.claims.get('P18')  # We can get this one
-            assert cl is not None, 'Watch out, we found an error'
+            cl = self.claims.get('P18') or []  # We can get this one
             idc = None  # Style thingy - define variable & raise error later if not set
             for i in cl:
-                if i['mainsnak']['datavalue']['value'] == self.file:
+                if i.get('mainsnak', {}).get('datavalue', {}).get('value') == self.file:
                     idc = i['id']
                     break  # Stop the iterations - we found what we needed to find
-            if idc is None:  # Bit difficult to set a qualifier if the image is not yet set
-                raise ValueError('The image was not attached to the Wikidata item!')
+            if idc is None:  # Bit difficult to set a qualifier if the image is not yet set (the last step anyway)
+                self.warn(307, self.qid)
+                return None
             if 'P585' not in i.get('qualifiers', ()):  # Code should only be executed if this hasn't been specified yet
                 deceased = self.date_deceased()
                 if deceased is not None and self.check_person_alive():
@@ -769,16 +891,22 @@ class Image:
                      'property': 'P585',
                      'summary': self.sum,
                      'bot': True}
-                self._wikidata.post(n)
+                self.warn_if_refused(self._wikidata.post(n), 305)
         else:
             print('Could not find a useful date')
 
     def get_commons_claims(self):
         """This function will get the claims on Commons (and content of the page)"""
-        temp = self._commons.get({'action': 'wbgetentities',
-                                  'props': 'claims',
-                                  'sites': 'commonswiki',
-                                  'titles': f'File:{self.file}'})['entities']
+        response = self._commons.get({'action': 'wbgetentities',
+                                      'props': 'claims',
+                                      'sites': 'commonswiki',
+                                      'titles': f'File:{self.file}'})
+        if 'entities' not in response:
+            raise ProcessingError(402, f'Commons: {response.get("error")}')
+        temp = response['entities']
+        # '-1': there is no such file. (A file without structured data does have an id, it is only marked 'missing')
+        if next(iter(temp)).startswith('-'):
+            raise ProcessingError(101, f'File:{self.file}')
         self.mid = next(iter(temp))
         self.mc = next(iter(temp.values())).get('statements', {})  # 20260101: change default value to dict
         # 20260313 - HACKATHON - bugfix: sometimes, no structured data on Commons, avoiding TypeErrors
@@ -788,9 +916,13 @@ class Image:
     def get_commons_text(self, force_update=False):
         """This function will get the content of the file page on Commons"""
         if self.comtext is None or force_update is True:
-            self.comtext = self._commons.get({'action': 'parse',
-                                              'page': f'File:{self.file}',
-                                              'prop': 'wikitext'})['parse']['wikitext']['*']
+            response = self._commons.get({'action': 'parse',
+                                          'page': f'File:{self.file}',
+                                          'prop': 'wikitext'})
+            if 'parse' not in response:  # 'missingtitle': no file page with this name
+                error = response.get('error', {})
+                raise ProcessingError(101 if error.get('code') == 'missingtitle' else 402, f'File:{self.file}: {error}')
+            self.comtext = response['parse']['wikitext']['*']
         return self.comtext  # Store this one as a variable of the class, will be more pratical
 
     def ticket(self, action=True):
@@ -808,6 +940,8 @@ class Image:
                 tick = re.findall(r'(\{\{PermissionTicket\|id=\d{16})', self.comtext)
             if not tick:
                 print("I could not find a valid ticket number, will skip this for now.")
+                if action is True:  # Only while processing (ticket_number of the web interface also comes here)
+                    self.warn(303, f'File:{self.file}')
                 return None  # No match found, just emptying this one
             num = tick[0].replace('{', '').replace('}', '').replace('wikiportrait2|', '').replace(
                 'PermissionTicket|id=', '')
@@ -822,7 +956,7 @@ class Image:
                   'summary': self.sum,
                   'bot': True}
             if action is True:
-                self._commons.post(td)
+                self.warn_if_refused(self._commons.post(td), 304)
             return num
         else:
             print('The ticket number is already added as a claim.')
@@ -834,22 +968,26 @@ class Image:
             self.get_commons_claims()  # Set the claims using the previously defined function
 
         # First, do the P275 thingy
+        lic = None
         if self.mc.get('P275') is None:
             if self.comtext is None:
                 self.get_commons_text()
             k = re.findall('PERMISSION=\s?\S+ [\d.]+', self.comtext.upper())  # Filter the permission rule (using regex)
-            lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=',
-                                                                                                          '').strip()
+            if k:  # Nothing found: None is returned (and the default licence is NOT assumed)
+                lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=',
+                                                                                                              '').strip()
+        if lic is None:
+            return None
         self.licence = lic
         return self.licence
 
     def set_licence_properties(self):
         """This function will set the copyright related structured data (P275 and P6216)"""
         if self.mc.get('P275') is None:
-            self.get_licence_for_image()  # Get the licence for the image
+            found = self.get_licence_for_image()  # Get the licence for the image
             # Previous versions of the code had the licence incorporated here
             # lic = 'CC-BY-SA 4.0'
-            licq = Image.licenses.get(self.licence)
+            licq = Image.licenses.get(found)
             if licq is not None:  # We found an item for Wikidata that can be connected to this one
                 val = f'"entity-type": "item", "numeric-id": {licq},"id": "Q{licq}"'
                 dic = {'action': 'wbcreateclaim',
@@ -859,11 +997,12 @@ class Image:
                        'entity': self.mid,
                        'snaktype': 'value',
                        'value': '{' + val + '}'}
-                self._commons.post(dic)
+                self.warn_if_refused(self._commons.post(dic), 304)
                 print('Copyright license (P275) has been set.')
                 del dic  # Removing to avoid all kind of conflicts
             else:
                 print('Could not find a license')
+                self.warn(302, found)  # None: no PERMISSION= on the file page, otherwise a licence we do not know
                 return None  # No licence found
         else:
             print('P275 was already set')
@@ -890,7 +1029,7 @@ class Image:
                    'entity': self.mid,
                    'snaktype': 'value',
                    'value': '{' + val + '}'}
-            self._commons.post(dic)
+            self.warn_if_refused(self._commons.post(dic), 304)
             print("Copyright status (P6216) is set.")
         else:
             print('The copyright status was already present')
@@ -930,7 +1069,8 @@ class Image:
                'summary': f'{self.sum}: adding correct category',
                'nocreate': True,
                'appendtext': '\n' * (not self.comtext.endswith('\n')) + cat + '\n'}
-        self._commons.post(dic)
+        if 'error' in self.warn_if_refused(self._commons.post(dic), 304):
+            return None  # The category is not on the page, so the text below must not say it is
         # 20260926 - obviously, internal bookkeeping needs to be updated as well
         self.comtext += '\n' * (not self.comtext.endswith('\n')) + cat + '\n'
         print('Category has been added.')
@@ -950,7 +1090,7 @@ class Image:
                    'entity': self.mid,
                    'snaktype': 'value',
                    'value': '{' + val + '}'}
-            self._commons.post(dic)
+            self.warn_if_refused(self._commons.post(dic), 304)
         else:
             print('Property P180 already present')
 
@@ -978,20 +1118,23 @@ class Image:
         parsedic = {'action': 'parse',
                     'page': self.name,
                     'prop': 'wikitext'}
-        content = self._nl.get(parsedic)['parse']['wikitext'][
-            '*']  # The wikitext of the page (split into the various lines)
+        response = self._nl.get(parsedic)
+        if 'parse' not in response:  # 'missingtitle': the article was removed (or renamed) in the meantime
+            error = response.get('error', {})
+            raise ProcessingError(102 if error.get('code') == 'missingtitle' else 402, f'{self.name}: {error}')
+        content = response['parse']['wikitext']['*']  # The wikitext of the page (split into the various lines)
 
         low = content.lower()  # Store once to reduce computation time
 
         if '#redirect' in low or '#doorverwijzing' in low:
             print('\nYOU REQUESTED TO A REDIRECT PAGE - ABORTING - PLEASE REVIEW THIS MANUALLY')
-            return None  # Do not continue with this function
+            raise ProcessingError(105, self.name)  # Used to stop silently, as if the image was placed
 
         # Check whether an infobox is present on the article (and get the rule with the image)
         if self.file in content:
             print('\n\nERROR: Image was already on the page, please verify this!\n\n')
             # 20260926 - add custom exception for our beloved bot
-            raise ImageAlreadyError(f'File:{self.file} is already present on page "{self.name}".')
+            raise ImageAlreadyError(201, f'File:{self.file} is already present on page "{self.name}".')
             # return None  # File is already on the page, abort the run
         if '{{infobox' in low:  # If possible, we would like to place the image in an infobox
             # An infobox has been detected, initiate process of finding the place where the infobox
@@ -1009,7 +1152,7 @@ class Image:
                                             '')) > 12:  # length of the line > len(|afbeelding=), there is already an image there
                     print('\n\nERROR: There was already an image in the infobox. Please check this!\n\n')
                     # 20260926 - raise a custom exception if an image is already present
-                    raise ImageAlreadyError(f'File:{self.file} is already present on page "{self.name}".')
+                    raise ImageAlreadyError(202, f'The infobox on "{self.name}" has: {line.strip()}')
                     # return None  # Abort the run
 
                 # Continue with the completion
@@ -1041,6 +1184,8 @@ class Image:
                 append_location = re.search(r'\{\{infobox[^|]*', low).end()
                 # Determine the number of spaces that must be inserted to get a nice lay-out of the infobox
                 next_par = re.match(r'\|[^=]+', low[append_location:])
+                if next_par is None:  # The infobox does not start with a parameter as expected
+                    raise ProcessingError(203, content[append_location:append_location + 50].strip())
                 spaces = next_par.end() - next_par.start() - 12  # The number of additional spaces that we must insert
                 # Determine what text we should add
                 add_text = f'| afbeelding{" " * spaces}= {self.file}' + '\n' * (low[append_location - 1] == '\n')
@@ -1065,7 +1210,9 @@ class Image:
                    'bot': False,
                    'nocreate': True,
                    'summary': '+Upload via #Wikiportret'}
-        self._nl.post(editdic)
+        response = self._nl.post(editdic)
+        if 'error' in response:  # E.g. a protected page, or an edit filter: the image is NOT in the article
+            raise ProcessingError(204, response['error'].get('info', response['error']))
 
         # Some cleaning, save the garbage collector some work
         del content, low
@@ -1080,13 +1227,10 @@ class Image:
         # Make sure the bot is in test mode whenever it's needed
         self.testing = test
 
-        # First: check whether we are dealing with a disambiguation page
+        # First: check whether the article can be used (disambiguation page, redirect, ...)
         # First things first (addition 2024-03-22)
-        # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
-        # If a disambiguation page is detected, an error will be thrown
-        if self.is_dp():
-            print('ERROR: the page you passed is a disambiguation page!')
-            raise ValueError('Found a disambiguation page - stopping the processing!')
+        # If not, a ProcessingError is raised
+        self.check_article()
 
         print('Getting the information (starting with Commons)')
         self.get_commons_claims()
@@ -1099,26 +1243,18 @@ class Image:
         self.get_image_date()
 
     def prepare_image_data(self):
-        # More or less the same as prepare_information, just with threading enabled
+        # More or less the same as prepare_information, but always in test mode (used by the web interface)
         self.testing = True  # This is a safety measure to present
-        # First, check whether we are dealing with a dp
-        if self.is_dp():
-            print('ERROR: the page you passed is a disambiguation page!')
-            raise ValueError('Found a disambiguation page - stopping the processing!')
+        # First, check whether the article can be used (disambiguation page, redirect, ...)
+        self.check_article()
         # Vamos!
-        # For convenience, add threads to this party
-        t1 = threading.Thread(target=self.get_commons_claims)
-        t2 = threading.Thread(target=self.get_commons_text)
-
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
+        # 20261024 - no threads anymore: an error raised in a thread never reached the caller (so it was not reported
+        # to the operator, and the processing went on with missing data)
+        self.get_commons_claims()
+        self.get_commons_text()
 
         # Wikidata
-        t3 = threading.Thread(target=self.ini_wikidata)
-        t3.start()
-        t3.join()
+        self.ini_wikidata()
 
         self.get_image_date()
 
@@ -1132,29 +1268,26 @@ class Image:
         Arguments: see __call__.
         """
         # First things first (addition 2024-03-22)
-        # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
-        # If a disambiguation page is detected, an error will be thrown
-        if self.is_dp():
-            print('WARNING: the page you passed is a disambiguation page!')
-            raise ValueError('Found a disambiguation page - stopping the processing!')
+        # Check whether the article can be used (disambiguation page, redirect, ...): if not, a ProcessingError is raised
+        self.check_article()
 
         print('I will now process the image on Commons')
 
         # Properties that should be set on Commons
         print(
             "I'll initialize the interface for Commons (getting the claims already present and the page of the file).")
+        # Perform these tasks at all time (outside the try below: without the file, nothing else makes sense)
+        self.get_commons_claims()
+        self.get_commons_text()
         try:
-            # Perform these tasks at all time
-            self.get_commons_claims()
-            self.get_commons_text()
             if commons_perm is True:  # Only perform this task when requested
                 print('I will now add the P6305 property to the file on Commons - the VRT-ticket number')
                 self.ticket()
                 print('Now adding other information on copyright (P275/P6216)')
                 self.set_licence_properties()
-        # noinspection PyBroadException
-        except:
+        except Exception as error:  # The structured data is not needed for the rest: go on, but tell the operator
             print('Something went wrong while processing the stuff for Commons.')
+            self.warn(301, str(error) if isinstance(error, ProcessingError) else repr(error))
 
         # Add image to the Dutch Wikipedia (manually, to trigger watchlists)
         # 20260929 - repeated maxlag-related issues => swapping order of operations
@@ -1164,15 +1297,12 @@ class Image:
             print('I finished the addition. Check for eventual errors above.')
 
         # Identify the depicted person on Commons (needs the qid, which the web interface loaded beforehand)
+        # Without a Wikidata item, ini_wikidata raises ProcessingError 107 (check_article normally finds that earlier)
         if data_connect is True:
-            try:
-                print('I will now identify the person in the image, as requested.')
-                print('Adding a P180-claim to Commons to list the identity of the depicted person.')
-                self.depicts()
-                print('I added the Wikidata item of the depicted person as P180 to the image.')
-            except AssertionError:
-                print("I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. "
-                      "You might have to manually create the item.")
+            print('I will now identify the person in the image, as requested.')
+            print('Adding a P180-claim to Commons to list the identity of the depicted person.')
+            self.depicts()
+            print('I added the Wikidata item of the depicted person as P180 to the image.')
 
     def wikidata_steps(self, category=True, data_connect=True):
         """
@@ -1180,37 +1310,33 @@ class Image:
         on Commons, which is connected to Wikidata). Can raise MaxlagError, after which this phase is retried later,
         by the operator if their tokens are still stored and otherwise by the bot account.
         Without self.reuse_claims no claims are available yet, so they are requested from Wikidata first.
+        Without a Wikidata item, ini_wikidata raises ProcessingError 107 (this used to be printed & ignored).
         Arguments: see __call__.
         """
-        try:
-            if not (self.reuse_claims and self.claims is not None and self.qid is not None):
-                print('Getting claims and other data from Wikidata.')
-                self.ini_wikidata()
-            if category is True:  # Only perform these edits when the user commands them
-                print(
-                    "I'm now making the category on Commons. If an error occurs, it likely means that the category "
-                    "already existed.")
-                self.make_cat()
-                print(
-                    'The eleventh commandment of the Lord states that we should also check whether the category is '
-                    'attached to the file, so doing that now')
-                self.add_category()
-                print('I will add the category on Commons to Wikidata.')
-                self.interwiki()
-                self.commons_cat()
-                print('The category was placed on Commons and connected to Wikidata.')
-            if data_connect is True:  # Only connect the image if ordered to do so
-                print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
-                self.set_image()
-                print('The image has been set. I will now look for a date.')
-                # Doing one more Wikidata related thing, cause this needs the claims on Commons
-                print('I proceed with setting the date as a qualifyer for the image.')
-                self.date_meta()
-                print('The identity of the depicted is now properly listed on Wikidata and Commons.')
-        except AssertionError:
+        if not (self.reuse_claims and self.claims is not None and self.qid is not None):
+            print('Getting claims and other data from Wikidata.')
+            self.ini_wikidata()
+        if category is True:  # Only perform these edits when the user commands them
             print(
-                "I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might "
-                "have to manually create the item.")
+                "I'm now making the category on Commons. If an error occurs, it likely means that the category "
+                "already existed.")
+            self.make_cat()
+            print(
+                'The eleventh commandment of the Lord states that we should also check whether the category is '
+                'attached to the file, so doing that now')
+            self.add_category()
+            print('I will add the category on Commons to Wikidata.')
+            self.interwiki()
+            self.commons_cat()
+            print('The category was placed on Commons and connected to Wikidata.')
+        if data_connect is True:  # Only connect the image if ordered to do so
+            print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
+            self.set_image()
+            print('The image has been set. I will now look for a date.')
+            # Doing one more Wikidata related thing, cause this needs the claims on Commons
+            print('I proceed with setting the date as a qualifyer for the image.')
+            self.date_meta()
+            print('The identity of the depicted is now properly listed on Wikidata and Commons.')
 
     def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False, test=False,
                  operator_steps=True):

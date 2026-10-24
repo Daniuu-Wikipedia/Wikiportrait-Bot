@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% import 'forms.html' as forms %}
+
+{% block head %}
+    <title>Wikiportret - Afbeelding Al Aanwezig</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/message.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/uploadexists.css') }}">
+{% endblock %}
+
+{% block content_title %}
+    <h1>Afbeelding Al Aanwezig</h1>
+{% endblock %}
+
+{% block body %}
+    <div class="card" style="max-width: 800px;">
+        <div class="notice notice-warning">
+            {% if same_image %}
+            <strong><i class="fa-solid fa-circle-info"></i> Deze afbeelding staat al in het artikel</strong>
+            Iemand heeft <em>{{ file }}</em> al in het artikel <em>{{ page }}</em> geplaatst.
+            Het artikel is daarom niet aangepast.
+            {% else %}
+            <strong><i class="fa-solid fa-triangle-exclamation"></i> Het artikel heeft al een afbeelding</strong>
+            De infobox van <em>{{ page }}</em> bevat al een afbeelding. Die is niet vervangen: kijk zelf welke
+            afbeelding het beste in het artikel past.
+            {% endif %}
+        </div>
+
+        {# The images side by side: the one that was processed, and (if known) the one that is in the article now #}
+        <div class="image-compare{% if not existing %} single{% endif %}">
+            <figure class="image-tile">
+                <a href="{{ file_url }}" target="_blank" rel="noopener noreferrer">
+                    <img src="{{ file_thumbnail }}" alt="{{ file }}" loading="lazy" referrerpolicy="no-referrer">
+                </a>
+                <figcaption>
+                    <span class="image-label">{% if same_image %}Afbeelding in het artikel{% else %}Uw afbeelding{% endif %}</span>
+                    <span class="image-name">{{ file }}</span>
+                </figcaption>
+            </figure>
+            {% if existing %}
+            <figure class="image-tile image-tile-current">
+                <a href="{{ existing_url }}" target="_blank" rel="noopener noreferrer">
+                    <img src="{{ existing_thumbnail }}" alt="{{ existing }}" loading="lazy" referrerpolicy="no-referrer">
+                </a>
+                <figcaption>
+                    <span class="image-label">Nu in de infobox</span>
+                    <span class="image-name">{{ existing }}</span>
+                </figcaption>
+            </figure>
+            {% endif %}
+        </div>
+
+        {# What the job did before it stopped (see uploadexists in app.py) #}
+        <h3 class="steps-title">Wat is er gebeurd?</h3>
+        <ul class="steps">
+            {% if structured_data_failed %}
+            <li class="step step-failed"><i class="fa-solid fa-circle-xmark"></i>
+                Gestructureerde gegevens op Commons (VRT-ticket, licentie): mislukt, zie de problemen hieronder</li>
+            {% else %}
+            <li class="step step-done"><i class="fa-solid fa-circle-check"></i>
+                Gestructureerde gegevens op Commons (VRT-ticket, licentie) toegevoegd</li>
+            {% endif %}
+            <li class="step step-skipped"><i class="fa-solid fa-circle-minus"></i>
+                Artikel op Wikipedia: niet aangepast</li>
+            <li class="step step-skipped"><i class="fa-solid fa-circle-minus"></i>
+                Afgebeelde persoon op Commons, categorie en Wikidata: niet uitgevoerd</li>
+        </ul>
+
+        {% include 'error_list.html' %}
+
+        <p class="text-secondary">
+            {% if same_image %}
+            Controleer of de koppeling op Wikidata en de categorie op Commons al in orde zijn, en vul ze zo nodig zelf aan.
+            {% else %}
+            Wilt u de afbeelding toch gebruiken? Pas dan de infobox zelf aan, en vul daarna de koppeling op Wikidata en
+            de categorie op Commons aan.
+            {% endif %}
+        </p>
+
+        <div class="link-grid">
+            <a href="{{ article_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                <i class="fa-brands fa-wikipedia-w"></i> Artikel bekijken</a>
+            <a href="{{ edit_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-pen"></i> Artikel bewerken</a>
+            <a href="{{ history_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-clock-rotate-left"></i> Geschiedenis</a>
+            <a href="{{ file_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-image"></i> Bestand op Commons</a>
+            {% if wikidata_url %}
+            <a href="{{ wikidata_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                <i class="fa-solid fa-barcode"></i> Wikidata-item</a>
+            {% endif %}
+        </div>
+
+        <div class="button-row">
+            <a href="{{ url_for('input') }}" class="btn">Nieuwe Afbeelding Verwerken</a>
+            {{ forms.logout_button() }}
+        </div>
+    </div>
+{% endblock %}

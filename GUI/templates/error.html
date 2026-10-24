@@ -16,6 +16,7 @@
             <strong>Bericht:</strong><br>
             {{message}}
         </div>
+        {% include 'error_list.html' %}
 
         <div class="mt-1 text-center">
             <a href="{{ url_for('input') }}" class="btn">Terug naar Dashboard</a>

@@ -5,6 +5,7 @@ import toolforge
 import threading
 import time
 import os
+import traceback
 import Wikiportret_core_web_link as wcl  # Dealing with the db & getting info from the UI
 import Wikiportret_db_utils as dbutil
 import Wikiportret_config
@@ -48,6 +49,7 @@ def background_load(session_id, config):
     conn = toolforge.toolsdb(config['DB_NAME'])
     conn.autocommit(True)
     success = False  # By default, assume that Daniuu is crap at coding & the bot fails
+    bot, failure = None, None  # failure: the error that stopped the loading (shown to the operator on /review)
     try:
         bot = wcl.create_from_db(session_id,
                                  config,
@@ -62,6 +64,13 @@ def background_load(session_id, config):
         bot.write_to_db(session_id, conn)
         bot.input_data_to_db(session_id, conn)
         success = True
+    except MaxlagError:
+        # Wikidata is overloaded: the session still ends up 'failed', but this is no error of the job, so it is not
+        # stored in error_log (failure stays None)
+        print(f'Session {session_id}: maxlag while loading the data')
+    except Exception as error:  # E.g. a ProcessingError of the core: a typo in the name of the file, ...
+        failure = error
+        traceback.print_exc()
     finally:
         status = 'completed' if success else 'failed'
         dbutil.adjust_db(
@@ -69,8 +78,17 @@ def background_load(session_id, config):
             config['DB_NAME'],
             connection=conn,
             params=(status, session_id))
+        log_errors(session_id, config, conn, bot, failure)
         conn.close()
         print(f'SUCCESS in getting data & writing db stuff for {session_id:d}')
+
+
+def log_errors(session_id, config, conn, bot, failure):
+    """Stores the warnings of the job & the error that stopped it (if any) in error_log, for the operator"""
+    if bot is not None:
+        bot.log_errors(session_id, failure, conn)
+    elif failure is not None:  # The job could not even be loaded from the db (so no file & page to log either)
+        dbutil.log_errors([(500, repr(failure))], config['DB_NAME'], session_id, connection=conn)
 
 
 def log_failed_bot_job(session_id, config, conn, bot_credentials):
@@ -100,6 +118,7 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
     # 20260926 - extend possible statusses in db: also allow for "althere" and "maxlag", depending on error
     success, status = False, 'ufail'  # By default, assume that Daniuu is crap at coding & the bot fails
     conn, bot = toolforge.toolsdb(config['DB_NAME']), None
+    failure = None  # The error that stopped the job (shown to the operator on /statussubmit)
     outsourced = False  # True if the bot account (instead of the operator) is doing this job
     try:
         bot = wcl.create_from_db(session_id, config, user=user_id, bot_credentials=bot_credentials)
@@ -132,13 +151,17 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         # 20261024 - the bot account refuses jobs that the wikis do not confirm: leave them for manual review
         print(f'Session {session_id}: {error}')
         status = 'ufail'
+        failure = error
         outsourced = True  # Only raised for jobs of the bot account (raised while the object was being built)
-    except ImageAlreadyError:
+    except ImageAlreadyError as error:
         # 20260926 - separate handling of attempts to overwrite existing files
         # 20260929 - watch out for runs that previously came from maxlag
         # Assumption: operator previously inserted the image manually into the article
         # 20261024 - always 'althere' (writing True stored enum index 1 = 'pending' & restarted the whole session)
         status = 'althere'
+        # Code 201 (image already in the article) or 202 (the infobox has another image): the status says it all,
+        # so the error is deliberately not stored in error_log (failure stays None; warnings are still logged)
+        print(f'Session {session_id}: {error}')
 
     except MaxlagError:
         # 20260926 - separate handling of maxlag errors
@@ -154,6 +177,9 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
             dbutil.adjust_db(MESSAGE_INSERT, config['DB_NAME'], connection=conn,
                              params=(session_id, user_id, bot.generate_confirmation(shorts),
                                      shorts[0], shorts[1], bot.qid))
+    except Exception as error:  # E.g. a ProcessingError of the core: the job stays 'ufail', the error is logged below
+        failure = error
+        traceback.print_exc()
     finally:
         if success is True:
             status = 'uploaded'
@@ -162,6 +188,7 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         SET status = %s, locked = 0, locked_at = NULL
         WHERE session_id = %s"""
         dbutil.adjust_db(query, config['DB_NAME'], connection=conn, params=(status, session_id))
+        log_errors(session_id, config, conn, bot, failure)  # Also the warnings of a job that did work out
         # 20261024 - jobs of the bot account that did not work out (and are not simply waiting for a retry)
         # are listed on the wiki, so that someone can pick them up manually
         if outsourced and status not in ('uploaded', 'althere', 'maxlag'):

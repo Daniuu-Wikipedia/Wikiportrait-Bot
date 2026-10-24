@@ -20,8 +20,12 @@
             <strong><i class="fa-solid fa-triangle-exclamation"></i> De gegevens konden niet worden opgehaald</strong>
             Er ging iets mis bij het laden van de gegevens voor deze afbeelding. Er is niets geüpload.
             {% endif %}
+            {% if not errors %}{# A known problem (below) can often be fixed without Daniuu #}
             Daniuu, de almachtige beheerder van deze website, moet gewaarschuwd worden, zodat hij kan uitzoeken wat er misging.
+            {% endif %}
         </div>
+
+        {% include 'error_list.html' %}
 
         <div class="button-row">
             <a href="{{ url_for('input') }}" class="btn">Opnieuw proberen</a>

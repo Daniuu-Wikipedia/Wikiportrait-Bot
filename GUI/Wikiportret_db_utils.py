@@ -101,6 +101,47 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None, params=None):
     return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine
 
 
+# Problems found while processing an image (codes: Wikiportret_core.ERROR_MESSAGES), one row per problem
+# session_id is a foreign key with ON DELETE RESTRICT: a session cannot be deleted (directly, or through the cascade
+# from users) as long as errors are logged for it. The type must be identical to sessions.session_id (int unsigned)
+#
+# CREATE TABLE `error_log` (
+#   `error_id` int unsigned NOT NULL AUTO_INCREMENT,
+#   `session_id` int unsigned DEFAULT NULL,
+#   `file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+#   `page` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+#   `qid` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+#   `error_code` smallint unsigned NOT NULL,
+#   `details` text COLLATE utf8mb4_unicode_ci,
+#   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+#   PRIMARY KEY (`error_id`),
+#   KEY `session_id` (`session_id`),
+#   CONSTRAINT `error_log_ibfk_1` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`session_id`)
+#     ON DELETE RESTRICT ON UPDATE RESTRICT
+# ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ERROR_INSERT = """
+INSERT INTO error_log (session_id, file, page, qid, error_code, details) VALUES (%s, %s, %s, %s, %s, %s)"""
+
+
+def log_errors(errors, dbname, session_id, file=None, page=None, qid=None, connection=None):
+    """
+    Stores problems, given as (code, details) pairs, in error_log. Never raises: the logging must not get in the way
+    of the job itself (the problems are printed by the core anyway).
+    """
+    for code, details in errors:
+        try:
+            adjust_db(ERROR_INSERT, dbname, connection=connection,
+                      params=(session_id, file, page, qid, code, None if details is None else str(details)[:2000]))
+        except Exception as error:
+            print(f'Could not log error {code} of session {session_id}: {error!r}')
+
+
+def get_errors(session_id, dbname, connection=None):
+    """(code, details) of every problem logged for a session, oldest first"""
+    return query_db("SELECT error_code, details FROM error_log WHERE session_id=%s ORDER BY error_id;", dbname,
+                    need_all=True, connection=connection, params=(session_id,)) or ()
+
+
 class TokensMissingError(LookupError):
     """
     The OAuth tokens of an operator are not (or no longer completely) in the db. The db removes them automatically

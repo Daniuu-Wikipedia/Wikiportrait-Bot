@@ -4,7 +4,7 @@ A module to couple Wikiportret Core to some very handy Flask utilities
 # import flask
 import toolforge
 
-from Wikiportret_core import Image, NlBot
+from Wikiportret_core import Image, NlBot, ProcessingError
 import Wikiportret_db_utils as dbut
 import Wikiportret_job_signature as job_signature
 import datetime as dt
@@ -96,6 +96,16 @@ class WebImage(Image):
         self._nl.verify_OAuth_web(config, secret)
         self._meta.verify_OAuth_web(config, secret)
         del secret  # Destroy these immediately for obvious reasons
+
+    def log_errors(self, session_number, error=None, connection=None):
+        """
+        Stores the warnings of this run and the error that stopped it (if any) in error_log, so the operator can be
+        told what went wrong (see Wikiportret_db_utils.get_errors). Errors from outside the core get code 500.
+        """
+        problems = self.warnings + ([error] if error is not None else [])
+        dbut.log_errors([(e.code, e.detail) if isinstance(e, ProcessingError) else (500, repr(e)) for e in problems],
+                        self.dbname, session_number, self.file, self.name, self.qid, connection=connection)
+        self.warnings = []  # Logged now: never twice
 
     def write_to_db(self, session_number, connection=None):
         connection_provided = connection is None

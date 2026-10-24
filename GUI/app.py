@@ -15,6 +15,7 @@ import datetime as dt
 
 # Import some auxiliary classes
 import os
+import re
 import hmac
 import secrets
 import urllib.parse
@@ -22,6 +23,7 @@ from objects import SiteSettings
 
 # from Wikiportret_core import Image
 import Wikiportret_core_web_link as wcl
+from Wikiportret_core import ERROR_MESSAGES
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
 import Wikiportret_job_signature as job_signature
@@ -323,6 +325,15 @@ def renew():
                                  user_name=flask.session['username'])
 
 
+def session_errors():
+    """
+    The problems that the background job logged for the current session (codes: Wikiportret_core.ERROR_MESSAGES),
+    for templates/error_list.html. Both the errors that stopped the job and warnings of a job that did work out.
+    """
+    return [{'code': code, 'message': ERROR_MESSAGES.get(code, ERROR_MESSAGES[500]), 'details': details}
+            for code, details in db_utils.get_errors(flask.session.get('session_id'), app.config['DB_NAME'])]
+
+
 # Race: the db removed the tokens between check_login_data and their use (e.g. while building the WebImage)
 @app.errorhandler(db_utils.TokensMissingError)
 def tokens_missing(e):
@@ -433,6 +444,7 @@ def review():
                                  license_options=wcl.WebImage.licenses.keys(),
                                  selected_license='CC-BY-SA 4.0',
                                  bot=bot_object,
+                                 errors=session_errors(),  # Warnings of the loading, e.g. an invalid date
                                  user_name=flask.session['username'])
 
 
@@ -529,16 +541,95 @@ def statussubmit():
     match message_data[0]:
         case 'uploaded':
             return flask.redirect(flask.url_for('uploaddone'))
-        case 'althere':
-            return 'De afbeelding stond er al: de wikipagina moet handmatig gecontroleerd worden.'  # Evidently, replace later
+        case 'althere':  # The article already has an image: own page, the operator decides what to do with it
+            return flask.redirect(flask.url_for('uploadexists'))
+        case 'ufail':  # What went wrong was logged by the background job
+            return flask.render_template('error.html',
+                                         message='De afbeelding kon niet (volledig) verwerkt worden. Controleer het '
+                                                 'bestand op Commons en het artikel op Wikipedia.',
+                                         errors=session_errors(),
+                                         user_name=flask.session['username']), 500
         case 'maxlag':
             message_from_db = db_utils.query_db(MESSAGE_QUERY, app.config['DB_NAME'],
                                                 params=(flask.session['session_id'], flask.session['username']))
             return flask.render_template('uploadmaxlag.html',
                                          message=message_from_db[2] if message_from_db else '',
+                                         errors=session_errors(),
                                          user_name=flask.session['username'])
     # To do: change this, but for alpha testing, just keep as is...
     return 'Daniuu moet gewaarschuwd worden: er is mogelijk iets misgegaan met deze upload.'
+
+
+def wiki_url(site, title, prefix=''):
+    """Link to a page on a wiki (site: e.g. 'nl.wikipedia.org'). quote() makes sure a title cannot break the link"""
+    return f'https://{site}/wiki/' + urllib.parse.quote(prefix + title.replace(' ', '_'), safe='/:')
+
+
+def thumbnail_url(file, width=320):
+    """
+    Scaled-down version of a file (Special:FilePath redirects to upload.wikimedia.org). Asked to the Dutch Wikipedia,
+    so that a local file in an infobox works as well as a file on Commons
+    """
+    return wiki_url('nl.wikipedia.org', file, 'Special:FilePath/') + f'?width={width:d}'
+
+
+def file_in_infobox(details):
+    """
+    The file in the infobox of the article, from the details of error 202 ('The infobox on "X" has: |afbeelding = Y').
+    None if there is no plain file name (e.g. a template or a gallery in the parameter)
+    """
+    match = re.search(r'afbeelding\s*=\s*(.+)', details or '', flags=re.IGNORECASE)
+    if match is None:
+        return None
+    name = match.group(1).strip().strip('[]').split('|')[0].strip()
+    name = re.sub(r'^(file|bestand|image|afbeelding)\s*:\s*', '', name, flags=re.IGNORECASE)
+    if not re.search(r'\.(jpe?g|png|gif|svg|tiff?|webp)$', name, flags=re.IGNORECASE) or re.search(r'[{}<>]', name):
+        return None
+    return name
+
+
+# Codes of ImageAlreadyError (Wikiportret_core.ERROR_MESSAGES): the image itself is in the article / another image is
+IMAGE_ALREADY_CODES = (201, 202)
+
+
+@app.route('/uploadexists')
+def uploadexists():
+    """
+    The article already had an image, so the job stopped before the article was changed (status 'althere').
+    What was done by then: the structured data of the file on Commons (VRT ticket, licence). What was not: the article,
+    the depicted person on Commons, Wikidata and the category. The operator gets an overview to check it themselves.
+    """
+    check_login_data('uploadexists')
+    query = """
+    SELECT s.page, s.file, c.qid FROM sessions s
+    JOIN users u ON u.user_id = s.operator_id
+    LEFT JOIN claims c ON c.session_id = s.session_id
+    WHERE s.session_id = %s AND u.username = %s AND s.status = 'althere'
+    """
+    row = db_utils.query_db(query, app.config['DB_NAME'],
+                            params=(flask.session['session_id'], flask.session['username']))
+    if row is None:  # Not the user's own session, or not stopped because of an image that was already there
+        flask.abort(403)
+    page, file, qid = row
+
+    errors = session_errors()
+    reason = next((error for error in errors if error['code'] in IMAGE_ALREADY_CODES), None)
+    existing = file_in_infobox(reason['details']) if reason and reason['code'] == 202 else None
+    return flask.render_template(
+        'uploadexists.html',
+        same_image=reason is None or reason['code'] == 201,  # Without a logged reason: the image itself was found
+        page=page, file=file, qid=qid, existing=existing,
+        article_url=wiki_url('nl.wikipedia.org', page),
+        edit_url=wiki_url('nl.wikipedia.org', page) + '?action=edit',
+        history_url=wiki_url('nl.wikipedia.org', page) + '?action=history',
+        file_url=wiki_url('commons.wikimedia.org', file, 'File:'),
+        file_thumbnail=thumbnail_url(file),
+        existing_url=wiki_url('nl.wikipedia.org', existing, 'Bestand:') if existing else None,
+        existing_thumbnail=thumbnail_url(existing) if existing else None,
+        wikidata_url=wiki_url('www.wikidata.org', qid) if qid else None,
+        structured_data_failed=any(error['code'] == 301 for error in errors),
+        errors=[error for error in errors if error['code'] not in IMAGE_ALREADY_CODES],  # The reason is the page itself
+        user_name=flask.session['username'])
 
 
 @app.route('/uploaddone')
@@ -548,7 +639,8 @@ def uploaddone():
                                         params=(flask.session['session_id'], flask.session['username']))
     if message_from_db is None:  # No message of this user for this session
         flask.abort(403)
-    return flask.render_template('uploaddone.html', message=message_from_db[2])
+    return flask.render_template('uploaddone.html', message=message_from_db[2],
+                                 errors=session_errors())  # Warnings: things that could not be done
 
 
 @app.route('/uploads')
@@ -597,7 +689,8 @@ def forbidden_test():
 @app.errorhandler(wcl.WikiError)  # Raised for sessions with status 'failed': loading the data in the background failed
 def load_failed(e):
     # Raised from every route that loads a session (review, submit), so it is handled in one place
-    return flask.render_template('loadfailed.html',
+    # The background job logged why (e.g. a typo in the name of the file)
+    return flask.render_template('loadfailed.html', errors=session_errors(),
                                  user_name=flask.session.get('username')), 500
 
 

@@ -88,12 +88,14 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
     """
     Processes a submitted session (status 'ready'), or retries one that was postponed (status 'maxlag').
 
-    Who makes the edits (only Wikidata can trigger maxlag):
-        * First attempt (from_maxlag=False): the operator, with their own tokens. This covers everything on the
-          Dutch Wikipedia and Commons, so those edits are never postponed.
-        * Retry (from_maxlag=True, called by Wikiportret_maxlag_handler): only the Wikidata edits and creating &
-          adding the category on Commons are still open. They are made by the operator if their tokens are still
-          stored, otherwise by the bot account (bot_credentials, see WebImage.acting_as_bot).
+    Who makes the edits (only Wikidata can trigger maxlag, see the two phases in Image.__call__):
+        * First attempt (from_maxlag=False): the operator, with their own tokens, runs both phases. The operator
+          steps (everything on the Dutch Wikipedia and Commons, except the category) need no Wikidata call, so
+          they are never postponed.
+        * Retry (from_maxlag=True, called by Wikiportret_maxlag_handler): only the Wikidata steps (the Wikidata
+          edits and creating & adding the category on Commons) are still open. They are made by the operator if
+          their tokens are still stored, otherwise by the bot account (bot_credentials, see
+          WebImage.acting_as_bot), which can not edit the Dutch Wikipedia.
     """
     # 20260406 - extended to also store short urls in the messages db
     # 20260926 - extend possible statusses in db: also allow for "althere" and "maxlag", depending on error
@@ -103,13 +105,11 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
     try:
         bot = wcl.create_from_db(session_id, config, user=user_id, bot_credentials=bot_credentials)
         outsourced = bot.acting_as_bot
-        # Arguments for the bot: commons_perm, category, data_connect, nlwiki, conf, test
-        _, shorts, confirmation = bot(True,  # Commons permission properties (operator)
-                                      True,  # Set category (Wikidata-dependent: operator, or bot account on a retry)
-                                      True,  # Make all connections to Wikidata (idem)
-                                      not from_maxlag,  # Place image on nlwiki (operator only, first attempt)
-                                      False,  # Print confirmation to the terminal (not used in webservice)
-                                      False)  # Make the actual calls to the API
+        # First attempt: both phases (operator steps on Commons & nlwiki, then the Wikidata steps)
+        # Retry after maxlag: only the Wikidata steps, the operator steps were completed during the first attempt
+        _, shorts, confirmation = bot(conf=False,  # Print confirmation to the terminal (not used in webservice)
+                                      test=False,  # Make the actual calls to the API
+                                      operator_steps=not from_maxlag)
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
@@ -168,7 +168,9 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         if outsourced and status not in ('uploaded', 'althere', 'maxlag'):
             log_failed_bot_job(session_id, config, conn, bot_credentials)
         if bot is not None:  # 20260314 - HACKATHON: fix bug that caused categories to be added > 1 time
-            bot.ini_wikidata(session_id, conn)
+            # Store the claims that the bot works with (set_image updates them). They are not requested from Wikidata
+            # again: that read could raise MaxlagError here and would skip the rest of this cleanup
+            bot.write_to_db(session_id, conn)
             bot.input_data_to_db(session_id, conn)
         conn.close()
 

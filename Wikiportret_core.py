@@ -21,6 +21,10 @@ WHO MAKES WHICH EDIT
       the category on Commons (which is connected to Wikidata and therefore can get delayed by it).
       If these are postponed (status 'maxlag') they may be finished later by the maxlag handler, with the tokens of
       the operator if still available, otherwise by the bot account (see Wikiportret_core_web_link.WebImage).
+    This is why __call__ works in two phases: operator_steps (Commons except the category, Dutch Wikipedia) and
+    wikidata_steps (Wikidata, category). In the web interface the qid and claims are loaded from Wikidata before the
+    operator can submit, so neither phase has to read from Wikidata again (reuse_claims). The bot account can only
+    be asked to do phase 2: its clients for the Dutch Wikipedia and Meta are read_only (see Bot.post).
     The command line version of this script has no operator: everything is done with the tokens of the bot account.
 
 Information can be found in Wikiportret ticket 2021021010009189 (VRT access required)
@@ -76,6 +80,7 @@ class Bot:
         self._auth = None  # The OAuth ID (this is the token that will allow the auth - store this for every bot)
         self._max = Bot.max_edit if m is None else m  # Can be changed if bot bit is granted
         self.testing = False  # By default, set all bots to write to the wiki
+        self.read_only = False  # If True, post() refuses everything but purges (set for wikis that may not be edited)
         self._testfile = 'General.txt'  # File to which output is written if bot is called in test mode
 
     def __str__(self):
@@ -133,6 +138,8 @@ class Bot:
 
     def post(self, params):
         assert 'action' in params, 'Please provide an action'
+        if self.read_only and params['action'] != 'purge':  # A purge changes no content, so it is allowed
+            raise PermissionError(f'Edits on {self.api} are not allowed for this bot')
 
         # Additional safety loop for testing
         if self.testing is True:  # This loop is designed to prevent the bots from making accidental edits while in
@@ -854,12 +861,10 @@ class Image:
         if self.mc.get('P6216') is None:
             if self.comtext is None:
                 self.get_commons_text()
-            if any((i in self.comtext.lower() for i in ('pd', 'public domain'))):
-                print('I found a potential indication that the file could be in the public domain!')
-                a = input('\nIs this an incorrect indication? [y/n] ').lower().strip()
-                if a == 'n':
-                    print('Terminating the process of P6216 setting')
-                    return None
+            if re.search(r'\bpd\b|public domain', self.comtext.lower()):
+                # No questions can be asked in the web service: when in doubt, leave P6216 for a human to set
+                print('I found a potential indication that the file could be in the public domain: not setting P6216')
+                return None
             val = '"entity-type": "item", "numeric-id": 50423863,"id": "Q50423863"'
             dic = {'action': 'wbcreateclaim',
                    'summary': self.sum,
@@ -1102,24 +1107,13 @@ class Image:
 
         return True
 
-    def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False, test=False):
-        """This function can be used to do handle an entire request at once.
-        Arguments (and their function):
-            * Commons_perm: if set to True, the bot will set all permission-related properties of the file @Commons
-              Always an edit of the operator themselves (never of the bot account): Commons does not hit maxlag.
-            * Category: if set to True, the bot will create and set the category on Commons AND connect it to the Wikidata item.
-              Postponable: depends on Wikidata, so it may be finished later (by the bot account if needed).
-            * Data_connect: if set to True, the image will be connected to the given person's Wikidata item.
-              Postponable: Wikidata edit, so it may be finished later (by the bot account if needed).
-            * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
-              Always an edit of the operator themselves (never of the bot account): Wikipedia does not hit maxlag.
-            * Conf: is set to True, the confirmation for VRT will be printed explicitly.
-            * Test: if set to True, the bot will be run in its test mode - so not making any edits to the wiki
+    def operator_steps(self, commons_perm=True, data_connect=True, nlwiki=True):
         """
-
-        # Make sure the bot is set to test mode (and does not make any edits)
-        self.testing = test
-
+        Phase 1 of a job: all edits on Commons and the Dutch Wikipedia, except the category.
+        These are always made by the operator, during the first attempt. They need no Wikidata call (the qid is
+        already known when the job comes from the web interface), so they are never postponed by maxlag.
+        Arguments: see __call__.
+        """
         # First things first (addition 2024-03-22)
         # Check whether the requested page on the Dutch Wikipedia is a disambiguation page
         # If a disambiguation page is detected, an error will be thrown
@@ -1127,7 +1121,6 @@ class Image:
             print('WARNING: the page you passed is a disambiguation page!')
             raise ValueError('Found a disambiguation page - stopping the processing!')
 
-        # Category on Wikimedia Commons
         print('I will now process the image on Commons')
 
         # Properties that should be set on Commons
@@ -1142,32 +1135,40 @@ class Image:
                 self.ticket()
                 print('Now adding other information on copyright (P275/P6216)')
                 self.set_licence_properties()
-                print('Property set, I will need support from Wikidata for the next steps.')
         # noinspection PyBroadException
         except:
             print('Something went wrong while processing the stuff for Commons.')
 
         # Add image to the Dutch Wikipedia (manually, to trigger watchlists)
         # 20260929 - repeated maxlag-related issues => swapping order of operations
-        # Swapping orders + changing argument in background script ==> problem of repeating errors solved!
         if nlwiki is True:
             print('I will now add the image to the Dutch Wikipedia.')
             self.add_image_to_article()
-            print(
-                'I finished the addition. Check for eventual errors above. We hope you enjoyed the flight with us and '
-                'hope to see you again!')
+            print('I finished the addition. Check for eventual errors above.')
 
-        # Setting the properties on Wikidata (API is tricky)
+        # Identify the depicted person on Commons (needs the qid, which the web interface loaded beforehand)
+        if data_connect is True:
+            try:
+                print('I will now identify the person in the image, as requested.')
+                print('Adding a P180-claim to Commons to list the identity of the depicted person.')
+                self.depicts()
+                print('I added the Wikidata item of the depicted person as P180 to the image.')
+            except AssertionError:
+                print("I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. "
+                      "You might have to manually create the item.")
+
+    def wikidata_steps(self, category=True, data_connect=True):
+        """
+        Phase 2 of a job: everything that depends on Wikidata (the Wikidata edits, and creating & adding the category
+        on Commons, which is connected to Wikidata). Can raise MaxlagError, after which this phase is retried later,
+        by the operator if their tokens are still stored and otherwise by the bot account.
+        Without self.reuse_claims no claims are available yet, so they are requested from Wikidata first.
+        Arguments: see __call__.
+        """
         try:
-            # Always perform this task
-            print(
-                'Getting claims and other data from Wikidata before starting to work on that item & its associated '
-                'stuff on Commons.')
             if not (self.reuse_claims and self.claims is not None and self.qid is not None):
+                print('Getting claims and other data from Wikidata.')
                 self.ini_wikidata()
-            print(
-                'Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell '
-                'Commons who is depicted (if you allow me to).')
             if category is True:  # Only perform these edits when the user commands them
                 print(
                     "I'm now making the category on Commons. If an error occurs, it likely means that the category "
@@ -1181,12 +1182,7 @@ class Image:
                 self.interwiki()
                 self.commons_cat()
                 print('The category was placed on Commons and connected to Wikidata.')
-            print('I have done all operations that should be done on Commons.')
             if data_connect is True:  # Only connect the image if ordered to do so
-                print('I will now identify the person in the image, as requested.')
-                print('Adding a P180-claim to Commons to list the identity of the depicted person.')
-                self.depicts()
-                print('I added the Wikidata item of the depicted person as P180 to the image.')
                 print('Now continuing with the P18 property (connecting the image to the Wikidata item).')
                 self.set_image()
                 print('The image has been set. I will now look for a date.')
@@ -1194,11 +1190,38 @@ class Image:
                 print('I proceed with setting the date as a qualifyer for the image.')
                 self.date_meta()
                 print('The identity of the depicted is now properly listed on Wikidata and Commons.')
-
         except AssertionError:
             print(
                 "I could NOT find a valid Wikidata-item. Please verify the input, and then rerun the bot. You might "
                 "have to manually create the item.")
+
+    def __call__(self, commons_perm=True, category=True, data_connect=True, nlwiki=True, conf=False, test=False,
+                 operator_steps=True):
+        """This function can be used to do handle an entire request at once.
+        The job is processed in two phases (see the module docstring for who makes which edit):
+            1) operator_steps: Commons (except the category) and the Dutch Wikipedia. Never postponed.
+            2) wikidata_steps: Wikidata and the category on Commons. Can be postponed by maxlag.
+        Arguments (and their function):
+            * Commons_perm: if set to True, the bot will set all permission-related properties of the file @Commons
+              (phase 1: always an edit of the operator themselves, never of the bot account)
+            * Category: if set to True, the bot will create and set the category on Commons AND connect it to the Wikidata item.
+              (phase 2: may be finished later by the bot account if needed)
+            * Data_connect: if set to True, the image will be connected to the given person's Wikidata item
+              (P180 on Commons in phase 1, P18 & its date on Wikidata in phase 2).
+            * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
+              (phase 1: always an edit of the operator themselves, never of the bot account)
+            * Conf: is set to True, the confirmation for VRT will be printed explicitly.
+            * Test: if set to True, the bot will be run in its test mode - so not making any edits to the wiki
+            * Operator_steps: if set to False, phase 1 is skipped. Used when retrying a job after maxlag: the
+              operator already completed phase 1 during the first attempt.
+        """
+
+        # Make sure the bot is set to test mode (and does not make any edits)
+        self.testing = test
+
+        if operator_steps is True:
+            self.operator_steps(commons_perm, data_connect, nlwiki)
+        self.wikidata_steps(category, data_connect)
 
         # Purge the cache on Wikidata, Commons and Wikipedia-nl
         print('OKay, I will now start to purge the cache of the various items.')

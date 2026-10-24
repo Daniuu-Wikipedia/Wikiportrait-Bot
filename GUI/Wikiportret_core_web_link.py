@@ -41,9 +41,9 @@ class WebImage(Image):
             for bot in (self._commons, self._wikidata, self._nl, self._meta):
                 bot.verify_OAuth(bot_credentials)  # Same validation as the command line version of the bot
             self.acting_as_bot = True
-            # Work with the Wikidata claims that are stored in the db (refreshed after every attempt) instead of
-            # reading them again: Wikidata being overloaded is the reason that this job is stuck in the first place
-            self.reuse_claims = True
+            # The bot account may only edit Wikidata and Commons (the category): never the Dutch Wikipedia
+            # (Meta is only used for short urls). Enforced by Bot.post, not by the credentials: these are not per wiki
+            self._nl.read_only = self._meta.read_only = True
             try:
                 self.verify_bot_target()  # The db is not trusted blindly when the bot account does the work
             except UnverifiedTargetError:
@@ -450,6 +450,9 @@ def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, 
         query = "SELECT * FROM claims WHERE session_id=%s;"
         result = dbut.query_db(query, dbname, connection=connection, params=(session_number,))
         output.qid, output.mid = result[3], result[4]
+        # The claims were loaded by the background job before the operator could submit (see /review), so they are
+        # never requested from Wikidata again: that read could only add a chance of maxlag
+        output.reuse_claims = True
         output.wikidata_claims_json = result[1]  # JSON loading is done through the property
         output.commons_claims_json = result[2]
         output.comtext = None if output.acting_as_bot else result[5]  # The bot account never trusts the db copy

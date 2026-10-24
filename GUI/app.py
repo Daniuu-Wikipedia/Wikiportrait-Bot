@@ -21,6 +21,7 @@ from objects import SiteSettings
 import Wikiportret_core_web_link as wcl
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
+import Wikiportret_job_signature as job_signature
 import Wikiportret_crypto as crypto
 
 toolforge.set_user_agent('Wikiportret-updater',
@@ -185,6 +186,10 @@ def logout():
     user_id = (db_utils.get_user_id(username, app.config['DB_NAME'], cache=flask.session)
                if username is not None else None)
     if user_id is not None:
+        # Once the tokens are gone, the bot account may have to finish this user's open jobs: first make sure that
+        # the edit summaries of those jobs say who requested them
+        wcl.attribute_open_jobs(app.config, user_id, username)
+
         query = 'delete from tokens where operator_id = %s'
         db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
 
@@ -361,18 +366,34 @@ def submit():
         if update_dict:
             bot_object.input_data_to_db(flask.session['session_id'])
 
-        # Uploading the stuff to the wiki will be done in the background
+        # Uploading the stuff to the wiki will be done in the background, with the tokens of this operator
+        # (Dutch Wikipedia & Commons edits are always theirs; only Wikidata-dependent edits can be postponed and
+        # may later be finished by the bot account, see Wikiportret_core_web_link.WebImage)
         # Prepare everything for the background job
+        # Sign what the operator just reviewed: only jobs carrying a valid signature may later be finished by the
+        # bot account (maxlag handler). The key is not stored in the db, see Wikiportret_job_signature for the why
+        # None (no key configured) simply means that the job is not eligible for the bot account
+        signature = job_signature.sign_job(
+            app.config,
+            **bot_object.job_fields(flask.session['session_id'],
+                                    db_utils.get_user_id(flask.session['username'], app.config['DB_NAME'],
+                                                         cache=flask.session)))
         query = """
         UPDATE sessions s JOIN users u ON u.user_id = s.operator_id
-        SET s.status = 'ready'
+        SET s.status = 'ready', s.signature = %s
         WHERE s.session_id = %s AND u.username = %s
         """
         db_utils.adjust_db(query, app.config['DB_NAME'],
-                           params=(flask.session['session_id'], flask.session['username']))
+                           params=(signature, flask.session['session_id'], flask.session['username']))
 
         return flask.render_template('submit.html',
                                      user_name=flask.session['username'])
+
+
+# The message for the operator of a session (shown on the upload result pages)
+MESSAGE_QUERY = """
+SELECT m.* FROM messages m JOIN users u ON u.user_id = m.user_id
+WHERE m.session_id = %s AND u.username = %s"""
 
 
 @app.route('/statussubmit')
@@ -396,7 +417,11 @@ def statussubmit():
         case 'althere':
             return 'That image was already there, check the wiki page manually!'  # Evidently, replace later
         case 'maxlag':
-            return 'MAXLAG, try again later'  # To be replaced with a proper HTML page
+            message_from_db = db_utils.query_db(MESSAGE_QUERY, app.config['DB_NAME'],
+                                                params=(flask.session['session_id'], flask.session['username']))
+            return flask.render_template('uploadmaxlag.html',
+                                         message=message_from_db[2] if message_from_db else '',
+                                         user_name=flask.session['username'])
     # To do: change this, but for alpha testing, just keep as is...
     return 'Warn Daniuu, something might have gone wrong in session %d' % (flask.session['session_id'])
 
@@ -404,10 +429,7 @@ def statussubmit():
 @app.route('/uploaddone')
 def uploaddone():
     check_login_data('uploaddone')
-    query = """
-    SELECT m.* FROM messages m JOIN users u ON u.user_id = m.user_id
-    WHERE m.session_id = %s AND u.username = %s"""
-    message_from_db = db_utils.query_db(query, app.config['DB_NAME'],
+    message_from_db = db_utils.query_db(MESSAGE_QUERY, app.config['DB_NAME'],
                                         params=(flask.session['session_id'], flask.session['username']))
     if message_from_db is None:  # No message of this user for this session
         flask.abort(403)

@@ -4,17 +4,83 @@ A module to couple Wikiportret Core to some very handy Flask utilities
 # import flask
 import toolforge
 
-from Wikiportret_core import Image
+from Wikiportret_core import Image, NlBot
 import Wikiportret_db_utils as dbut
+import Wikiportret_job_signature as job_signature
 import datetime as dt
 import json
+import re
+
+# Templates that mark a file on Commons as a Wikiportret upload (same patterns as Image.ticket)
+TICKET_TEMPLATES = (r'\{\{wikiportrait2\|\d{16}', r'\{\{PermissionTicket\|id=\d{16}')
 
 
 class WebImage(Image):
-    def __init__(self, file, name, config, user, connection=None):
+    """
+    An Image that is processed through the web interface.
+
+    Who makes the edits (only Wikidata can trigger maxlag, see Wikiportret_core):
+        * The operator, with their own OAuth tokens: everything on the Dutch Wikipedia and on Commons, except the
+          category (see next point). Done during the first attempt, so never postponed.
+        * The operator if their tokens are still stored, otherwise the bot account (acting_as_bot is True):
+          only the parts that were postponed because of Wikidata, i.e. the Wikidata edits and creating & adding
+          the category on Commons.
+    Whether the bot account is acting is decided once, in __init__, and is available as acting_as_bot.
+    """
+
+    def __init__(self, file, name, config, user, connection=None, bot_credentials=None):
         super().__init__(file, name)
         self.dbname = config['DB_NAME']
-        self.verify_OAuth(config, user=user, connection=connection)  # Automatically verify OAuth
+        self.acting_as_bot = False  # True if the edits are made by the bot account instead of the user
+        try:
+            self.verify_OAuth(config, user=user, connection=connection)  # Edits are made as the operator
+        except LookupError:  # The user's tokens are gone (e.g. removed at logout): only a postponed job gets here
+            if bot_credentials is None:
+                raise
+            print(f'No tokens stored for {user!r}: edits for {file!r} will be made by the bot account')
+            for bot in (self._commons, self._wikidata, self._nl, self._meta):
+                bot.verify_OAuth(bot_credentials)  # Same validation as the command line version of the bot
+            self.acting_as_bot = True
+            # Work with the Wikidata claims that are stored in the db (refreshed after every attempt) instead of
+            # reading them again: Wikidata being overloaded is the reason that this job is stuck in the first place
+            self.reuse_claims = True
+            try:
+                self.verify_bot_target()  # The db is not trusted blindly when the bot account does the work
+            except UnverifiedTargetError:
+                raise
+            except Exception as error:  # E.g. network problems: what cannot be verified is not edited
+                raise UnverifiedTargetError(f'Could not verify the target of the job: {error!r}') from error
+
+    def job_fields(self, session_number, operator_id):
+        """The fields that are signed when a job is submitted (and checked before the bot account may finish it)"""
+        return {'session_id': session_number, 'operator_id': operator_id, 'page': self.name, 'file': self.file,
+                'qid': self.qid, 'mid': self.mid, 'caption': self.caption, 'category': self.catname,
+                'summary': self.sum}
+
+    def verify_job_signature(self, config, session_number, operator_id, signature):
+        """Refuse to continue (UnverifiedTargetError) if the job was not signed by the web app, see job_signature"""
+        if not job_signature.verify_job(config, signature, **self.job_fields(session_number, operator_id)):
+            raise UnverifiedTargetError('The job has no valid signature: it was changed in the db or never approved')
+
+    def verify_bot_target(self):
+        """
+        Before the bot account is used on behalf of a (long gone) operator, check that the target is a legit
+        Wikiportret job according to the wikis themselves, so rows tampered with in the db cannot aim the bot at
+        arbitrary pages or files. Raises UnverifiedTargetError if something does not add up.
+
+        Read-only: nothing is edited here. The bot account only reads the Dutch Wikipedia and Commons for this check;
+        it never edits them (those edits are always made by the operator, see the class docstring).
+        """
+        info = next(iter(self._nl.get({'action': 'query', 'titles': self.name, 'prop': 'info'})
+                         .get('query', {}).get('pages', {}).values()), {})
+        if not info or 'missing' in info or 'invalid' in info or info.get('ns') != 0 or 'redirect' in info:
+            raise UnverifiedTargetError(f'{self.name!r} is not an existing article on the Dutch Wikipedia')
+
+        # Always read the file page live: the copy of the text in the db is not trusted either
+        wikitext = (self._commons.get({'action': 'parse', 'page': f'File:{self.file}', 'prop': 'wikitext'})
+                    .get('parse', {}).get('wikitext', {}).get('*', ''))
+        if not any(re.search(pattern, wikitext) for pattern in TICKET_TEMPLATES):
+            raise UnverifiedTargetError(f'File:{self.file} is not a Wikiportret upload (no VRT ticket template)')
 
     def verify_OAuth(self, config, secret=None, user=None, connection=None):  # Overloading from parent class
         if secret is None:
@@ -191,6 +257,85 @@ class WebImage(Image):
         return self.qid, self.claims
 
 
+BOT_SUMMARY_NOTE = 'finished by bot account'  # Marks summaries that were already adjusted (keeps this idempotent)
+
+
+def attributed_summary(summary, username):
+    """
+    The edit summary, extended with who requested the edit and the fact that the bot account makes it.
+    Edit summaries are cut off at 500 bytes by MediaWiki, so the user's part is shortened (by bytes) to keep the note.
+    """
+    if BOT_SUMMARY_NOTE in summary:
+        return summary
+    note = f' (requested by {username}, {BOT_SUMMARY_NOTE})'
+    room = max(500 - len(note.encode('utf8')), 0)
+    return summary.encode('utf8')[:room].decode('utf8', 'ignore') + note
+
+
+def attribute_open_jobs(config, user_id, username):
+    """
+    To be called BEFORE the tokens of an operator are removed (logout): from that moment on, the bot account may have
+    to finish the jobs that are still open. Their edit summary (input_data.edit_summary) is extended with the name of
+    the operator, so the edits of the bot account still say who requested them.
+
+    Only jobs that the bot account can end up with are touched: 'ready' (not started yet) and 'maxlag' (postponed).
+    A job that is 'up' right now keeps its summary: the running attempt rewrites input_data at the end, which would
+    undo the change and invalidate the signature. If such a job maxlags, the bot account refuses it (signature) and the
+    job is listed on the failed jobs page.
+
+    The edit summary is part of the signed job fields (see Wikiportret_job_signature). So the signature is checked
+    first, and only a job that was properly signed gets a new signature: re-signing a job that has been tampered
+    with would approve the tampering. Summary and signature change in one statement, so a run of the maxlag handler
+    can never see the one without the other. Problems are only printed: logging out must never be blocked.
+    """
+    if dbut.LOCAL_DEV:
+        return
+    dbname = config['DB_NAME']
+    connection = toolforge.toolsdb(dbname)
+    try:
+        jobs = dbut.query_db("SELECT session_id FROM sessions WHERE operator_id=%s AND status IN ('ready', 'maxlag')",
+                             dbname, need_all=True, connection=connection, params=(user_id,))
+        for (session_id,) in jobs:
+            try:
+                job = create_from_db(session_id, config, check_status=False, user=user_id, connection=connection)
+                was_signed = job_signature.verify_job(config, job.signature, **job.job_fields(session_id, user_id))
+                job.sum = attributed_summary(job.sum, username)
+                signature = (job_signature.sign_job(config, **job.job_fields(session_id, user_id))
+                             if was_signed else job.signature)
+                dbut.adjust_db("UPDATE input_data i JOIN sessions s ON s.session_id = i.session_id "
+                               "SET i.edit_summary = %s, s.signature = %s "
+                               "WHERE i.session_id = %s AND s.operator_id = %s",
+                               dbname, connection=connection, params=(job.sum, signature, session_id, user_id))
+            except Exception as error:
+                print(f'Could not adjust the summary of session {session_id}: {error!r}')
+    finally:
+        connection.close()
+
+
+FAILED_JOBS_PAGE = 'Gebruiker:Daniuu/Failed_jobs'  # Page on nlwiki where failed jobs of the bot account are listed
+
+
+def log_failed_job(bot_credentials, session_id, name, file, signature):
+    """
+    Append a line about a job that the bot account could not finish to FAILED_JOBS_PAGE (text only), so that it
+    can be picked up manually. This is an edit of the bot account on the Dutch Wikipedia, but only to log a failure:
+    it never places images in articles. The values come from the db, which is not trusted: everything is put in <nowiki>
+    tags (after removing angle brackets, so the tags cannot be closed early) and cut to a sane length, so a
+    tampered row cannot inject links, templates or markup into a public page.
+    """
+    def plain(text):
+        return '<nowiki>' + re.sub(r'[<>\r\n]+', ' ', str(text))[:200] + '</nowiki>'
+
+    stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%d %H:%M')
+    line = f'\n* {stamp} (UTC) – sessie {int(session_id)} – {plain(name)} – {plain(file)} – hash {plain(signature)}'
+    nlwiki = NlBot()
+    nlwiki.verify_OAuth(bot_credentials)  # The bot account logs its own failures
+    response = nlwiki.post({'action': 'edit', 'title': FAILED_JOBS_PAGE, 'appendtext': line,
+                            'summary': 'Failed job logged', 'bot': True})
+    if 'error' in response:
+        raise RuntimeError(f'Could not write to {FAILED_JOBS_PAGE}: {response["error"]}')
+
+
 # Define custom exception for dealing with incorrect data
 class WikiError(Exception):
     def __str__(self):
@@ -201,6 +346,13 @@ class SessionAccessError(Exception):
     """Raised when a session does not exist or does not belong to the requesting user"""
     def __str__(self):
         return 'That session does not exist or belongs to someone else'
+
+
+class UnverifiedTargetError(Exception):
+    """Raised when the bot account is asked to edit a page/file that the wikis do not confirm as a Wikiportret job"""
+    def __str__(self):
+        return (self.args[0] if self.args else
+                'The target of this job could not be verified, refusing to edit with the bot account')
 
 
 class BackgroundError(Exception):
@@ -226,7 +378,8 @@ def create_from_db(session_number,
                    check_status=True,
                    user=None,
                    connection=None,
-                   any_user=False):
+                   any_user=False,
+                   bot_credentials=None):
     """
     Reads a session number & will then parse all relevant output form the db.
     Method takes the following arguments:
@@ -235,6 +388,9 @@ def create_from_db(session_number,
           otherwise (or if no user is given) SessionAccessError is raised.
         * connection: an open db connection to reuse. If omitted, one is opened (and closed) here.
         * any_user: skip the ownership check (only for the background jobs, which act on any session)
+        * bot_credentials: path of a token file of the bot account. Only used if the user's own tokens are missing,
+          which only happens for jobs that were postponed (maxlag): edits are then made by the bot account instead of
+          the operator (see WebImage for which edits that may be).
     """
     connection_passed = connection is not None
     if connection is None:
@@ -242,14 +398,14 @@ def create_from_db(session_number,
         connection = toolforge.toolsdb(config['DB_NAME'])
     try:
         return _create_from_db(session_number, config, retrieve_claims, adjust_input_data,
-                               check_status, user, any_user, connection)
+                               check_status, user, any_user, connection, bot_credentials)
     finally:
         if not connection_passed:
             connection.close()
 
 
 def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, check_status, user, any_user,
-                    connection):
+                    connection, bot_credentials):
     # To make our life slightly easier...
     dbname = config['DB_NAME']
 
@@ -273,6 +429,7 @@ def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, 
     operator_id = result[1]  # Operator id, needed further down the road
     page, file = result[2], result[3]  # Make life slightly easier & shorten notation
     status = result[4]
+    signature = result[8] if len(result) > 8 else None  # Added by the web app when the operator submits the job
 
     # Error handling section
     if check_status:  # Allow for manually bypassing the status check
@@ -285,7 +442,8 @@ def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, 
                 raise BackgroundError('BG JOB IS DOWN!!!')
 
     # Third job: all input is there to generate the WebImage desperately needed
-    output = WebImage(file, page, config, operator_id, connection=connection)
+    output = WebImage(file, page, config, operator_id, connection=connection, bot_credentials=bot_credentials)
+    output.signature = signature  # Stored as it was loaded, so it can be verified (and renewed) later on
 
     # Fourth job: obtain the relevant parameters from the db
     if retrieve_claims is True:
@@ -294,7 +452,7 @@ def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, 
         output.qid, output.mid = result[3], result[4]
         output.wikidata_claims_json = result[1]  # JSON loading is done through the property
         output.commons_claims_json = result[2]
-        output.comtext = result[5]
+        output.comtext = None if output.acting_as_bot else result[5]  # The bot account never trusts the db copy
 
         # Fifth job: if there is already some customized input data, get it
         if adjust_input_data is True:
@@ -315,6 +473,11 @@ def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, 
                 output.death = date_from_db(result[8])
             # Result 3 = ticket number, we don't need it for now
             # Result 6 = used only for the db and cleanup scripts
+
+    # The bot account only finishes jobs that the web app signed when the operator submitted them
+    # This is checked on the values as loaded above, before any (date) logic below touches the wikis
+    if output.acting_as_bot:
+        output.verify_job_signature(config, session_number, operator_id, signature)
     # 20260405 - addition to fix the bugs with birth dates...
     output.date_born()
     output.date_deceased()

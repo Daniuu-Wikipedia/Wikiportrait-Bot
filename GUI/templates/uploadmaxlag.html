@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Wikiportret - Upload Uitgesteld</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/message.css') }}">
+{% endblock %}
+
+{% block content_title %}
+    <h1>Upload Uitgesteld</h1>
+{% endblock %}
+
+{% block body %}
+    <div class="card" style="max-width: 700px;">
+        <div class="notice notice-warning">
+            <strong><i class="fa-solid fa-triangle-exclamation"></i> De wiki is momenteel overbelast (maxlag)</strong>
+            Er is niets verloren gegaan: we plaatsen de afbeelding automatisch op een later moment voor u online.
+            U hoeft niets meer te doen en deze pagina niet te verversen.
+        </div>
+
+        {% if message %}
+        <p class="text-secondary">Kopieer de volgende tekst voor uw administratie:</p>
+
+        <div class="message-box">
+            <button class="btn btn-secondary copy-button" onclick="copyText()">Kopieer Tekst</button>
+            <textarea id="copyText" readonly>{{ message.strip() }}</textarea>
+        </div>
+        {% endif %}
+
+        <div class="button-row">
+            <a href="{{ url_for('input') }}" class="btn">Nieuwe Afbeelding Verwerken</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary">Uitloggen</a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/copy_button.js') }}"></script>
+{% endblock %}

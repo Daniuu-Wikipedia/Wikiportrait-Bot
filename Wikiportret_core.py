@@ -11,7 +11,18 @@ The bot will do a couple of tasks:
     2) It will post the image and category created in 1 to a Wikidata-item
     3) It will attempt to place the image in the Infobox on Wikipedia
     4) Generate a standard e-mail (to be implemented)
-    
+
+WHO MAKES WHICH EDIT
+    Only calls to the Wikidata API can trigger maxlag (see MaxlagError); the other wikis are never expected to.
+    Therefore:
+    * Edits on the Dutch Wikipedia (placing the image in the article) and on Commons are always made by the
+      operator, with their own OAuth tokens, during the first attempt. These never have to be postponed.
+    * The exceptions are everything that depends on Wikidata: the Wikidata edits themselves, and creating & adding
+      the category on Commons (which is connected to Wikidata and therefore can get delayed by it).
+      If these are postponed (status 'maxlag') they may be finished later by the maxlag handler, with the tokens of
+      the operator if still available, otherwise by the bot account (see Wikiportret_core_web_link.WebImage).
+    The command line version of this script has no operator: everything is done with the tokens of the bot account.
+
 Information can be found in Wikiportret ticket 2021021010009189 (VRT access required)
 """
 
@@ -28,7 +39,12 @@ toolforge.set_user_agent('wikiportret-uploader', email='wikiportret@wikimedia.or
 
 
 class MaxlagError(Exception):
-    """This is a special error, specially made for when Maxlag occurs - it warns the operator of the bot"""
+    """
+    This is a special error, specially made for when Maxlag occurs - it warns the operator of the bot.
+
+    Only calls to the Wikidata API are expected to raise this: Commons, the Dutch Wikipedia and Meta do not run into
+    maxlag. Handling a MaxlagError therefore only has to postpone the Wikidata-dependent steps (see module docstring).
+    """
 
     def __str__(self):
         print('\n')
@@ -257,6 +273,10 @@ class Image:
         # 20260313 - add check for dates with year-only precision
         # Two booleans, False is date of birth/death is not accurate to 1 day (or None)
         self.baccurate, self.daccurate = False, False
+
+        # If True, __call__ works with the qid & claims that are already present (e.g. loaded from the db)
+        # instead of requesting them from Wikidata again
+        self.reuse_claims = False
 
         # For safety
         self.configure_bots_for_testing()
@@ -1086,9 +1106,13 @@ class Image:
         """This function can be used to do handle an entire request at once.
         Arguments (and their function):
             * Commons_perm: if set to True, the bot will set all permission-related properties of the file @Commons
+              Always an edit of the operator themselves (never of the bot account): Commons does not hit maxlag.
             * Category: if set to True, the bot will create and set the category on Commons AND connect it to the Wikidata item.
+              Postponable: depends on Wikidata, so it may be finished later (by the bot account if needed).
             * Data_connect: if set to True, the image will be connected to the given person's Wikidata item.
+              Postponable: Wikidata edit, so it may be finished later (by the bot account if needed).
             * Nlwiki: if set to True, the image will be placed on the Dutch Wikipedia article.
+              Always an edit of the operator themselves (never of the bot account): Wikipedia does not hit maxlag.
             * Conf: is set to True, the confirmation for VRT will be printed explicitly.
             * Test: if set to True, the bot will be run in its test mode - so not making any edits to the wiki
         """
@@ -1139,7 +1163,8 @@ class Image:
             print(
                 'Getting claims and other data from Wikidata before starting to work on that item & its associated '
                 'stuff on Commons.')
-            self.ini_wikidata()
+            if not (self.reuse_claims and self.claims is not None and self.qid is not None):
+                self.ini_wikidata()
             print(
                 'Initialization done, I can now safely generate the category and link to Wikidata on Commons and tell '
                 'Commons who is depicted (if you allow me to).')

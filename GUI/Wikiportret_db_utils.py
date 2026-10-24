@@ -123,6 +123,8 @@ def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend
                                                 params=tuple(coded.values()))}
     sec = {}
     for i, j in coded.items():
+        if j not in obtained:
+            raise LookupError('Stored tokens are incomplete')
         _, nonce, version = obtained[j]
         sec[i] = crypto.decrypt_token(j, nonce, version)
     return sec  # Be careful with this dictionary!

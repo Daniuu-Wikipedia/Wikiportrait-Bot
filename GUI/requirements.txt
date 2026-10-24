@@ -6,3 +6,4 @@ mwparserfromhell
 mwcomposerfromhell
 pytz
 pywikibot>=11.3.0
+cryptography

@@ -17,7 +17,6 @@ import datetime as dt
 import os
 import hmac
 import secrets
-import tomllib
 import urllib.parse
 from objects import SiteSettings
 
@@ -26,6 +25,7 @@ import Wikiportret_core_web_link as wcl
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
 import Wikiportret_job_signature as job_signature
+import Wikiportret_config
 
 toolforge.set_user_agent('Wikiportret-updater',
                          email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
@@ -35,10 +35,9 @@ data = SiteSettings()
 # Define the application (this will be the object representing the web page we're interested in)
 app = flask.Flask(__name__)
 
-# Load configuration from TOML file
+# Load configuration: config.toml and/or the WPOR_ environment variables (see Wikiportret_config)
 __dir__ = os.path.dirname(__file__)
-with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
-    app.config.update(tomllib.load(f))
+app.config.update(Wikiportret_config.load_config())
 
 # 20261024 - CSRF protection (part 1): browsers do not send the session cookie along with POST requests that other
 # sites make, so those requests arrive without a login. Can be overruled in config.toml, but should not be

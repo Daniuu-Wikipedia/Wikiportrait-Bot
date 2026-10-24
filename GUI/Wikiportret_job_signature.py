@@ -19,7 +19,7 @@ cannot tell whether the *content* (caption, category, summary, wikidata item) is
 HOW
 ---
 When the operator submits the job (/submit), the web app computes an HMAC-SHA256 over the fields that were just
-reviewed and stores it in sessions.signature. The key (JOB_SIGNING_KEY in config.toml) is NOT in the database, so
+reviewed and stores it in sessions.signature. The key (JOB_SIGNING_KEY, envvar WPOR_JOB_SIGNING_KEY) is NOT in the database, so
 somebody who only controls the database cannot produce a matching signature. Before the bot account is used, the
 fields are read from the database again and the signature is recomputed; any difference means "tampered with, or
 never approved by an operator" and the bot refuses to edit.
@@ -37,14 +37,14 @@ never approved by an operator" and the bot refuses to edit.
 
 WHAT THIS DOES NOT PROTECT AGAINST
 ----------------------------------
-Anybody who can read config.toml can forge signatures; the key must be readable by the tool only (chmod 600), and
+Anybody who can read the key can forge signatures; the key must be readable by the tool only (chmod 600), and
 must not be reused as an encryption key. The signature proves "an operator approved exactly this", not that the
 operator is still allowed to do so: the user screening happens up front, at submission.
 
 SETUP
 -----
 1. Generate a key:  python -c "import secrets; print(secrets.token_hex(32))"
-   and put it in config.toml as  JOB_SIGNING_KEY = "<the key>".
+   and store it as the envvar WPOR_JOB_SIGNING_KEY (or in config.toml as  JOB_SIGNING_KEY = "<the key>").
 2. Add the column once:  ALTER TABLE `sessions` ADD COLUMN `signature` CHAR(64) NULL DEFAULT NULL;
 Without a key no signature is made, and the bot fallback refuses every job (it fails closed).
 """

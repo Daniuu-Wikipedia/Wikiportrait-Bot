@@ -11,16 +11,15 @@ Who makes the edits: the operator if their tokens are still stored, otherwise th
 import toolforge
 import os
 import sys
-import tomllib
 import Wikiportret_db_utils as dbutil
+import Wikiportret_config
 from Wikiportret_background import upload_in_background
 from Wikiportret_core import MaxlagError, ImageAlreadyError
 
 
 # First job: read config of the app
 __dir__ = os.path.dirname(__file__)
-with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
-    config = tomllib.load(f)
+config = Wikiportret_config.load_config()
 
 # Reset the user agent per Toolforge policy
 toolforge.set_user_agent('Wikiportret-updater-bg',
@@ -44,8 +43,13 @@ if got_lock is None or got_lock[0] != 1:  # 0: held by another run; NULL/None: c
     connection.close()
     sys.exit(0)
 
-# OAuth tokens of the bot account (same file & format as used by Wikiportret Core): owner-only readable
-bot_tokens = os.path.join(__dir__, 'Tokens_Wikiportraitbot.txt')
+# OAuth tokens of the bot account: the 4 WPOR_BOT_* environment variables if they are set, otherwise the token file
+# (same file & format as used by Wikiportret Core, owner-only readable)
+BOT_TOKEN_SETTINGS = ('BOT_CONSUMER_TOKEN', 'BOT_CONSUMER_SECRET', 'BOT_ACCESS_TOKEN', 'BOT_ACCESS_SECRET')
+if all(config.get(name) for name in BOT_TOKEN_SETTINGS):
+    bot_tokens = tuple(config[name] for name in BOT_TOKEN_SETTINGS)
+else:
+    bot_tokens = os.path.join(__dir__, 'Tokens_Wikiportraitbot.txt')
 
 # Script is supposed to be connected to the internal database
 query_select = """SELECT * from sessions where status='maxlag';"""

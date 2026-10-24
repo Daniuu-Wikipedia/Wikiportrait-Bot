@@ -3,17 +3,16 @@
 
 import toolforge
 import threading
-import tomllib
 import time
 import os
 import Wikiportret_core_web_link as wcl  # Dealing with the db & getting info from the UI
 import Wikiportret_db_utils as dbutil
+import Wikiportret_config
 from Wikiportret_core import ImageAlreadyError, MaxlagError
 
 # First job: read config of the app
 __dir__ = os.path.dirname(__file__)
-with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
-    config = tomllib.load(f)
+config = Wikiportret_config.load_config()
 
 # Reset the user agent per Toolforge policy
 toolforge.set_user_agent('Wikiportret-updater-bg',

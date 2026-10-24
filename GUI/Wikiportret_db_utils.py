@@ -8,15 +8,14 @@ Auxliary functions are listed separately to keep the code of the main app clean
 import toolforge
 import json
 import Wikiportret_crypto as crypto
-import tomllib
+import Wikiportret_config
 import os
 
 # Load config for local dev check
 __dir__ = os.path.dirname(__file__)
 try:
-    with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
-        config = tomllib.load(f)
-except:
+    config = Wikiportret_config.load_config()
+except Exception:
     config = {}
 
 LOCAL_DEV = config.get('LOCAL_DEV', False)

@@ -6,12 +6,10 @@ Wikiportret_db_utils only knows about the database & encryption, so no import cy
 requests a key at the API or puts it in the form that the API expects lives here.
 """
 
-import os
-import tomllib
-
 import requests
 
 import Wikiportret_db_utils as db_utils
+import Wikiportret_config
 
 API_URL = 'https://www.wikiportret.nl/api'
 TIMEOUT = 15  # Seconds: a hanging API must never freeze the web app or the background jobs
@@ -25,8 +23,7 @@ EXAMPLE_TICKET_KEY = '2ebec06c3dbbcec2493e859c3799308f65e6624d'
 
 
 def _config():
-    with open(os.path.join(os.path.dirname(__file__), 'config.toml'), 'rb') as f:
-        return tomllib.load(f)
+    return Wikiportret_config.load_config()
 
 
 def add_bearer(key):

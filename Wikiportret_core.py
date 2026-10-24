@@ -91,8 +91,12 @@ class Bot:
         """
         This function will verify whether the OAuth-auth has been configured.
         If not, it will do the configuration.
+        file: path of the token file, or the 4 values themselves (consumer token & secret, access token & secret),
+        e.g. from environment variables
         """
-        if self._auth is None:
+        if self._auth is None and isinstance(file, (tuple, list)):
+            self._auth = OAuth1(*file)
+        elif self._auth is None:
             with open(file, 'r') as secret:
                 self._auth = OAuth1(
                     *[i.strip() for i in secret][1::2])  # This is the reason why those keys should never be published

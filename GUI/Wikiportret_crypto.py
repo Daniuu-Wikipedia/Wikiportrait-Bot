@@ -3,19 +3,27 @@
 # Important: this module does not come with any kind of database communications...
 # It just deals with the cryptographical part of the equation...
 import json
-import tomllib
 import base64
 import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import Wikiportret_config
 
 
 # Job 1: load the keys once
+# Preferred: the environment variables WPOR_ENC_KEY_CURRENT(_VERSION) & WPOR_ENC_KEY_PREVIOUS(_VERSION), which are
+# managed by Wikiportret_key_regen.py. Fallback (local development): the json file in SECRET_KEY_LOC
 def _load_keys():
-    if not 'config.toml' in os.listdir():
-        os.chdir(os.path.join(os.getcwd(), 'www/python/src'))
-    with open('config.toml', 'rb') as f:
-        config = tomllib.load(f)
-    with open(config['SECRET_KEY_LOC'], 'r') as f:
+    config = Wikiportret_config.load_config()
+    if config.get('ENC_KEY_CURRENT'):
+        keys = {config['ENC_KEY_CURRENT_VERSION']: base64.b64decode(config['ENC_KEY_CURRENT'])}
+        if config.get('ENC_KEY_PREVIOUS'):  # Not there before the first rotation
+            keys[config['ENC_KEY_PREVIOUS_VERSION']] = base64.b64decode(config['ENC_KEY_PREVIOUS'])
+        return keys, config['ENC_KEY_CURRENT_VERSION']
+    if not config.get('SECRET_KEY_LOC'):
+        raise RuntimeError("No encryption keys configured (WPOR_ENC_KEY_CURRENT or SECRET_KEY_LOC)")
+
+    # A relative path is relative to this file, not to the directory a job happens to start in
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), config['SECRET_KEY_LOC']), 'r') as f:
         json_data = json.load(f)
     del config
 

@@ -1,0 +1,105 @@
+/* Overview of the uploads of a user (templates/uploads.html) */
+.uploads-card {
+    max-width: 1100px;
+    padding: 2rem;
+}
+
+/* General statistics at the top of the page */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.25rem;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary-color);
+}
+
+.stat-date {
+    font-size: 1.4rem;
+    padding: 0.35rem 0;
+}
+
+.stat-label {
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.uploads-count {
+    margin: 0 0 1rem 0;
+}
+
+.table-wrapper {
+    overflow-x: auto; /* Keeps the table usable on narrow screens */
+}
+
+.uploads-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.uploads-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.uploads-table td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.uploads-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.file-name {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.file-url {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.actions-column {
+    text-align: right !important;
+    white-space: nowrap;
+}
+
+.btn-small {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    text-decoration: none;
+    margin-left: 0.4rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem 0;
+}

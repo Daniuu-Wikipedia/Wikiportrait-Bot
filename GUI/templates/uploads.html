@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Wikiportret - Mijn uploads</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/uploads.css') }}">
+{% endblock %}
+
+{% block content_title %}
+    <h1>Mijn uploads</h1>
+{% endblock %}
+
+{% block body %}
+    <div class="card uploads-card">
+        {% if uploads %}
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">{{ stats.total }}</div>
+                    <div class="stat-label">afbeeldingen geüpload via Wikiportret</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">{{ stats.this_year }}</div>
+                    <div class="stat-label">dit jaar</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">{{ stats.this_month }}</div>
+                    <div class="stat-label">deze maand</div>
+                </div>
+                {% if stats.first %}
+                <div class="stat">
+                    <div class="stat-value stat-date">{{ stats.first }}</div>
+                    <div class="stat-label">eerste upload</div>
+                </div>
+                {% endif %}
+            </div>
+            <p class="text-secondary uploads-count">De nieuwste uploads staan bovenaan.</p>
+            <div class="table-wrapper">
+                <table class="uploads-table">
+                    <thead>
+                        <tr>
+                            <th>Geüpload op</th>
+                            <th>Afbeelding</th>
+                            <th class="actions-column">Navigatie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for upload in uploads %}
+                        <tr>
+                            <td class="nowrap">{{ upload.uploaded }}</td>
+                            <td>
+                                <div class="file-name">{{ upload.file }}</div>
+                                <a class="file-url" href="{{ upload.commons_url }}" target="_blank" rel="noopener noreferrer">{{ upload.commons_url }}</a>
+                            </td>
+                            <td class="actions-column">
+                                <a href="{{ upload.commons_url }}" class="btn btn-small" target="_blank" rel="noopener noreferrer">afbeelding op Commons</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>U heeft nog geen afbeeldingen geüpload.</p>
+                <a href="{{ url_for('input') }}" class="btn">Nieuwe Afbeelding Verwerken</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

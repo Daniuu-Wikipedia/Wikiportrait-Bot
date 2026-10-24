@@ -15,6 +15,7 @@ import datetime as dt
 # Import some auxiliary classes
 import os
 import tomllib
+import urllib.parse
 from objects import SiteSettings
 
 # from Wikiportret_core import Image
@@ -56,7 +57,7 @@ def check_login_data(origin=None):
         expiry = flask.session.get('token_expiry')
         if expiry is None or dt.datetime.utcnow() > dt.datetime.fromisoformat(expiry):
             flask.abort(flask.redirect(flask.url_for('login')))  # Force the user to login
-        if origin not in {'input'}:
+        if origin not in {'input', 'uploads'}:  # These pages do not belong to a running session
             if 'session_id' not in flask.session:
                 flask.abort(flask.redirect(flask.url_for('input')))
     return  # Return None, nothing to do here...
@@ -434,6 +435,39 @@ def uploaddone():
     if message_from_db is None:  # No message of this user for this session
         flask.abort(403)
     return flask.render_template('uploaddone.html', message=message_from_db[2])
+
+
+@app.route('/uploads')
+def uploads():
+    """Overview of the images that the logged-in user uploaded in the past, newest first."""
+    check_login_data('uploads')
+    user_id = db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'], cache=flask.session)
+    if user_id is None:
+        return flask.redirect(flask.url_for('login'))
+
+    # Only the user's own rows: the id comes from the (signed) session, never from the request
+    rows = db_utils.query_db("SELECT file_uploaded, upload_time FROM user_uploads "
+                             "WHERE operator_id = %s ORDER BY upload_time DESC, upload_id DESC",
+                             app.config['DB_NAME'], need_all=True, params=(user_id,)) or ()
+
+    entries = []
+    for file, uploaded in rows:
+        # Titles use underscores in urls; quote() makes sure that special characters cannot break out of the link
+        entries.append({
+            'file': file,
+            'commons_url': 'https://commons.wikimedia.org/wiki/File:' + urllib.parse.quote(file.replace(' ', '_'),
+                                                                                           safe='/'),
+            'uploaded': uploaded.strftime('%d-%m-%Y %H:%M') if hasattr(uploaded, 'strftime') else str(uploaded)})
+
+    # General statistics for the top of the page (rows are sorted newest first, so the last one is the oldest)
+    now = dt.datetime.now()
+    times = [uploaded for _, uploaded in rows if hasattr(uploaded, 'year')]  # Skips anything that is no timestamp
+    stats = {'total': len(rows),
+             'this_year': sum(1 for t in times if t.year == now.year),
+             'this_month': sum(1 for t in times if (t.year, t.month) == (now.year, now.month)),
+             'first': times[-1].strftime('%d-%m-%Y') if times else None}
+    return flask.render_template('uploads.html', uploads=entries, stats=stats,
+                                 user_name=flask.session.get('username'))
 
 
 @app.route('/uploadfailed')

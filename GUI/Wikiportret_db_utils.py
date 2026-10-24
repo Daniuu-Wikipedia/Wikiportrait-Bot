@@ -35,6 +35,11 @@ def query_db(query, dbname, need_all=False, connection=None, params=None):
             return (0, 0, "Als je dit leest, zit je op de pagina /uploaddone ")
         if "SELECT `user_id`" in query:
             return (1,)
+        if "FROM user_uploads" in query:
+            import datetime as dt  # Real timestamps, like the db returns
+            return [("VuilTestertje.jpg", dt.datetime(2026, 10, 24, 12, 0)),
+                    ("Jan Jansen 2024.jpg", dt.datetime(2026, 9, 30, 9, 15)),
+                    ("Oude upload.jpg", dt.datetime(2025, 1, 2, 10, 0))]
         return None
 
     if not isinstance(query, str):

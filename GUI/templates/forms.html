@@ -1,0 +1,17 @@
+{# Reusable form pieces. Use in a template with: {% import 'forms.html' as forms %} #}
+
+{# Hidden CSRF token: every form that POSTs needs this, or the request is refused (see check_csrf_token in app.py) #}
+{% macro csrf_field() -%}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
+
+{# Logging out deletes data, so it is a (CSRF protected) POST form instead of a plain link #}
+{% macro logout_button(classes='btn btn-secondary', icon=False) -%}
+    <form method="POST" action="{{ url_for('logout') }}" class="inline-form">
+        {{ csrf_field() }}
+        <button type="submit" class="{{ classes }}">
+            {%- if icon %}<i class="fa-solid fa-arrow-right-from-bracket" style="margin-right: 8px;"></i>{% endif -%}
+            Uitloggen
+        </button>
+    </form>
+{%- endmacro %}

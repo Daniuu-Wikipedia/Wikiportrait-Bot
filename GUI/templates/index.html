@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import 'forms.html' as forms %}
 
 {% block head %}
     <title>Wikiportret - Inloggen</title>
@@ -15,7 +16,7 @@
             <p>U bent al ingelogd.</p>
             <div class="mt-1">
                 <a href="{{ url_for('input') }}" class="btn">Dashboard</a>
-                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Uitloggen</a>
+                {{ forms.logout_button() }}
             </div>
         {% else %}
             <p>Welkom bij de Wikiportret bot. Om verder te gaan, dient u in te loggen via Wikimedia OAuth.</p>

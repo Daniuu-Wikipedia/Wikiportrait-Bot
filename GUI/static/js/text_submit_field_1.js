@@ -12,4 +12,5 @@ function changeButtonText() {
 }
 
 // Add an event listener to the form to call the function when the form is submitted
-document.querySelector('form').addEventListener('submit', changeButtonText);
+// Use the form of the submit button itself: the page has other forms as well (e.g. the logout form in the navbar)
+document.getElementById('submit-button').form.addEventListener('submit', changeButtonText);

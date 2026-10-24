@@ -1,3 +1,4 @@
+{% import 'forms.html' as forms -%}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,9 +40,7 @@
                         <i class="fa-solid fa-circle-user" style="margin-right: 6px; font-size: 1.1em;"></i>{{ user_name or username }} <i class="fa-solid fa-chevron-down" style="font-size: 0.8em; margin-left: 4px;"></i>
                     </button>
                     <div class="dropdown-content">
-                        <a href="{{ url_for('logout') }}" class="dropdown-item">
-                            <i class="fa-solid fa-arrow-right-from-bracket" style="margin-right: 8px;"></i>Uitloggen
-                        </a>
+                        {{ forms.logout_button('dropdown-item', icon=True) }}
                     </div>
                 </div>
                 {% else %}

@@ -111,7 +111,8 @@ body {
     margin-top: 5px;
 }
 
-.dropdown-content a {
+.dropdown-content a,
+.dropdown-content button {
     color: var(--text-color);
     padding: 12px 16px;
     text-decoration: none;
@@ -120,8 +121,29 @@ body {
     transition: var(--transition);
 }
 
-.dropdown-content a:hover {
+/* The logout entry is a button in a form (POST), styled like the links around it */
+.dropdown-content button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.dropdown-content a:hover,
+.dropdown-content button:hover {
     background-color: #f1f1f1;
+}
+
+/* Forms that only hold a button (e.g. logout) sit inline, like the links they replace */
+.inline-form {
+    display: inline;
+    margin: 0;
+}
+
+.dropdown-content .inline-form {
+    display: block;
 }
 
 .dropdown:hover .dropdown-content {

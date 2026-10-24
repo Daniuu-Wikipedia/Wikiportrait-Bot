@@ -15,6 +15,8 @@ import datetime as dt
 
 # Import some auxiliary classes
 import os
+import hmac
+import secrets
 import tomllib
 import urllib.parse
 from objects import SiteSettings
@@ -37,6 +39,40 @@ app = flask.Flask(__name__)
 __dir__ = os.path.dirname(__file__)
 with open(os.path.join(__dir__, 'config.toml'), 'rb') as f:
     app.config.update(tomllib.load(f))
+
+# 20261024 - CSRF protection (part 1): browsers do not send the session cookie along with POST requests that other
+# sites make, so those requests arrive without a login. Can be overruled in config.toml, but should not be
+# (Flask's own default is None, so setdefault would not work here)
+if app.config.get('SESSION_COOKIE_SAMESITE') is None:
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+
+# CSRF protection (part 2): every form carries a secret token that is only known to this login session
+# A page on another website cannot read it, so it cannot make a POST request that passes the check below
+def csrf_token():
+    """The CSRF token of this session (created on first use). Use it in templates as {{ csrf_token() }}"""
+    if 'csrf_token' not in flask.session:
+        flask.session['csrf_token'] = secrets.token_urlsafe(32)
+    return flask.session['csrf_token']
+
+
+app.jinja_env.globals['csrf_token'] = csrf_token
+
+
+@app.before_request
+def check_csrf_token():
+    """Refuses every POST request without the CSRF token of this session (hidden field csrf_token in each form)"""
+    if flask.request.method != 'POST':
+        return None
+    expected = flask.session.get('csrf_token')
+    received = flask.request.form.get('csrf_token', '')
+    if expected is None or not hmac.compare_digest(expected, received):  # Constant time comparison
+        # Usually harmless: e.g. a form that was opened before the login session ended. Just ask to try again
+        return flask.render_template('error.html',
+                                     message='Dit formulier is verlopen of niet geldig. '
+                                             'Laad de pagina opnieuw en probeer het nog eens.',
+                                     user_name=flask.session.get('username')), 400
+    return None
 
 
 # General utility
@@ -181,9 +217,13 @@ def oauth_callback():
     return flask.redirect(flask.url_for('input'))  # After logging in, direct user to login screen
 
 
-@app.route('/logout', methods=['GET'])
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     """Log the user out by clearing their session."""
+    # 20261024 - logging out deletes data, so it only happens through the (CSRF protected) logout form
+    # A plain link (old bookmark, or a page of another website) only leads to the start page, with a logout button
+    if flask.request.method != 'POST':
+        return flask.redirect(flask.url_for('index'))
     # 20260314 - HACKATHON remove tokens from the db
     # Nobody logged in (e.g. session cookie expired): nothing to clean up in the db
     username = flask.session.get('username')

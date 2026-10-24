@@ -3,6 +3,7 @@
 # render_template: the functionality to deal with .html-templates
 # request: to be able to handle requests using the Flask library
 import mwoauth
+import requests
 import json  # Makes life slightly easier
 
 import flask
@@ -23,7 +24,6 @@ import Wikiportret_core_web_link as wcl
 import Wikiportret_API_utils as wpor_api
 import Wikiportret_db_utils as db_utils
 import Wikiportret_job_signature as job_signature
-import Wikiportret_crypto as crypto
 
 toolforge.set_user_agent('Wikiportret-updater',
                          email='wikiportret@wikimedia.org')  # Just setting up a custom user agent
@@ -131,8 +131,14 @@ def oauth_callback():
             return flask.abort(403)  # Error, do not continue
         # Store the access_token
         token_to_store = dict(zip(access_token._fields, access_token))
-        # Obtain a valid token from the Wikiportret API
-        wikiportret_key = wpor_api.generate_wikiportret_key()  # Generated under a bot account
+        # Obtain a valid (bare) key from the Wikiportret API, only the API utils talk to that API
+        try:
+            wikiportret_key = wpor_api.request_wikiportret_key()  # Generated under a bot account
+        except requests.RequestException:
+            # The Wikiportret API being down must not block the login: an empty value is stored, and the first
+            # call that needs the key creates it then (wpor_api.get_wikiportret_key)
+            app.logger.exception('Could not get a key from the Wikiportret API')
+            wikiportret_key = ''
 
         # Write data to the db (tokens table)
         # On duplicate key overwrites tokens if needed
@@ -140,16 +146,13 @@ def oauth_callback():
         # 20260314 - stuff moved to separate table
         sec = {}
         for i, j in token_to_store.items():
-            information = crypto.encrypt_token(j)
-            sec[i] = information['ciphertext']
-            query = """
-            INSERT INTO secret_stuff (ciphertext, nonce, version)
-            VALUE (%s, %s, %s)
-            """
-            db_utils.adjust_db(query, app.config['DB_NAME'],
-                               params=(sec[i], information['nonce'], information['version']))
-            del query, information  # Information no longer needed
+            sec[i] = db_utils.store_secret(j, app.config['DB_NAME'])  # Only the ciphertext is kept
         del token_to_store  # Get rid of the raw tokens asap
+
+        # 20261024 - the Wikiportret key is encrypted the same way (own nonce). Only the bare key is stored: the
+        # 'Bearer ' prefix is added again when the key is read (wpor_api.get_wikiportret_key)
+        if wikiportret_key:
+            wikiportret_key = db_utils.store_secret(wikiportret_key, app.config['DB_NAME'])
 
         query = """
         INSERT INTO tokens (operator_id, oauth_token, wikiportrait_token)

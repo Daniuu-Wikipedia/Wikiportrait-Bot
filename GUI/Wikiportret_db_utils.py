@@ -102,6 +102,51 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None, params=None):
     return new_row_id if retrieve_id is True else True  # Just to indicate that everything worked out fine
 
 
+def store_secret(value, dbname, connection=None):
+    """
+    Encrypts value (fresh random nonce for every call, see Wikiportret_crypto) and stores it in secret_stuff.
+    Returns the ciphertext: that is what other tables store to refer to the secret.
+    """
+    information = crypto.encrypt_token(value)
+    adjust_db("INSERT INTO secret_stuff (ciphertext, nonce, version) VALUE (%s, %s, %s)", dbname,
+              connection=connection, params=(information['ciphertext'], information['nonce'], information['version']))
+    return information['ciphertext']
+
+
+def get_stored_wikiportret_key(dbname, operator, connection=None):
+    """
+    The bare key for the Wikiportret API that is stored for an operator (user id or username), decrypted on the go.
+    Only the key itself is encrypted in the db (tokens.wikiportrait_token holds its ciphertext, like oauth_token).
+    Returns None if there is no (usable) key: no tokens, or a row from before the key was encrypted.
+    Wikiportret_API_utils.get_wikiportret_key adds what is needed to get the key and to pass it to the API.
+    """
+    operator_id = get_user_id(operator, dbname, connection)
+    row = query_db("SELECT wikiportrait_token FROM tokens WHERE operator_id=%s;", dbname, connection=connection,
+                   params=(operator_id,))
+    if row is None:
+        return None
+    secret = query_db("SELECT nonce, version FROM secret_stuff WHERE ciphertext=%s", dbname, connection=connection,
+                      params=(row[0],))
+    if secret is None:  # Nothing to decrypt with (e.g. a plain key from before the encryption was introduced)
+        return None
+    return crypto.decrypt_token(row[0], secret[0], secret[1])
+
+
+def store_wikiportret_key(key, dbname, operator, connection=None):
+    """
+    Encrypts a bare Wikiportret key and links it to the tokens of the operator. Returns False if that is impossible
+    because the operator has no tokens (anymore): tokens are only created at login (and removed at logout), and this
+    function never creates or extends them.
+    """
+    operator_id = get_user_id(operator, dbname, connection)
+    if query_db("SELECT 1 FROM tokens WHERE operator_id=%s;", dbname, connection=connection,
+                params=(operator_id,)) is None:
+        return False  # Do not even encrypt: that would only leave an orphan in secret_stuff
+    adjust_db("UPDATE tokens SET wikiportrait_token=%s WHERE operator_id=%s;", dbname, connection=connection,
+              params=(store_secret(key, dbname, connection), operator_id))
+    return True
+
+
 def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend with encryption stuff
     if not isinstance(operator_name, (str, int)):
         raise TypeError('operator_name must be str or int!')

@@ -19,3 +19,5 @@ dist/*
 GUI/Wikiportret_core.py
 /GUI/Wikiportret_core.py
 *.json
+# Internal documentation on the job signatures (not for the public repo)
+/GUI/Job_signature.md

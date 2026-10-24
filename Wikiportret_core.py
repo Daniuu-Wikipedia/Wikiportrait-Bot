@@ -558,7 +558,8 @@ class Image:
         """
         if self.death is not None:
             return self.death  # No need to check this twice
-        if not self.claims:
+        # 20261024 - avoid recursion errors!
+        if self.claims is None:  # Not loaded yet (an item without any statements has {} and must not reload forever)
             self.ini_wikidata()
         claim = self.claims.get('P570')  # Returns none if no such claim is present
         if claim is not None:  # Make it return None otherwise
@@ -592,7 +593,9 @@ class Image:
         """
         if self.birth is not None:
             return self.birth  # No need to check this twice
-        if not self.claims:
+        # 20261024 - mini hackathon: what if an item has empty statements?
+        # Bugfix required!
+        if self.claims is None:  # Not loaded yet (an item without any statements has {} and must not reload forever)
             self.ini_wikidata()
         claim = self.claims.get('P569')  # Returns none if no such claim is present
         if claim is not None:  # Make it return None otherwise

@@ -29,9 +29,9 @@ def query_db(query, dbname, need_all=False, connection=None, params=None):
     so pymysql escapes them (names like "Jeanne d'Arc" would otherwise break the query).
     """
     if LOCAL_DEV:
-        if "SELECT status FROM sessions" in query:
+        if "SELECT s.status FROM sessions" in query:
             return ("uploaded",)
-        if "SELECT * FROM messages" in query:
+        if "SELECT m.* FROM messages" in query:
             return (0, 0, "Als je dit leest, zit je op de pagina /uploaddone ")
         if "SELECT `user_id`" in query:
             return (1,)
@@ -55,17 +55,25 @@ def query_db(query, dbname, need_all=False, connection=None, params=None):
     return info  # Return the relevant info & process it elsewhere
 
 
-def get_user_id(username, dbname, connection=None):
+def get_user_id(username, dbname, connection=None, cache=None):
+    """
+    Look up the id of a user. If a dict-like cache (e.g. the flask session) is passed, the id is read from and
+    stored in it under 'user_id', so the db is only hit once per login.
+    """
     if LOCAL_DEV:
         return 1
     if isinstance(username, int):
         return username  # To avoid getting into trouble again with me messing up usernames & ids again
+    if cache is not None and cache.get('user_id') is not None:
+        return cache['user_id']
     data = query_db("SELECT `user_id` from `users` where `username`=%s",
                     dbname,
                     need_all=False,
                     connection=connection,
                     params=(username,))
     if isinstance(data, tuple):
+        if cache is not None:
+            cache['user_id'] = data[0]
         return data[0]
     return None  # No valid user
 
@@ -80,8 +88,7 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None, params=None):
         connection = toolforge.toolsdb(dbname)
     connection.autocommit(True)  # Force autocommit
     with connection.cursor() as cursor:
-        cursor.execute(query, params)
-        connection.commit()
+        cursor.execute(query, params)  # Autocommit is on, so no separate COMMIT round trip is needed
         if retrieve_id is True:
             new_row_id = cursor.lastrowid
         cursor.close()
@@ -93,16 +100,29 @@ def adjust_db(query, dbname, retrieve_id=False, connection=None, params=None):
 def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend with encryption stuff
     if not isinstance(operator_name, (str, int)):
         raise TypeError('operator_name must be str or int!')
-    query = "select * from tokens where operator_id=%s;"
-    coded = json.loads(query_db(query, dbname, connection=connection,
-                                params=(get_user_id(operator_name, dbname, connection),))[1])  # Automatically
+    # Ids are used directly; names are resolved in the same query through a join
+    if isinstance(operator_name, int):
+        query = "SELECT oauth_token FROM tokens WHERE operator_id=%s;"
+    else:
+        query = ("SELECT t.oauth_token FROM tokens t "
+                 "JOIN users u ON u.user_id = t.operator_id "
+                 "WHERE u.username=%s;")
+    row = query_db(query, dbname, connection=connection, params=(operator_name,))
+    if row is None:
+        raise LookupError('No tokens stored for this user')
+    coded = json.loads(row[0])
 
     # 20260314 - HACKATHON - decrypt tokens
     # Encrypted stuff is stored in the db (so we need to get some stuff stored in the same table)
+    # All secrets are fetched in a single query
+    if not coded:
+        return {}
+    placeholders = ', '.join(['%s'] * len(coded))
+    query = f"SELECT ciphertext, nonce, version FROM secret_stuff WHERE ciphertext IN ({placeholders})"
+    obtained = {row[0]: row for row in query_db(query, dbname, need_all=True, connection=connection,
+                                                params=tuple(coded.values()))}
     sec = {}
     for i, j in coded.items():
-        query = "select * from secret_stuff where `ciphertext`=%s"
-        obtained = query_db(query, dbname, connection=connection, params=(j,))
-        sec[i] = crypto.decrypt_token(j, obtained[2], obtained[3])
-        del obtained, query  # No longer needed
+        _, nonce, version = obtained[j]
+        sec[i] = crypto.decrypt_token(j, nonce, version)
     return sec  # Be careful with this dictionary!

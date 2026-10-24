@@ -11,15 +11,15 @@ import json
 
 
 class WebImage(Image):
-    def __init__(self, file, name, config, user):
+    def __init__(self, file, name, config, user, connection=None):
         super().__init__(file, name)
         self.dbname = config['DB_NAME']
-        self.verify_OAuth(config, user=user)  # Automatically verify OAuth
+        self.verify_OAuth(config, user=user, connection=connection)  # Automatically verify OAuth
 
-    def verify_OAuth(self, config, secret=None, user=None):  # Overloading from parent class
+    def verify_OAuth(self, config, secret=None, user=None, connection=None):  # Overloading from parent class
         if secret is None:
             if isinstance(user, (int, str)):
-                secret = dbut.get_tokens_from_db(self.dbname, user)
+                secret = dbut.get_tokens_from_db(self.dbname, user, connection=connection)
             else:
                 raise TypeError('Only integers and strings are accepted as input for the user!')
 
@@ -197,6 +197,12 @@ class WikiError(Exception):
         return 'Something went wrong while loading the data from the wiki'
 
 
+class SessionAccessError(Exception):
+    """Raised when a session does not exist or does not belong to the requesting user"""
+    def __str__(self):
+        return 'That session does not exist or belongs to someone else'
+
+
 class BackgroundError(Exception):
     def __str__(self):
         return 'The bg job is down!'
@@ -217,23 +223,53 @@ def create_from_db(session_number,
                    config,
                    retrieve_claims=True,
                    adjust_input_data=True,
-                   check_status=True):
+                   check_status=True,
+                   user=None,
+                   connection=None,
+                   any_user=False):
     """
     Reads a session number & will then parse all relevant output form the db.
-    Method takes two arguments:
+    Method takes the following arguments:
         * session number: integer representing a session in the database
+        * user: user id (int) or username (str) of the requesting user. The session must belong to this user,
+          otherwise (or if no user is given) SessionAccessError is raised.
+        * connection: an open db connection to reuse. If omitted, one is opened (and closed) here.
+        * any_user: skip the ownership check (only for the background jobs, which act on any session)
     """
+    connection_passed = connection is not None
+    if connection is None:
+        # Since we need to run a few queries, we will just use one steady connection
+        connection = toolforge.toolsdb(config['DB_NAME'])
+    try:
+        return _create_from_db(session_number, config, retrieve_claims, adjust_input_data,
+                               check_status, user, any_user, connection)
+    finally:
+        if not connection_passed:
+            connection.close()
+
+
+def _create_from_db(session_number, config, retrieve_claims, adjust_input_data, check_status, user, any_user,
+                    connection):
     # To make our life slightly easier...
     dbname = config['DB_NAME']
 
-    # First job: create a connection to the db
-    # Since we need to run a few queries, we will just use one steady connection
-    connection = toolforge.toolsdb(dbname)
-
-    # Second job: check in the db what file & nlwiki page the user wishes to process
-    query = "SELECT * FROM sessions WHERE session_id=%s;"
-    result = dbut.query_db(query, dbname, connection=connection,
-                           params=(session_number,))  # Get relevant row as a tuple
+    # First job: check in the db what file & nlwiki page the user wishes to process
+    # Ownership is verified in the very same query
+    if user is None and not any_user:
+        raise SessionAccessError()
+    if any_user:
+        query = "SELECT * FROM sessions WHERE session_id=%s;"
+        params = (session_number,)
+    elif isinstance(user, int):
+        query = "SELECT * FROM sessions WHERE session_id=%s AND operator_id=%s;"
+        params = (session_number, user)
+    else:
+        query = ("SELECT s.* FROM sessions s JOIN users u ON u.user_id = s.operator_id "
+                 "WHERE s.session_id=%s AND u.username=%s;")
+        params = (session_number, user)
+    result = dbut.query_db(query, dbname, connection=connection, params=params)  # Get relevant row as a tuple
+    if result is None:
+        raise SessionAccessError()
     operator_id = result[1]  # Operator id, needed further down the road
     page, file = result[2], result[3]  # Make life slightly easier & shorten notation
     status = result[4]
@@ -249,7 +285,7 @@ def create_from_db(session_number,
                 raise BackgroundError('BG JOB IS DOWN!!!')
 
     # Third job: all input is there to generate the WebImage desperately needed
-    output = WebImage(file, page, config, operator_id)
+    output = WebImage(file, page, config, operator_id, connection=connection)
 
     # Fourth job: obtain the relevant parameters from the db
     if retrieve_claims is True:

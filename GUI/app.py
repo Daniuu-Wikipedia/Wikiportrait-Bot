@@ -61,7 +61,6 @@ def check_login_data(origin=None):
     return  # Return None, nothing to do here...
 
 
-
 @app.route('/')
 def index():
     if app.config.get('LOCAL_DEV'):
@@ -167,6 +166,7 @@ def oauth_callback():
         # For security reasons, the underlying keys are never shown to the user
         # Even though flask.session has some security built in to prevent tampering with the session cookie
         flask.session['username'] = identity['username']
+        flask.session['user_id'] = user_id  # Cached so that other pages do not need to look it up again
 
         # 20260409 - extension to avoid login issues (tokens automatically removed after some time)
         expiry = dt.datetime.utcnow() + dt.timedelta(hours=1)
@@ -182,7 +182,8 @@ def logout():
     # 20260314 - HACKATHON remove tokens from the db
     # Nobody logged in (e.g. session cookie expired): nothing to clean up in the db
     username = flask.session.get('username')
-    user_id = db_utils.get_user_id(username, app.config['DB_NAME']) if username is not None else None
+    user_id = (db_utils.get_user_id(username, app.config['DB_NAME'], cache=flask.session)
+               if username is not None else None)
     if user_id is not None:
         query = 'delete from tokens where operator_id = %s'
         db_utils.adjust_db(query, app.config['DB_NAME'], params=(user_id,))
@@ -213,7 +214,8 @@ def input():
         del flask.session['session_id']
     if flask.request.method == 'POST':
         raise NotImplementedError('API-based loading is not yet supported!')  # Perform actions to initialize the form
-    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
+    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
+                              cache=flask.session) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     return flask.render_template('input.html',
                                  user_name=flask.session.get('username', 'TestGebruiker'))
@@ -231,7 +233,8 @@ def load():
         return 'This page cannot be loaded directly!'
     elif flask.request.method != 'POST':
         return 'You can only POST to this page!'
-    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
+    elif db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
+                              cache=flask.session) is None:
         return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
     elif '.' not in flask.request.form['File'].strip():
         return flask.redirect(flask.url_for('input'))
@@ -243,10 +246,11 @@ def load():
 
         # Handle the POST request
         # In the background, we will start setting up the bot
+        user_id = flask.session['user_id']  # Cached by the check above
         bot_object = wcl.WebImage(flask.request.form['File'].strip(),
                                   flask.request.form['Article'].strip(),
                                   app.config,
-                                  flask.session['username'])  # Configure a new bot object
+                                  user_id)  # Configure a new bot object
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
 
         # Previous versions of code set stuff to the session (now no longer needed: done via db)
@@ -258,8 +262,7 @@ def load():
         flask.session['session_id'] = db_utils.adjust_db(query,
                                                          app.config['DB_NAME'],
                                                          retrieve_id=True,
-                                                         params=(db_utils.get_user_id(flask.session['username'],
-                                                                                      app.config['DB_NAME']),
+                                                         params=(user_id,
                                                                  bot_object.name,
                                                                  bot_object.file))
 
@@ -293,11 +296,12 @@ def review():
 
             bot_object = MockBot()
         else:
-            if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME']) is None:
+            if db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'],
+                                    cache=flask.session) is None:
                 return flask.redirect(flask.url_for('login'))  # Back to the index - invalid username passed
             bot_object = wcl.create_from_db(flask.session['session_id'],
                                             app.config,
-                                            flask.session['username'])  # To do: continue
+                                            user=flask.session['username'])  # Raises a 403 for foreign sessions
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         return flask.render_template('review.html',
                                      license_options=wcl.WebImage.licenses.keys(),
@@ -327,7 +331,7 @@ def submit():
         update_dict = {}  # Key-value pairs for updating stuff in the db
         bot_object = wcl.create_from_db(flask.session['session_id'],
                                         app.config,
-                                        flask.session['username'])  # To do: make adjustments needed
+                                        user=flask.session['username'])  # Raises a 403 for foreign sessions
         # bot_object.verify_OAuth(app.config, user=flask.session['username'])
         # First things first: we need to adjust some values
         # But this only happens if some specific checkboxes are checked
@@ -360,11 +364,12 @@ def submit():
         # Uploading the stuff to the wiki will be done in the background
         # Prepare everything for the background job
         query = """
-        UPDATE sessions
-        SET status = 'ready'
-        WHERE session_id = %s
+        UPDATE sessions s JOIN users u ON u.user_id = s.operator_id
+        SET s.status = 'ready'
+        WHERE s.session_id = %s AND u.username = %s
         """
-        db_utils.adjust_db(query, app.config['DB_NAME'], params=(flask.session['session_id'],))
+        db_utils.adjust_db(query, app.config['DB_NAME'],
+                           params=(flask.session['session_id'], flask.session['username']))
 
         return flask.render_template('submit.html',
                                      user_name=flask.session['username'])
@@ -378,10 +383,13 @@ def statussubmit():
     # Also add the "thank you, dear donateur"-message to this screen
     # Work still in progress
     query = """
-    SELECT status FROM sessions
-    where session_id = %s
+    SELECT s.status FROM sessions s JOIN users u ON u.user_id = s.operator_id
+    WHERE s.session_id = %s AND u.username = %s
     """
-    message_data = db_utils.query_db(query, app.config['DB_NAME'], params=(flask.session['session_id'],))
+    message_data = db_utils.query_db(query, app.config['DB_NAME'],
+                                     params=(flask.session['session_id'], flask.session['username']))
+    if message_data is None:  # Not the user's own session
+        flask.abort(403)
     match message_data[0]:
         case 'uploaded':
             return flask.redirect(flask.url_for('uploaddone'))
@@ -397,9 +405,12 @@ def statussubmit():
 def uploaddone():
     check_login_data('uploaddone')
     query = """
-    SELECT * FROM messages
-    WHERE session_id = %s"""
-    message_from_db = db_utils.query_db(query, app.config['DB_NAME'], params=(flask.session['session_id'],))
+    SELECT m.* FROM messages m JOIN users u ON u.user_id = m.user_id
+    WHERE m.session_id = %s AND u.username = %s"""
+    message_from_db = db_utils.query_db(query, app.config['DB_NAME'],
+                                        params=(flask.session['session_id'], flask.session['username']))
+    if message_from_db is None:  # No message of this user for this session
+        flask.abort(403)
     return flask.render_template('uploaddone.html', message=message_from_db[2])
 
 
@@ -413,6 +424,7 @@ def forbidden_test():
     check_login_data('forbidden_test')
     return flask.render_template('403.html')
 
+@app.errorhandler(wcl.SessionAccessError)  # Someone else's session: same page as a regular 403
 @app.errorhandler(403)
 def forbidden(e):
     # No login check here: unauthorised users (no token_expiry yet) must see this page, not loop back to login

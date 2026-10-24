@@ -49,7 +49,8 @@ def background_load(session_id, config):
                                  config,
                                  retrieve_claims=False,
                                  adjust_input_data=False,
-                                 check_status=False)  # We still need to write stuff to the db, so silent
+                                 check_status=False,
+                                 any_user=True)  # We still need to write stuff to the db, so silent
         bot.prepare_image_data()  # Load stuff in the background
         bot.get_commons_claims()
         bot.ini_wikidata()
@@ -74,7 +75,7 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False):
     success, status = False, 'ufail'  # By default, assume that Daniuu is crap at coding & the bot fails
     conn, bot = toolforge.toolsdb(config['DB_NAME']), None
     try:
-        bot = wcl.create_from_db(session_id, config)
+        bot = wcl.create_from_db(session_id, config, user=user_id)
         # Arguments for the bot: commons_perm, category, data_connect, nlwiki, conf, test
         _, shorts, confirmation = bot(True,  # Commons permission properties
                                       True,  # Set category

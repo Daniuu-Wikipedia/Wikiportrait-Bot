@@ -14,7 +14,12 @@
     <div class="card" style="max-width: 700px;">
         <div class="notice notice-warning">
             <strong><i class="fa-solid fa-triangle-exclamation"></i> Wikidata is momenteel overbelast (maxlag)</strong>
+            {% if article_skipped %}
+            De afbeelding staat op Commons. Het artikel op Wikipedia had al een afbeelding en is niet aangepast (zie
+            hieronder). Het koppelen aan Wikidata en het afronden
+            {% else %}
             De afbeelding staat op Commons en in het artikel op Wikipedia. Het koppelen aan Wikidata en het afronden
+            {% endif %}
             van de categorie is uitgesteld: dit gebeurt automatisch op een later moment.
             U hoeft niets meer te doen en deze pagina niet te verversen.
         </div>

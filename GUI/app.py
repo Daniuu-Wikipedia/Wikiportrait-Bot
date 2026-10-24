@@ -552,12 +552,19 @@ def statussubmit():
         case 'maxlag':
             message_from_db = db_utils.query_db(MESSAGE_QUERY, app.config['DB_NAME'],
                                                 params=(flask.session['session_id'], flask.session['username']))
+            errors = session_errors()
             return flask.render_template('uploadmaxlag.html',
                                          message=message_from_db[2] if message_from_db else '',
-                                         errors=session_errors(),
+                                         # The article already had an image: it was not edited (201/202 logged)
+                                         article_skipped=any(e['code'] in IMAGE_ALREADY_CODES for e in errors),
+                                         errors=errors,
                                          user_name=flask.session['username'])
-    # To do: change this, but for alpha testing, just keep as is...
-    return 'Daniuu moet gewaarschuwd worden: er is mogelijk iets misgegaan met deze upload.'
+        case 'ready' | 'up':  # Still waiting for / busy in the background job: keep waiting (the page checks again)
+            return flask.render_template('submit.html', user_name=flask.session['username'])
+    return flask.render_template('error.html',
+                                 message=f'Onbekende status van deze upload ({message_data[0]}). Waarschuw Daniuu.',
+                                 errors=session_errors(),
+                                 user_name=flask.session['username']), 500
 
 
 def wiki_url(site, title, prefix=''):

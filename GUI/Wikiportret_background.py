@@ -39,6 +39,20 @@ INSERT INTO messages
 (session_id, user_id, message, file_url, wiki_url, qid) values (%s, %s, %s, %s, %s, %s);"""
 
 
+# The list of uploads of an operator (shown on the "Mijn uploads" page)
+# Adds a file only if the operator does not have it in the list yet: a job can reach this point more than once (it is
+# added when the job first hits maxlag, and again by the retries), and a file can only be uploaded to Commons once
+UPLOAD_INSERT = """
+INSERT INTO user_uploads (operator_id, file_uploaded)
+SELECT %s, %s FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM user_uploads WHERE operator_id = %s AND file_uploaded = %s);"""
+
+
+def add_to_uploads(config, conn, user_id, file):
+    """Adds the file to the list of uploads of the operator (once, however often this is called)"""
+    dbutil.adjust_db(UPLOAD_INSERT, config['DB_NAME'], connection=conn, params=(user_id, file, user_id, file))
+
+
 # Define some auxiliary methods
 def background_load(session_id, config):
     """
@@ -101,6 +115,18 @@ def log_failed_bot_job(session_id, config, conn, bot_credentials):
         print(f'Could not log failed job {session_id}: {error!r}')
 
 
+# Codes of ImageAlreadyError (Wikiportret_core.ERROR_MESSAGES): the image itself / another image was in the article
+IMAGE_ALREADY_CODES = (201, 202)
+
+
+def article_was_skipped(session_id, config, conn):
+    """
+    True if an earlier attempt of this job found an image in the article (201/202 in error_log). A retry after maxlag
+    skips the article step, so it can not see that by itself: without this check, the job would end as 'uploaded'
+    """
+    return any(code in IMAGE_ALREADY_CODES for code, _ in dbutil.get_errors(session_id, config['DB_NAME'], connection=conn))
+
+
 def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_credentials=None):
     """
     Processes a submitted session (status 'ready'), or retries one that was postponed (status 'maxlag').
@@ -131,10 +157,15 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
-        if bot.already_there is not None:
+        if bot.already_there is not None or (from_maxlag and article_was_skipped(session_id, config, conn)):
             # The image was already in the article (201) or the infobox had another one (202): the article was not
             # edited, but all other steps were made (so the upload counts as success, see below)
+            # Retry after maxlag: the first attempt found it (and logged it, see the MaxlagError branch)
             status = 'althere'
+            # Logged with the warnings: /uploadexists reads it to tell the operator which of the two it was
+            # (on a retry it is logged already, and this attempt did not find it itself)
+            if bot.already_there is not None:
+                bot.warnings.append(bot.already_there)
         success = True  # Flag upload as success
         # Also store the upload messages => to make life easier for the operator
         # Replace the provisional message that was stored when a previous attempt hit maxlag
@@ -143,14 +174,16 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         dbutil.adjust_db(MESSAGE_INSERT, config['DB_NAME'], connection=conn,
                          params=(session_id, user_id, confirmation, shorts[0], shorts[1], bot.qid))
         # 20260409 - explicitly set uploaded status in time
+        # 'althere' right away as well: an intermediate 'uploaded' would send the operator to the wrong page
         query = """
                 UPDATE sessions
-                SET status = 'uploaded' where session_id = %s;
+                SET status = %s where session_id = %s;
                 """
-        dbutil.adjust_db(query, config['DB_NAME'], connection=conn, params=(session_id,))
+        dbutil.adjust_db(query, config['DB_NAME'], connection=conn,
+                         params=('althere' if status == 'althere' else 'uploaded', session_id))
         # 20250314 - HACKATHON - succesfull upload => add to the list of user uploads in the db
-        query = "insert into user_uploads (operator_id, file_uploaded) values (%s, %s);"
-        dbutil.adjust_db(query, config['DB_NAME'], connection=conn, params=(user_id, bot.file))
+        # A retry after maxlag may have been added to the list already (see below): add_to_uploads never adds twice
+        add_to_uploads(config, conn, user_id, bot.file)
     except wcl.UnverifiedTargetError as error:
         # 20261024 - the bot account refuses jobs that the wikis do not confirm: leave them for manual review
         print(f'Session {session_id}: {error}')
@@ -175,6 +208,13 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         # (session_id is the primary key of messages, so a second insert would fail)
         has_message = dbutil.query_db("SELECT 1 FROM messages WHERE session_id = %s;", config['DB_NAME'],
                                       connection=conn, params=(session_id,)) is not None
+        if bot is not None:
+            # The image is on Commons and in the article already: it counts as an upload of the operator now
+            # (first, so that a failing step below cannot skip it; repeating it in a later maxlag round is harmless)
+            add_to_uploads(config, conn, user_id, bot.file)
+        if bot is not None and bot.already_there is not None:
+            # Logged now, so the retry (which skips the article step) still ends as 'althere' (article_was_skipped)
+            bot.warnings.append(bot.already_there)
         if bot is not None and not has_message:
             # Store the message for the operator already (maxlag only affects Wikidata, so shortening urls is safe)
             shorts = bot.short_urls()

@@ -976,7 +976,7 @@ class Image:
         if self.mc.get('P275') is None:
             if self.comtext is None:
                 self.get_commons_text()
-            k = re.findall('PERMISSION=\s?\S+ [\d.]+', self.comtext.upper())  # Filter the permission rule (using regex)
+            k = re.findall(r'PERMISSION=\s?\S+ [\d.]+', self.comtext.upper())  # Filter the permission rule (using regex)
             if k:  # Nothing found: None is returned (and the default licence is NOT assumed)
                 lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=',
                                                                                                               '').strip()

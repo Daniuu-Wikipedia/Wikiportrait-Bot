@@ -84,7 +84,12 @@ def credentials_valid():
     the two can be out of sync for a little while: both have to be checked.
     """
     expiry = flask.session.get('token_expiry')
-    if expiry is None or dt.datetime.utcnow() > dt.datetime.fromisoformat(expiry):
+    if expiry is None:
+        return False
+    expiry = dt.datetime.fromisoformat(expiry)
+    if expiry.tzinfo is None:  # Cookies from before the switch to timezone-aware times: those were already in UTC
+        expiry = expiry.replace(tzinfo=dt.timezone.utc)
+    if dt.datetime.now(dt.timezone.utc) > expiry:
         return False
     user_id = db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'], cache=flask.session)
     return user_id is not None and db_utils.has_tokens(user_id, app.config['DB_NAME'])
@@ -227,7 +232,8 @@ def oauth_callback():
         flask.session['user_id'] = user_id  # Cached so that other pages do not need to look it up again
 
         # 20260409 - extension to avoid login issues (tokens automatically removed after some time)
-        expiry = dt.datetime.utcnow() + dt.timedelta(hours=1)
+        # Timezone-aware (utcnow is deprecated since Python 3.12): stored with its offset, e.g. ...+00:00
+        expiry = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)
         flask.session['token_expiry'] = expiry.isoformat()
         del expiry
 

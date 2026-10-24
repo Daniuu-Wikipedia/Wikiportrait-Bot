@@ -131,6 +131,10 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         # 20260313 - HACKATHON - improve logging
         if not isinstance(session_id, int):
             status = 'sessioniderror'
+        if bot.already_there is not None:
+            # The image was already in the article (201) or the infobox had another one (202): the article was not
+            # edited, but all other steps were made (so the upload counts as success, see below)
+            status = 'althere'
         success = True  # Flag upload as success
         # Also store the upload messages => to make life easier for the operator
         # Replace the provisional message that was stored when a previous attempt hit maxlag
@@ -181,7 +185,7 @@ def upload_in_background(session_id, config, user_id, from_maxlag=False, bot_cre
         failure = error
         traceback.print_exc()
     finally:
-        if success is True:
+        if success is True and status != 'althere':
             status = 'uploaded'
         query = """
         UPDATE sessions

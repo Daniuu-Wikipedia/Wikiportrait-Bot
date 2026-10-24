@@ -595,9 +595,8 @@ IMAGE_ALREADY_CODES = (201, 202)
 @app.route('/uploadexists')
 def uploadexists():
     """
-    The article already had an image, so the job stopped before the article was changed (status 'althere').
-    What was done by then: the structured data of the file on Commons (VRT ticket, licence). What was not: the article,
-    the depicted person on Commons, Wikidata and the category. The operator gets an overview to check it themselves.
+    The article already had an image (status 'althere'): only the edit of the article was skipped, the job went on
+    with all other steps (Commons, Wikidata, category), see Image.operator_steps. The operator gets an overview.
     """
     check_login_data('uploadexists')
     query = """

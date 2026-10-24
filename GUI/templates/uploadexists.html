@@ -49,7 +49,7 @@
             {% endif %}
         </div>
 
-        {# What the job did before it stopped (see uploadexists in app.py) #}
+        {# What the job did: everything except the edit of the article (see uploadexists in app.py) #}
         <h3 class="steps-title">Wat is er gebeurd?</h3>
         <ul class="steps">
             {% if structured_data_failed %}
@@ -61,18 +61,18 @@
             {% endif %}
             <li class="step step-skipped"><i class="fa-solid fa-circle-minus"></i>
                 Artikel op Wikipedia: niet aangepast</li>
-            <li class="step step-skipped"><i class="fa-solid fa-circle-minus"></i>
-                Afgebeelde persoon op Commons, categorie en Wikidata: niet uitgevoerd</li>
+            <li class="step step-done"><i class="fa-solid fa-circle-check"></i>
+                Afgebeelde persoon op Commons, categorie en Wikidata: uitgevoerd</li>
         </ul>
 
         {% include 'error_list.html' %}
 
         <p class="text-secondary">
             {% if same_image %}
-            Controleer of de koppeling op Wikidata en de categorie op Commons al in orde zijn, en vul ze zo nodig zelf aan.
+            Alle andere stappen zijn wel uitgevoerd: er hoeft niets meer te gebeuren.
             {% else %}
-            Wilt u de afbeelding toch gebruiken? Pas dan de infobox zelf aan, en vul daarna de koppeling op Wikidata en
-            de categorie op Commons aan.
+            Alle andere stappen zijn wel uitgevoerd. Wilt u de afbeelding ook in het artikel gebruiken? Pas dan de
+            infobox zelf aan.
             {% endif %}
         </p>
 

@@ -355,6 +355,10 @@ class Image:
         # Problems that did not stop the processing (ProcessingErrors, see warn), so the operator can still be told
         self.warnings = []
 
+        # The ImageAlreadyError (201/202) of the Dutch Wikipedia step, if there was one: it only skips the edit of the
+        # article, all other steps (also the Wikidata ones) are still made. Callers use it to tell the operator
+        self.already_there = None
+
         # For safety
         self.configure_bots_for_testing()
 
@@ -1293,8 +1297,14 @@ class Image:
         # 20260929 - repeated maxlag-related issues => swapping order of operations
         if nlwiki is True:
             print('I will now add the image to the Dutch Wikipedia.')
-            self.add_image_to_article()
-            print('I finished the addition. Check for eventual errors above.')
+            try:
+                self.add_image_to_article()
+                print('I finished the addition. Check for eventual errors above.')
+            except ImageAlreadyError as error:
+                # Nothing was edited on the article. The image is on Commons already, so the other steps (also the
+                # ones that depend on Wikidata) still make sense: do not stop, but remember it for the operator
+                print(f'The article was not edited: {error}')
+                self.already_there = error
 
         # Identify the depicted person on Commons (needs the qid, which the web interface loaded beforehand)
         # Without a Wikidata item, ini_wikidata raises ProcessingError 107 (check_article normally finds that earlier)

@@ -92,6 +92,11 @@
     white-space: nowrap;
 }
 
+/* Only the header is centered; the buttons in the cells stay right-aligned */
+.uploads-table th.actions-column {
+    text-align: center !important;
+}
+
 .btn-small {
     padding: 0.45rem 0.9rem;
     font-size: 0.85rem;

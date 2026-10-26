@@ -50,6 +50,7 @@ if app.config.get('SESSION_COOKIE_SAMESITE') is None:
 
 # CSRF protection (part 2): every form carries a secret token that is only known to this login session
 # A page on another website cannot read it, so it cannot make a POST request that passes the check below
+# (more background: Security_notes.md, internal)
 def csrf_token():
     """The CSRF token of this session (created on first use). Use it in templates as {{ csrf_token() }}"""
     if 'csrf_token' not in flask.session:
@@ -90,6 +91,8 @@ def credentials_valid():
     if expiry.tzinfo is None:  # Cookies from before the switch to timezone-aware times: those were already in UTC
         expiry = expiry.replace(tzinfo=dt.timezone.utc)
     if dt.datetime.now(dt.timezone.utc) > expiry:
+        return False
+    if flask.session.get('tokens_rejected'):  # The stored tokens exist, but could not be used (see tokens_missing)
         return False
     user_id = db_utils.get_user_id(flask.session.get('username'), app.config['DB_NAME'], cache=flask.session)
     return user_id is not None and db_utils.has_tokens(user_id, app.config['DB_NAME'])
@@ -229,6 +232,8 @@ def oauth_callback():
         # For security reasons, the underlying keys are never shown to the user
         # Even though flask.session has some security built in to prevent tampering with the session cookie
         flask.session['username'] = identity['username']
+        flask.session.pop('tokens_rejected', None)  # New tokens: usable again (see tokens_missing)
+        flask.session.pop('csrf_token', None)  # New login, new CSRF token
         flask.session['user_id'] = user_id  # Cached so that other pages do not need to look it up again
 
         # 20260409 - extension to avoid login issues (tokens automatically removed after some time)
@@ -341,8 +346,11 @@ def session_errors():
 
 
 # Race: the db removed the tokens between check_login_data and their use (e.g. while building the WebImage)
+# Also raised when the stored tokens can not be used: they still exist then, so credentials_valid would keep sending
+# the user back from /renew. Remembered until they log in again
 @app.errorhandler(db_utils.TokensMissingError)
 def tokens_missing(e):
+    flask.session['tokens_rejected'] = True
     return flask.redirect(flask.url_for('renew'))
 
 

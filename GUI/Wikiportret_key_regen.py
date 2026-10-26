@@ -1,24 +1,12 @@
 """
-Rotates the encryption key of the tool (AES-GCM, 32 bytes = 256 bits), stored in Toolforge envvars
-
-    WPOR_ENC_KEY_CURRENT          the key new secrets are encrypted with (base64)
-    WPOR_ENC_KEY_CURRENT_VERSION  its number, stored with every secret in secret_stuff.version
-    WPOR_ENC_KEY_PREVIOUS         the key before that: still needed to decrypt what was encrypted before the rotation
-    WPOR_ENC_KEY_PREVIOUS_VERSION its number
-
-One rotation: the current key becomes the previous one, a new key with the next number becomes the current one, and
-the oldest key is gone (whatever was still encrypted with it can not be decrypted anymore). Version numbers only go
-up: a number that was used before must never point to another key.
-Running processes only see envvars from when they started, so the webservice and the background job are restarted
-afterwards (the maxlag handler starts fresh every 5 minutes, it needs no restart).
+Rotates the encryption key of the tool (stored in Toolforge envvars), then restarts the webservice & background job.
+How the keys and the rotation work: see Security_notes.md (internal, not in the repository)
 
 Run as the tool account where the toolforge command is available (on the bastion: become <tool> first):
     python3 Wikiportret_key_regen.py                        rotate & restart
     python3 Wikiportret_key_regen.py --no-restart           rotate only (restart yourself later)
     python3 Wikiportret_key_regen.py --import-json FILE     one-off migration: copy the keys of the old json file
                                                             (SECRET_KEY_LOC) into the envvars, no rotation
-Key values are passed to toolforge through stdin, never as command line arguments (those are visible to other users
-of the bastion and end up in the shell history).
 """
 
 import argparse

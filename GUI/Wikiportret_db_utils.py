@@ -184,7 +184,10 @@ def get_stored_wikiportret_key(dbname, operator, connection=None):
                       params=(row[0],))
     if secret is None:  # Nothing to decrypt with (e.g. a plain key from before the encryption was introduced)
         return None
-    return crypto.decrypt_token(row[0], secret[0], secret[1])
+    try:
+        return crypto.decrypt_token(row[0], secret[0], secret[1])
+    except crypto.UndecryptableError:  # Not usable: a new key is simply requested and stored
+        return None
 
 
 def store_wikiportret_key(key, dbname, operator, connection=None):
@@ -231,5 +234,8 @@ def get_tokens_from_db(dbname, operator_name, connection=None):  # To do: extend
         if j not in obtained:
             raise TokensMissingError('Stored tokens are incomplete')
         _, nonce, version = obtained[j]
-        sec[i] = crypto.decrypt_token(j, nonce, version)
+        try:
+            sec[i] = crypto.decrypt_token(j, nonce, version)
+        except crypto.UndecryptableError as error:  # Not usable: the user logs in again
+            raise TokensMissingError(f'Stored tokens can not be decrypted: {error}') from error
     return sec  # Be careful with this dictionary!

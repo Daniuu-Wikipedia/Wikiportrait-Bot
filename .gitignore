@@ -21,3 +21,5 @@ GUI/Wikiportret_core.py
 *.json
 # Internal documentation on the job signatures (not for the public repo)
 /GUI/Job_signature.md
+# Internal documentation on the encryption keys & CSRF protection (not for the public repo)
+/GUI/Security_notes.md

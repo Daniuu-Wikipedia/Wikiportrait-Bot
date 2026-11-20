@@ -199,7 +199,7 @@ class Bot:
                 raise ProcessingError(403, f'{self.api}: {z[0].get("error")}')
             return self.get_token(t, n + 1)
 
-    def post(self, params):
+    def post(self, params, no_maxlag=False):
         assert 'action' in params, 'Please provide an action'
         if self.read_only and params['action'] != 'purge':  # A purge changes no content, so it is allowed
             raise PermissionError(f'Edits on {self.api} are not allowed for this bot')
@@ -231,7 +231,11 @@ class Bot:
         if 'token' not in params:  # Place this generation of the key here, to avoid having to request too many tokens
             params['token'] = self.verify_token()  # Generate a new token
         params['format'] = 'json'
-        params['maxlag'] = 5  # Using the standard that's implemented in PyWikiBot
+        # 20261120 - maxlag issues are not desired for interactive applications
+        # Allows the maxlag restriction to be bypassed, only to be used by specific pages from the web tool!
+        # Arrangement for interactive tooling only - see https://w.wiki/m2sr
+        if no_maxlag is not True:
+            params['maxlag'] = 5  # Using the standard that's implemented in PyWikiBot
         self.ti.append(float(time.time()))
         k = self._request(requests.post, data=params)
         if 'error' in k:
@@ -247,6 +251,14 @@ class WikidataBot(Bot):
     def __init__(self):
         super().__init__('https://www.wikidata.org/w/api.php')
         self._testfile = 'Wikidata_output.txt'
+
+    def post(self, params):
+        """
+        This function will provide functionality that does all the post requests.
+        Specifically for Wikidata, posting is done through the web tool (interactive script).
+        Maxlag can be bypassed!
+        """
+        return super().post(params, True)
 
 
 class CommonsBot(Bot):
@@ -637,11 +649,13 @@ class Image:
         p3d = purgedic.copy()  # Also do the Dutch Wikipedia
         p3d['titles'] = self.name
         # 20260929 - Wikidata is more prone to maxlag / API overload
+        print('Preparing to empty the cache on the Dutch Wikipedia')
         self._nl.post(p3d)
         print('Clearing the cache on Wikidata now.')  # Preparing to go to Wikidata
         p2d['titles'] = self.qid
-        self._wikidata.post(p2d)
-        print('Preparing to empty the cache on the Dutch Wikipedia')
+        # 20261120 - disabling purging Wikidata cache for now
+        # Wikidata has been really lagged lately ==> solving issue
+        # self._wikidata.post(p2d)
 
     # Generate a shortened URL to the image on Commons
     def short_url_commons(self):

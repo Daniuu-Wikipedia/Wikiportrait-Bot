@@ -305,6 +305,7 @@ class NlBot(Bot):
         return 'disambiguation' in place[key].get('pageprops', {})
 
 
+# noinspection DuplicatedCode
 class Image:
     """
     This class will contain the main methods that are required for the post-processing of an image from Wikiportrait
@@ -709,8 +710,8 @@ class Image:
                                                           day=28)
                         else:
                             self._timedeath = dt.datetime.strptime(main, "+%Y-%m-%dT%H:%M:%SZ").replace(hour=0,
-                                                                                         minute=0,
-                                                                                         second=0)
+                                                                                                        minute=0,
+                                                                                                        second=0)
                             self.daccurate = True  # Sufficient accuracy (hackathon 20260313)
                         return self._timedeath
                     except ValueError:
@@ -899,9 +900,16 @@ class Image:
                 deceased = self.date_deceased()
                 if deceased is not None and self.check_person_alive():
                     print(
-                        'The metadata are likely corrupt, so I will not add a date past the date at which the subject died.')
+                        'The metadata are likely corrupt, so I will not add a date past the date at which the subject '
+                        'died.')
                     return None  # Return None to abort this function
-                val = f'"time": "+{self.date.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"'
+                # 20261120 - Wikidata only accepts dt.datetime.isoformat() as input, so ensuring proper type is used!
+                if not isinstance(self.date, dt.datetime):
+                    temp_date = dt.datetime(year=self.date.year, month=self.date.month, day=self.date.day)
+                else:
+                    temp_date = self.date
+                val = (f'"time": "+{temp_date.isoformat()}Z", "timezone": 0, "before": 0, "after": 0, "precision": 11, '
+                       f'"calendarmodel": "http://www.wikidata.org/entity/Q1985727"')
                 n = {'action': 'wbsetqualifier',
                      'claim': idc,
                      'value': '{' + val + '}',
@@ -910,6 +918,7 @@ class Image:
                      'summary': self.sum,
                      'bot': True}
                 self.warn_if_refused(self._wikidata.post(n), 305)
+                del temp_date  # Cleaning up unused variable
         else:
             print('Could not find a useful date')
 
@@ -980,7 +989,6 @@ class Image:
             print('The ticket number is already added as a claim.')
             return self.mc.get('P6305')
 
-
     def get_licence_for_image(self):
         if self.mc is None:
             self.get_commons_claims()  # Set the claims using the previously defined function
@@ -990,7 +998,8 @@ class Image:
         if self.mc.get('P275') is None:
             if self.comtext is None:
                 self.get_commons_text()
-            k = re.findall(r'PERMISSION=\s?\S+ [\d.]+', self.comtext.upper())  # Filter the permission rule (using regex)
+            k = re.findall(r'PERMISSION=\s?\S+ [\d.]+',
+                           self.comtext.upper())  # Filter the permission rule (using regex)
             if k:  # Nothing found: None is returned (and the default licence is NOT assumed)
                 lic = sorted((i for i in k if i), key=lambda t: len(t))[-1].replace('PERMISSION', '').replace('=',
                                                                                                               '').strip()
@@ -1408,7 +1417,7 @@ class Image:
 
 # Use this code to run the bot
 if __name__ == '__main__':  # Do not run this code when we are using the interface
-    a = Image('Levi van Veluw.jpg', "Levi van Veluw")
+    a = Image('Lesly de Sa.JPG', "Lesly de Sa")
     a(True, True, True, True, True, False)  # Still keep the standard confirmation
     # a.ticket()
     # a.set_licence_properties()
